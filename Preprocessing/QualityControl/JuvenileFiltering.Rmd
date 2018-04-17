@@ -1,0 +1,143 @@
+---
+title: "Juvenile filtering"
+author: "Nils Eling"
+date: "08/03/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Read in data
+
+```{r}
+# Load libraries
+library(Matrix)
+library(scran)
+library(plot3D)
+library(Rtsne)
+library(ggplot2)
+library(DropletUtils)
+library(scater)
+library(viridis)
+
+# Read in data - Single cell experiment object per batch
+sce.do17824 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17824/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17824)$Sample <- rep("P20_do17824", ncol(sce.do17824))
+sce.do17825 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17825/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17825)$Sample <- rep("P30_do17825", ncol(sce.do17825))
+sce.do17828 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17828/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17828)$Sample <- rep("P15_do17828", ncol(sce.do17828))
+```
+
+# Merge datasets
+
+```{r}
+sce.all <- cbind(sce.do17824, sce.do17825, sce.do17828)
+```
+
+# Further quality control
+
+```{r}
+# Apply more filtering steps on these cells
+sce.all <- calculateQCMetrics(sce.all)
+
+# Number of genes detected
+plot(colData(sce.all)$total_counts, colData(sce.all)$total_features, log = "x", pch = 16, 
+     xlab = "Total counts", ylab = "Number of genes", 
+     col = ifelse(colData(sce.all)$total_features > 2000, "black", "red"))
+sce.all <- sce.all[,colData(sce.all)$total_features > 2000]
+
+# Mitochondrial genes
+genes <- read.table("../../data/Mouse_genes.txt", sep = "\t", header = TRUE)
+mt <- genes[genes$Chromosome.scaffold.name == "MT",]
+plot(Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts, 
+     pch = 16, ylab = "% mitochondrial reads")
+sce.all <- sce.all[,Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts < 0.04]
+
+# Remove genes that are not expressed
+sce.all <- sce.all[rowData(sce.all)$mean_counts > 0,]
+```
+
+# Normalization
+
+```{r}
+clusters <- quickCluster(sce.all, method = "igraph", irlba.args = c("work" = 100))
+
+sce.all <- computeSumFactors(sce.all, clusters=clusters)
+
+sce.all <- normalize(sce.all, return_log = TRUE)
+```
+
+```{r}
+# Compute tSNE
+set.seed(12345)
+sce.all <- scater::runTSNE(sce.all)
+
+# Samples
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  sample = colData(sce.all)$Sample)) +
+  geom_point(aes(tsne1, tsne2, colour = sample))
+
+# Library size
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = colData(sce.all)$log10_total_counts)) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Number genes expressed
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = colData(sce.all)$total_features)) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Stra8 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Stra8"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+
+# Defb19 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Defb19"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+
+# Col1a1 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Col1a1"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+
+# Nanos3
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Nanos3"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+
+# Zbtb16
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Zbtb16"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+
+# Prm1 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Prm1"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+
+# Dazl 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Dazl"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+```
+
+# Save sce object
+
+```{r}
+saveRDS(sce.all, "../../data/10X_data/SCE_juvenile.rds")
+```

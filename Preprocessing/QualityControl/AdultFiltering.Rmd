@@ -1,0 +1,175 @@
+---
+title: "Filtering of data generated from adult mice"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/QualityControl/AdultFiltering.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Reading in data and libraries
+
+```{r}
+# Load libraries
+library(Matrix)
+library(scran)
+library(plot3D)
+library(Rtsne)
+library(ggplot2)
+library(DropletUtils)
+library(scater)
+library(viridis)
+
+# Read in data - Single cell experiment object per batch
+# B6
+sce.do17815 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17815/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17815)$Sample <- rep("B6_do17815", ncol(sce.do17815))
+
+sce.do17816 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17816/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17816)$Sample <- rep("B6_do17816", ncol(sce.do17816))
+
+# Tc0
+sce.do15984 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15984/Mus_human_chr21/")
+colData(sce.do15984)$Sample <- rep("Tc0_do15984", ncol(sce.do15984))
+
+sce.do17622 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17622/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17622)$Sample <- rep("Tc0_do17622", ncol(sce.do17622))
+
+# Tc1
+sce.do15983 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/Mus_human_chr21/")
+colData(sce.do15983)$Sample <- rep("Tc1_do15983", ncol(sce.do15983))
+
+sce.do17623 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17623/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17623)$Sample <- rep("Tc1_do17623", ncol(sce.do17623))
+```
+
+# Visualize offset in sequencing depth
+
+I see that generally downsampling doesn't help solving the batch effects. We need to do correction later on.
+
+```{r}
+plot(c(sum(counts(sce.do17815)), sum(counts(sce.do17816)),
+       sum(counts(sce.do15984)), sum(counts(sce.do17622)),
+       sum(counts(sce.do15983)), sum(counts(sce.do17623))),
+     pch = 16, log = "y", ylab = "Sequencing depth")
+```
+
+# Merge SCE objects
+
+```{r}
+sce.all <- cbind(sce.do17815, sce.do17816, sce.do15984, sce.do17622, sce.do15983, sce.do17623)
+```
+
+# Further quality control
+
+```{r}
+# Apply more filtering steps on these cells
+sce.all <- calculateQCMetrics(sce.all)
+
+# Number of genes detected
+plot(colData(sce.all)$total_counts, colData(sce.all)$total_features, log = "x", pch = 16, 
+     xlab = "Total counts", ylab = "Number of genes", 
+     col = ifelse(colData(sce.all)$total_features > 2000, "black", "red"))
+sce.all <- sce.all[,colData(sce.all)$total_features > 2000]
+
+# Mitochondrial genes
+mt <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE,
+                 stringsAsFactors = FALSE)
+mt <- mt[mt$Chromosome.scaffold.name == "MT",]
+plot(Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts, 
+     pch = 16, ylab = "% mitochondrial reads")
+sce.all <- sce.all[,Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts < 0.05]
+
+# Remove duplicated barcodes
+sce.all <- sce.all[,-which(colData(sce.all)$Barcode %in% colData(sce.all)$Barcode[which(duplicated(colData(sce.all)$Barcode))])]
+
+# Remove genes that are not expressed
+sce.all <- sce.all[rowData(sce.all)$mean_counts > 0,]
+```
+
+# Normalization
+
+```{r}
+clusters <- quickCluster(sce.all, method = "igraph", irlba.args = c("work" = 100))
+
+sce.all <- computeSumFactors(sce.all, clusters=clusters)
+
+sce.all <- normalize(sce.all, return_log = TRUE)
+```
+
+# Dimensionality reduction and visualization
+
+```{r}
+# Compute highly variable genes
+HVG <- trendVar(sce.all, use.spikes = FALSE)
+HVG.1 <- decomposeVar(sce.all, HVG)
+rowData(sce.all)$HVG <- DataFrame(HVG.1)
+HVG.1 <- HVG.1[order(HVG.1$bio, decreasing = TRUE),]
+HVG.genes <- rownames(HVG.1)[1:1000]
+
+# Compute tSNE
+set.seed(12345)
+sce.all <- scater::runTSNE(sce.all)
+
+# Batches
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  batch = colData(sce.all)$Sample)) +
+  geom_point(aes(tsne1, tsne2, colour = batch))
+
+# Verification of chr21 expression: PDXK
+# PDXK 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "PDXK"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+
+# Library size
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = colData(sce.all)$log10_total_counts)) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Number genes expressed
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = colData(sce.all)$total_features)) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Stra8 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Stra8"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+
+# Defb19 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Defb19"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+
+# Prm1 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Prm1"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+
+# Dazl 
+  ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Dazl"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+```
+
+# Save sce object
+
+```{r}
+saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_unfiltered.rds")
+```
