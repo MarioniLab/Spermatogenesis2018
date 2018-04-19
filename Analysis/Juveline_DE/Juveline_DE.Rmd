@@ -100,11 +100,11 @@ for(i in cur_groups){
   
   # Add genenames to the GO categories
   all_genes <- vector(length = nrow(enriched.GO))
-  for(i in 1:nrow(enriched.GO)){
-    allegs = get(enriched.GO$category[i], org.Mm.egGO2ALLEGS)
+  for(j in 1:nrow(enriched.GO)){
+    allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
     genes = unlist(mget(allegs,org.Mm.egSYMBOL))
     genes = as.character(genes[genes %in% markers.P20$Genename])
-    all_genes[i] <- paste(genes, collapse = ", ")
+    all_genes[j] <- paste(genes, collapse = ", ")
   }
   enriched.GO$Genes <- all_genes
   
@@ -121,11 +121,11 @@ for(i in cur_groups){
   
   # Add genenames to the GO categories
   all_genes <- vector(length = nrow(enriched.GO))
-  for(i in 1:nrow(enriched.GO)){
-    allegs = get(enriched.GO$category[i], org.Mm.egGO2ALLEGS)
+  for(j in 1:nrow(enriched.GO)){
+    allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
     genes = unlist(mget(allegs,org.Mm.egSYMBOL))
     genes = as.character(genes[genes %in% markers.P20$Genename])
-    all_genes[i] <- paste(genes, collapse = ", ")
+    all_genes[j] <- paste(genes, collapse = ", ")
   }
   enriched.GO$Genes <- all_genes
   
