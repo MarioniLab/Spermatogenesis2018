@@ -129,7 +129,7 @@ for(i in cur_groups){
   }
   enriched.GO$Genes <- all_genes
   
-  results.GO[[paste("Group_", i, "_P20", sep = "")]] <- enriched.GO
+  results.GO[[paste("Group_", i, "_Adult", sep = "")]] <- enriched.GO
 }
 
 # Write out table
