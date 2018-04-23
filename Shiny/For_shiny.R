@@ -4,6 +4,7 @@ library(scater)
 library(scran)
 library(Rtsne)
 library(ggplot2)
+library(ggsci)
 
 # Read in data
 # Adult
@@ -125,6 +126,21 @@ mouse.genes <- mouse.genes[!grepl("CHR", mouse.genes$Chromosome.scaffold.name) &
 mouse.genes$Chromosome.scaffold.name <- paste("Chr", 
                                               mouse.genes$Chromosome.scaffold.name,
                                               sep = "")
+
+# Create colour vector
+col_vector <- c(pal_material(palette = c("brown"),n = 10, reverse = FALSE)(10)[5],
+                pal_material(palette = c("brown"),n = 10, reverse = FALSE)(10)[5],
+                pal_material(palette = c("green"),n = 10, reverse = FALSE)(10)[5],
+                pal_material(palette = c("deep-orange"),n = 5, reverse = FALSE)(5),
+                pal_material(palette = c("green"),n = 10, reverse = FALSE)(10)[5],
+                pal_material(palette = c("pink"),n = 4, reverse = FALSE)(4),
+                pal_material(palette = c("purple"),n = 4, reverse = TRUE)(4),
+                pal_material(palette = c("blue"),n = 4, reverse = FALSE)(4),
+                pal_material(palette = c("deep-purple"),n = 4, reverse = TRUE)(4),
+                pal_material(palette = c("indigo"),n = 5, reverse = FALSE)(5),
+                pal_material(palette = c("blue-grey"),n = 10, reverse = FALSE)(10)[10])
+names(col_vector) <- c(1, "P10_1", "P10_2", "P10_3", "P10_4", "P10_5", "P10_6", "P10_7", 
+                       2:23, "Outliers")
 
 # Save output
 save.image("Dropbox (Cambridge University)/SST_spermatocytes/Shiny/data/sce.RData")
