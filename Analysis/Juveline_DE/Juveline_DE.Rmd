@@ -1,6 +1,6 @@
 ---
 title: "Juveline differential expression analysis"
-author: "Nils Eling"
+author: "eling01 Eling"
 date: "18/04/2018"
 output: html_document
 ---
@@ -25,13 +25,13 @@ library(org.Mm.eg.db)
 
 # Read in data
 # Adult
-sce.adult <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.adult <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce.adult <- sce.adult[,grepl("B6", colData(sce.adult)$Sample)]
 sce.adult <- normalize(sce.adult)
 rowData(sce.adult) <- rowData(sce.adult)[,1:3]
 
 # Juvenile
-sce.juvenile <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_juvenile.rds")
+sce.juvenile <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_juvenile.rds")
 rowData(sce.juvenile) <- rowData(sce.juvenile)[,1:3]
 sce.P15 <- sce.juvenile[,grepl("P15", colData(sce.juvenile)$Sample)]
 sce.P15 <- normalize(sce.P15)
@@ -43,11 +43,11 @@ sce.P30 <- sce.juvenile[,grepl("P30", colData(sce.juvenile)$Sample)]
 sce.P30 <- normalize(sce.P30)
 
 # P10
-sce.P10 <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_P10.rds")
+sce.P10 <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_P10.rds")
 rowData(sce.P10) <- rowData(sce.P10)[,1:3]
 
 # P35
-sce.P35 <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_P35.rds")
+sce.P35 <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_P35.rds")
 rowData(sce.P35) <- rowData(sce.P35)[,1:3]
 
 # Read in length of genes
@@ -72,11 +72,21 @@ cur_sce <- normalize(cur_sce)
 results.DE <- list()
 results.GO <- list()
 cur_groups <- names(table(colData(sce.P20)$Cluster))[table(colData(sce.P20)$Cluster) > 30]
+
+# Specify genes that capture batch effect
+# P20
+P20.genes <- c("Rpl41", "Rpl37", "Rpl23", "Rps27", "Rps29")
+
+# Adult
+adult.genes <- c("Prm1", "Prm2", "Tnp1", "Tnp2", "Prm3")
+
 for(i in cur_groups){
   cur_markers <- findMarkers(cur_sce[,colData(cur_sce)$Cluster == i],
                              clusters = ifelse(grepl("B6", colData(cur_sce)$Sample[
                                colData(cur_sce)$Cluster == i]), "Adults",
-                               "P20"))
+                               "P20"),
+                             design = as.matrix(t(logcounts(cur_sce)[rowData(cur_sce)$ID[match(c(P20.genes, adult.genes), rowData(cur_sce)$Symbol)],colData(cur_sce)$Cluster == i])))
+  
   markers.P20 <- cur_markers$P20[cur_markers$P20$FDR < 0.1 & 
                                    cur_markers$P20$logFC.Adults > 0,]
   markers.P20$Genename <- rowData(sce.P20)$Symbol[match(rownames(markers.P20),
@@ -94,19 +104,26 @@ for(i in cur_groups){
                                    cur_markers$P20$logFC.Adults > 0)
   names(cur_genes) <- rownames(cur_markers$P20)
   
-  pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
-  GO.wall=goseq(pwf,"mm10","ensGene")
-  enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
+  if(sum(cur_genes) > 10){
+    pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
+    GO.wall=goseq(pwf,"mm10","ensGene")
+    enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
   
   # Add genenames to the GO categories
-  all_genes <- vector(length = nrow(enriched.GO))
-  for(j in 1:nrow(enriched.GO)){
-    allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
-    genes = unlist(mget(allegs,org.Mm.egSYMBOL))
-    genes = as.character(genes[genes %in% markers.P20$Genename])
-    all_genes[j] <- paste(genes, collapse = ", ")
+    if(nrow(enriched.GO) > 0){
+      all_genes <- vector(length = nrow(enriched.GO))
+      for(j in 1:nrow(enriched.GO)){
+        allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
+        genes = unlist(mget(allegs,org.Mm.egSYMBOL))
+        genes = as.character(genes[genes %in% markers.P20$Genename])
+        all_genes[j] <- paste(genes, collapse = ", ")
+      }
+      enriched.GO$Genes <- all_genes
+    }
   }
-  enriched.GO$Genes <- all_genes
+  else {
+   enriched.GO <- NULL 
+  }
   
   results.GO[[paste("Group_", i, "_P20", sep = "")]] <- enriched.GO
   
@@ -115,27 +132,31 @@ for(i in cur_groups){
                                    cur_markers$Adults$logFC.P20 > 0)
   names(cur_genes) <- rownames(cur_markers$P20)
   
-  pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
-  GO.wall=goseq(pwf,"mm10","ensGene")
-  enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
+  if(sum(cur_genes) > 10){
+    pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
+    GO.wall=goseq(pwf,"mm10","ensGene")
+    enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
   
   # Add genenames to the GO categories
-  all_genes <- vector(length = nrow(enriched.GO))
-  for(j in 1:nrow(enriched.GO)){
-    allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
-    genes = unlist(mget(allegs,org.Mm.egSYMBOL))
-    genes = as.character(genes[genes %in% markers.P20$Genename])
-    all_genes[j] <- paste(genes, collapse = ", ")
+    if(nrow(enriched.GO) > 0){
+      all_genes <- vector(length = nrow(enriched.GO))
+      for(j in 1:nrow(enriched.GO)){
+        allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
+        genes = unlist(mget(allegs,org.Mm.egSYMBOL))
+        genes = as.character(genes[genes %in% markers.adult$Genename])
+        all_genes[j] <- paste(genes, collapse = ", ")
+      }
+      enriched.GO$Genes <- all_genes
+    }
   }
-  enriched.GO$Genes <- all_genes
   
   results.GO[[paste("Group_", i, "_Adult", sep = "")]] <- enriched.GO
 }
 
 # Write out table
-write.xlsx(results.DE, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Juvenile_Adult_comparison/P20_adult_singleGenes.xlsx")
+write.xlsx(results.DE, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Juvenile_Adult_comparison/P20_adult_singleGenes.xlsx")
 
-write.xlsx(results.GO, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Juvenile_Adult_comparison/P20_adult_GO.xlsx")
+write.xlsx(results.GO, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Juvenile_Adult_comparison/P20_adult_GO.xlsx")
 ```
 
 ## P25 vs adult
