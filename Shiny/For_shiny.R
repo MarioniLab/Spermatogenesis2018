@@ -116,5 +116,15 @@ ggplot(data = data.frame(
 
 reducedDims(sce)$TSNE <- tsne$Y
 
+# Read in genanames
+mouse.genes <- read.table("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/Mouse_genes.txt",
+                          sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+mouse.genes <- mouse.genes[!grepl("CHR", mouse.genes$Chromosome.scaffold.name) &
+                             !grepl("GL", mouse.genes$Chromosome.scaffold.name) &
+                             !grepl("JH", mouse.genes$Chromosome.scaffold.name),]
+mouse.genes$Chromosome.scaffold.name <- paste("Chr", 
+                                              mouse.genes$Chromosome.scaffold.name,
+                                              sep = "")
+
 # Save output
-saveRDS(sce, "Dropbox (Cambridge University)/SST_spermatocytes/Shiny/data/sce.rds")
+save.image("Dropbox (Cambridge University)/SST_spermatocytes/Shiny/data/sce.RData")
