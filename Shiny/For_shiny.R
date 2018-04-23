@@ -7,26 +7,26 @@ library(ggplot2)
 
 # Read in data
 # Adult
-sce.adult <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.adult <- readRDS("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce.adult <- sce.adult[,grepl("B6", colData(sce.adult)$Sample)]
 sce.adult <- normalize(sce.adult)
 rowData(sce.adult) <- rowData(sce.adult)[,1:2]
 colData(sce.adult) <- colData(sce.adult)[,c("Sample", "Barcode", "Cluster")]
 
 # Juvenile
-sce.juvenile <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_juvenile.rds")
+sce.juvenile <- readRDS("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_juvenile.rds")
 rowData(sce.juvenile) <- rowData(sce.juvenile)[,1:2]
 colData(sce.juvenile) <- colData(sce.juvenile)[,c("Sample", "Barcode", "Cluster")]
 
 # P10
-sce.P10 <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_P10.rds")
+sce.P10 <- readRDS("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_P10.rds")
 rowData(sce.P10) <- rowData(sce.P10)[,1:2]
 colData(sce.P10) <- colData(sce.P10)[,c("Sample", "Barcode", "Clusters")]
 colData(sce.P10)$Cluster <- colData(sce.P10)$Clusters
 colData(sce.P10)$Clusters <- NULL
 
 # P35
-sce.P35 <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_P35.rds")
+sce.P35 <- readRDS("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_P35.rds")
 rowData(sce.P35) <- rowData(sce.P35)[,1:2]
 colData(sce.P35) <- colData(sce.P35)[,c("Sample", "Barcode", "Cluster")]
 
@@ -66,12 +66,12 @@ HVG.P20 <- decomposeVar(P20, HVG.P20)
 
 
 
-P30 <- sce[,grepl("P30_do17824", colData(sce)$Sample)]
+P30 <- sce[,grepl("P30_do17825", colData(sce)$Sample)]
 P30 <- normalize(P30)
 HVG.P30 <- trendVar(P30, use.spikes = FALSE)
 HVG.P30 <- decomposeVar(P30, HVG.P30)
 
-P35 <- sce[,grepl("P35_do17824", colData(sce)$Sample)]
+P35 <- sce[,grepl("P35_do17827", colData(sce)$Sample)]
 P35 <- normalize(P35)
 HVG.P35 <- trendVar(P35, use.spikes = FALSE)
 HVG.P35 <- decomposeVar(P35, HVG.P35)
@@ -105,9 +105,16 @@ tsne <- Rtsne(t(cbind(corrected$corrected[[1]],
                       corrected$corrected[[7]])))
 
 sce <- cbind(B6.1, B6.2, P10, P15, P20, P30, P35)
+sce <- normalize(sce)
 
 # Plot tSNE
 ggplot(data = data.frame(
   tsne1 = tsne$Y[,1], tsne2 = tsne$Y[,2], 
   sample = factor(colData(sce)$Sample))) + 
   geom_point(aes(tsne1, tsne2, colour = sample)) + theme_minimal()
+
+
+reducedDims(sce)$TSNE <- tsne$Y
+
+# Save output
+saveRDS(sce, "Dropbox (Cambridge University)/SST_spermatocytes/Shiny/data/sce.rds")
