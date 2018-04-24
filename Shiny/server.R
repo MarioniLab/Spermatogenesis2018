@@ -9,6 +9,8 @@ load(paste("/Users/",
                      system("whoami", intern=TRUE),
                      "/Dropbox (Cambridge University)/SST_spermatocytes/Shiny/data/sce.RData",
                      sep = ""))
+to.show <- c(0,1)
+names(to.show) <- c("Excluded", "Included")
 
 shinyServer(function(input, output, session) {
   
@@ -34,11 +36,11 @@ shinyServer(function(input, output, session) {
     ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
                       tSNE2 = reducedDims(sce)$TSNE[,2],
                       Gene = Gene,
-                      shown = ifelse(grepl(paste(input$dataset,collapse="|"), 
+                      shown = factor(ifelse(grepl(paste(input$dataset,collapse="|"), 
                                           colData(sce)$Sample),
-                                     TRUE, FALSE))) +
+                                          "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = Gene, alpha = shown)) + theme_minimal() + 
-      scale_color_viridis() + scale_alpha_manual(values = c(0,1)) + 
+      scale_color_viridis() + scale_alpha_manual(values = to.show) + 
       guides(alpha=FALSE)
     })
   
@@ -49,11 +51,11 @@ shinyServer(function(input, output, session) {
     ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
                       tSNE2 = reducedDims(sce)$TSNE[,2],
                       sample = colData(sce)$Sample,
-                      shown = ifelse(grepl(paste(input$dataset,collapse="|"), 
+                      shown = factor(ifelse(grepl(paste(input$dataset,collapse="|"), 
                                            colData(sce)$Sample),
-                                     TRUE, FALSE))) +
+                                     "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = sample, alpha = shown)) + theme_minimal() + 
-      scale_color_brewer(palette = "Set1") + scale_alpha_manual(values = c(0,1)) + 
+      scale_color_brewer(palette = "Set1") + scale_alpha_manual(values = to.show) + 
       guides(alpha=FALSE)
   })
   
@@ -66,12 +68,12 @@ shinyServer(function(input, output, session) {
     ggplot(data = data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
                              tSNE2 = reducedDims(sce)$TSNE[,2],
                              group = colData(sce)$Cluster,
-                             shown = ifelse(grepl(paste(input$dataset,collapse="|"), 
+                             shown = factor(ifelse(grepl(paste(input$dataset,collapse="|"), 
                                                   colData(sce)$Sample),
-                                            TRUE, FALSE))) +
+                                                  "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = group, alpha = shown)) +
       scale_color_manual(values = col_vector) + theme_minimal() + 
-      scale_alpha_manual(values = c(0,1)) + 
+      scale_alpha_manual(values = to.show) + 
       guides(alpha=FALSE)
     })
   
@@ -85,11 +87,9 @@ shinyServer(function(input, output, session) {
       cur_data <- logcounts(sce)[rowData(sce)$ID %in% 
                                        mouse.genes[mouse.genes$Chromosome.scaffold.name == gene,1],]
       Gene <- Matrix::colSums(cur_data)/Matrix::colSums(logcounts(sce))
-      limits = c(0,max(Gene))
     }
     else{
       Gene <- logcounts(sce)[rowData(sce)$Symbol == gene,]
-      limits = c(0,15)
     }
     
     ggplot(data.frame(value = Gene[grepl(paste(input$dataset,collapse="|"), 
@@ -104,8 +104,7 @@ shinyServer(function(input, output, session) {
                        group = interaction(cluster, sample))) + 
       scale_fill_manual(values = col_vector) + 
       theme(axis.text.x = element_text(angle = 45, hjust = 1),
-            panel.background = element_blank()) +
-      ylim(limits)
+            panel.background = element_blank()) 
   })
   
   
