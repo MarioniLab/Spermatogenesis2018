@@ -117,6 +117,9 @@ ggplot(data = data.frame(
 
 reducedDims(sce)$TSNE <- tsne$Y
 
+# Change sample names
+colData(sce)$Sample <- sapply(colData(sce)$Sample, function(n){unlist(strsplit(n, "_"))[1]})
+
 # Read in genanames
 mouse.genes <- read.table("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/Mouse_genes.txt",
                           sep = "\t", header = TRUE, stringsAsFactors = FALSE)
