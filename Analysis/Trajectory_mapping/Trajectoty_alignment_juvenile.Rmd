@@ -1,0 +1,155 @@
+---
+title: "Trajectory alignment"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load data and libraries
+
+```{r}
+library(slingshot)
+library(cellAlign)
+library(Matrix)
+library(scater)
+library(ggsci)
+library(ggplot2)
+library(reshape2)
+library(pheatmap)
+
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+
+# Adult animals
+sce.B6 <- sce[,grepl("B6", colData(sce)$Sample) & colData(sce)$Cluster != "1" & 
+                colData(sce)$Cluster != "Outliers"]
+sce.B6 <- normalize(sce.B6)
+
+# Juvenile
+sce.juvenile <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_juvenile.rds")
+
+
+col_vector <- c(pal_material(palette = c("brown"),n = 10, reverse = FALSE)(10)[5],
+                pal_material(palette = c("brown"),n = 10, reverse = FALSE)(10)[5],
+                pal_material(palette = c("green"),n = 10, reverse = FALSE)(10)[5],
+                pal_material(palette = c("deep-orange"),n = 5, reverse = FALSE)(5),
+                 pal_material(palette = c("green"),n = 10, reverse = FALSE)(10)[5],
+                pal_material(palette = c("pink"),n = 4, reverse = FALSE)(4),
+                pal_material(palette = c("purple"),n = 4, reverse = TRUE)(4),
+                pal_material(palette = c("blue"),n = 4, reverse = FALSE)(4),
+                pal_material(palette = c("deep-purple"),n = 4, reverse = TRUE)(4),
+                pal_material(palette = c("indigo"),n = 5, reverse = FALSE)(5),
+                pal_material(palette = c("blue-grey"),n = 10, reverse = FALSE)(10)[10])
+names(col_vector) <- c(1, "P10_1", "P10_2", "P10_3", "P10_4", "P10_5", "P10_6", "P10_7", 2:23, "Outliers")
+```
+
+# P20 vs adult comparison
+
+## Form trajectories
+
+```{r}
+# Select the relevant cell groups
+sce.B6_cur <- sce.B6[,colData(sce.B6)$Cluster %in% c("2", "3", "4", "5", "6")]
+sce.B6_cur <- normalize(sce.B6_cur)
+sce.P20 <- sce.juvenile[,grepl("P20", colData(sce.juvenile)$Sample) &
+                          colData(sce.juvenile)$Cluster %in% c("2", "3", "4", "5", "6")]
+sce.P20 <- normalize(sce.P20)
+
+# Compute PCA
+sce.B6_cur <- runPCA(sce.B6_cur)
+sce.P20 <- runPCA(sce.P20)
+
+# Use PCA as dim reduction
+rd <- reducedDims(sce.B6_cur)$PCA
+lin <- getLineages(rd, colData(sce.B6_cur)$Cluster,  start.clus = "2", end.clus = "6")
+crv.B6 <- getCurves(lin)
+plot(rd, col = col_vector[as.character(colData(sce.B6_cur)$Cluster)], pch = 16, type = "p")
+lines(crv.B6, lwd = 3)
+PT.B6 <- pseudotime(crv.B6)[,1]
+
+rd <- reducedDims(sce.P20)$PCA
+lin <- getLineages(rd, colData(sce.P20)$Cluster,  start.clus = "2", end.clus = "6")
+crv.P20 <- getCurves(lin)
+plot(rd, col = col_vector[as.character(colData(sce.P20)$Cluster)], pch = 16, type = "p")
+lines(crv.P20, lwd = 3)
+PT.P20 <- pseudotime(crv.P20)[,1]
+```
+
+## Merge trajectories
+
+```{r}
+# T
+numPts = 200
+interGlobalP20 <- cellAlign::interWeights(expDataBatch = counts(sce.P20), trajCond = PT.P20,
+                                         winSz = 0.1, numPts = numPts)
+
+interGlobalB6 <- cellAlign::interWeights(expDataBatch = counts(sce.B6_cur), trajCond = PT.B6,
+                                         winSz = 0.1, numPts = numPts)
+
+sharedMarkers <- intersect(rownames(sce.P20), rownames(sce.B6_cur))
+whichgene <- sharedMarkers[1]
+selectedP20 <- interGlobalP20$interpolatedVals[whichgene,]
+selectedB6 <- interGlobalB6$interpolatedVals[whichgene,]
+
+dfP20i = data.frame(traj = interGlobalP20$traj, value=(selectedP20),
+                   error=interGlobalP20$error[whichgene,])
+dfP20 = data.frame(traj = PT.P20, t(counts(sce.P20)[whichgene,]))
+dfB6i = data.frame(traj = interGlobalB6$traj, value=(selectedB6),
+                   error=interGlobalB6$error[whichgene,])
+dfB6 = data.frame(traj = PT.B6, t(counts(sce.B6_cur)[whichgene,]))
+dfP20M = melt(dfP20, id.vars = 'traj')
+dfB6M = melt(dfB6, id.vars = 'traj')
+
+# Plot of an example gene and its interpolation with error bars
+ggplot(dfP20i, aes(x=traj,y=value)) +  
+  geom_errorbar(aes(ymin=value-error/2, ymax=value+error/2)) + 
+  geom_line(size = 2) + geom_point(data=dfP20M, aes(x=traj,y=value)) + 
+  ggtitle(whichgene) 
+
+#scale the interpolated data (Recommended):
+interScaledGlobalP20 = cellAlign::scaleInterpolate(interGlobalP20)
+interScaledGlobalB6 = cellAlign::scaleInterpolate(interGlobalB6)
+```
+
+## Alignment
+
+```{r}
+A=calcDistMat(interScaledGlobalB6$scaledData[sharedMarkers,],
+              interScaledGlobalP20$scaledData[sharedMarkers,], 
+              dist.method = 'Euclidean')
+
+pheatmap(A, cluster_cols = FALSE, cluster_rows=FALSE, 
+         main = "P20 vs B6 distances",
+         show_rownames = FALSE, show_colnames = FALSE)
+```
+
+### Global
+
+```{r}
+alignment = globalAlign(interScaledGlobalP20$scaledData[sharedMarkers,], 
+                        interScaledGlobalB6$scaledData[sharedMarkers,],
+                        scores = list(query = interScaledGlobalP20$traj, 
+                                                 ref = interScaledGlobalB6$traj),
+                                  sigCalc = FALSE, numPerm = 20)
+plotAlign(alignment)
+
+mapping = mapRealDataGlobal(alignment, intTrajQuery = interScaledGlobalP20$traj, 
+                            realTrajQuery = PT.P20,
+                            intTrajRef = interScaledGlobalB6$traj, 
+                            realTrajRef = PT.B6)
+plotMapping(mapping)
+```
+
+## Clustering of trajectories
+
+```{r}
+clust <- suppressMessages(pseudotimeClust(x=interScaledGlobalB6$scaledData, 
+                         y=interScaledGlobalB6$scaledData, k = 10))
+```
+
