@@ -1,6 +1,7 @@
 ---
-title: "Further_filtering"
+title: "Removal of outlying cell types per group"
 author: "Nils Eling"
+date: "`r Sys.Date()`"
 output: 
   html_document:
     toc: true

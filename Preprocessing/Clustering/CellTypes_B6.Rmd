@@ -1,0 +1,422 @@
+---
+title: "Cell types in 10X data"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/CellTypeIdentification/CellTypesB6.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data preparation
+
+To discover all cell-types in the 10X data, we will use the sorted C1 data as refernce
+
+```{r load, message=FALSE}
+# Load libraries and data
+library(scater)
+library(scran)
+library(dynamicTreeCut)
+library(Matrix)
+library(openxlsx)
+source("../../Functions/auxiliary.R")
+
+# Wild type 10X data
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_unfiltered.rds")
+sce.B6 <- sce[,grepl("B6", colData(sce)$Sample)]
+sce.B6 <- sce.B6[Matrix::rowMeans(counts(sce.B6)) > 0.1,]
+sce.B6 <- normalize(sce.B6)
+```
+
+# Broad cluster detection
+
+Detect braod clusters during differentiation in 10X wildtype cells.
+
+```{r}
+# Compute highly variable genes - auxiliary functions
+HVG.genes <- HVG(sce.B6)
+
+# Cluster data - auxiliary functions
+ct <- DTC(sce.B6, HVG.genes)
+
+# Recalculate tsne
+set.seed(123)
+sce.B6 <- scater::runTSNE(sce.B6)
+
+ggplot(data.frame(tSNE1 = reducedDims(sce.B6)$TSNE[,1],
+                  tSNE2 = reducedDims(sce.B6)$TSNE[,2],
+                  sample = as.factor(ct))) +
+  geom_point(aes(tSNE1, tSNE2, colour = sample))
+
+# Find marker genes for each cluster
+markers <- findMarkers(sce.B6, ct)
+
+markers.spec <- lapply(markers, function(n){
+  cur_n <- n[n$FDR < 0.1 & n[[3]] > 0 &  n[[4]] > 0 & n[[5]] > 0 & n[[6]] > 0 & n[[7]] > 0,]
+  cur_n$GeneName <- rowData(sce.B6)$Symbol[rowData(sce.B6)$ID %in% rownames(cur_n)]
+  cur_n
+})
+
+write.xlsx(markers.spec$`1`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group1")
+write.xlsx(markers.spec$`2`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group2", 
+           append = TRUE)
+write.xlsx(markers.spec$`3`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group3", 
+           append = TRUE)
+write.xlsx(markers.spec$`4`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group4", 
+           append = TRUE)
+write.xlsx(markers.spec$`5`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group5", 
+           append = TRUE)
+write.xlsx(markers.spec$`6`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group6", 
+           append = TRUE)
+
+colData(sce.B6)$broad_clusters <- ct
+```
+
+# Mapping of C1 cells
+
+Now we map the 10X cells to C1 cells
+
+```{r}
+mouse.genes <- read.table("../data/Genenames.txt", sep = '\t', header = TRUE, stringsAsFactors = FALSE)
+rownames(mouse.genes) <- mouse.genes[,1]
+mouse.genes <- mouse.genes[rownames(C1.all)[grepl("ENSM", rownames(C1.all))],]
+
+chr21 <- read.csv("../data/chr21.txt", stringsAsFactors = FALSE)
+rownames(chr21) <- chr21$Gene.stable.ID 
+chr21 <- chr21[rownames(C1.all)[grepl("ENSG", rownames(C1.all))],]
+
+genenames <- c(chr21$Gene.stable.ID, mouse.genes[,1])
+
+C1.all <- C1.all[!is.na(genenames),]
+
+# Use the same genes between datasets
+genes <- intersect(rownames(C1.all), rowData(sce.B6)$ID)
+
+# Calculate highly variable genes
+HVG.C1 <- trendVar(log2(as.matrix(C1.all[genes,]) + 1))
+HVG.C1.1 <- decomposeVar(log2(as.matrix(C1.all[genes,]) + 1), HVG.C1)
+HVG.B6 <- trendVar(sce.B6[genes,], use.spikes=FALSE)
+HVG.B6.1 <- decomposeVar(sce.B6[genes,], HVG.B6)
+
+HVG.mixed <- combineVar(HVG.C1.1, HVG.B6.1)
+HVG.mixed <- HVG.mixed[order(HVG.mixed$bio, decreasing = TRUE),]
+HVG <- rownames(HVG.mixed)[1:1000]
+
+# MNN correct
+corrected <- mnnCorrect(log2(as.matrix(C1.all[genes,] + 1)), 
+                        as.matrix(logcounts(sce.B6)[genes,]),
+                        cos.norm.in = TRUE, cos.norm.out = TRUE, subset.row = HVG,
+                        sigma = 0.1)
+
+# Visualize pca with cluster and group labels
+pca <- prcomp(t(cbind(corrected$corrected[[1]][HVG,], 
+                      corrected$corrected[[2]][HVG,])))
+
+col.factor <- as.factor(c(as.character(sapply(colnames(C1.all), 
+                                              function(n){unlist(strsplit(n, "_"))[3]})),
+                          ct))
+
+ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  group = col.factor,
+                  C1_10X = ifelse(grepl("S", as.character(col.factor)), "C1", "10X"))) +
+  geom_point(aes(PC1, PC2, colour = group, size = C1_10X))
+```
+
+# Subpopulation detection
+
+Now I will look the subpopulation analysis with spermatocytes and spermatogonia.
+
+```{r}
+# Dissect sub-groups
+sce.spermatocytes <- sce.B6[,colData(sce.B6)$broad_clusters == 1]
+sce.spermatocytes <- normalize(sce.spermatocytes)
+
+# HVG
+HVG.spermatocytes <- trendVar(sce.spermatocytes[genes,], use.spikes=FALSE)
+HVG.spermatocytes.1 <- decomposeVar(sce.spermatocytes[genes,], HVG.spermatocytes)
+
+cur_HVG.genes <- rownames(HVG.spermatocytes.1[order(HVG.spermatocytes.1$bio, decreasing = TRUE),])[1:1000]
+
+# Cluster data
+cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(sce.spermatocytes)[cur_HVG.genes,]), method = "spearman"))/2))
+dendro <- hclust(cur_dist, method = "ward.D2")
+ct <- cutreeDynamic(dendro = dendro, distM = as.matrix(cur_dist), minClusterSize = 10, deepSplit = 1)
+
+clusters_1 <- ct
+
+# Recalculate pca
+sce.spermatocytes <- scater::runPCA(sce.spermatocytes)
+
+# Visalize 10X spermatocytes and spermatogonia
+ggplot(data.frame(PC1 = reducedDims(sce.spermatocytes)$PCA[,1],
+                  PC2 =reducedDims(sce.spermatocytes)$PCA[,2],
+                  group = as.factor(paste("Group_1",ct, sep = "_")))) +
+  geom_point(aes(PC1, PC2, colour = group))
+
+ggplot(data.frame(PC1 = reducedDims(sce.spermatocytes)$PCA[,1],
+                  PC2 =reducedDims(sce.spermatocytes)$PCA[,2],
+                  Stra8 = logcounts(sce.spermatocytes)["ENSMUSG00000029848",])) +
+  geom_point(aes(PC1, PC2, colour = Stra8))
+```
+
+Next, I'll look at the populations between spermatocytes and spermatids.
+
+```{r}
+# Dissect sub-groups
+sce.spermatids.1 <- sce.B6[,colData(sce.B6)$broad_clusters == 6]
+sce.spermatids.1 <- sce.spermatids.1[Matrix::rowMeans(logcounts(sce.spermatids.1)) > 0.1,]
+sce.spermatids.1 <- normalize(sce.spermatids.1)
+
+# HVG
+HVG.spermatids.1 <- trendVar(sce.spermatids.1, use.spikes=FALSE)
+HVG.spermatids.1.1 <- decomposeVar(sce.spermatids.1, HVG.spermatids.1)
+
+cur_HVG.genes <- rownames(HVG.spermatids.1.1[order(HVG.spermatids.1.1$bio, decreasing = TRUE),])[1:1000]
+
+# Cluster data
+cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(sce.spermatids.1)[cur_HVG.genes,]), method = "spearman"))/2))
+dendro <- hclust(cur_dist, method = "ward.D2")
+ct <- cutreeDynamic(dendro = dendro, distM = as.matrix(cur_dist), minClusterSize = 10, deepSplit = 0)
+
+clusters_6 <- ct
+
+# Recalculate pca
+sce.spermatids.1 <- scater::runPCA(sce.spermatids.1)
+
+# Visalize 10X spermatocytes and spermatogonia
+ggplot(data.frame(PC1 = reducedDims(sce.spermatids.1)$PCA[,1],
+                  PC2 =reducedDims(sce.spermatids.1)$PCA[,2],
+                  group = as.factor(paste("Group_6",ct, sep = "_")))) +
+  geom_point(aes(PC1, PC2, colour = group))
+```
+
+Next, I'll look at the second spermatid population.
+
+```{r}
+# Dissect sub-groups
+sce.spermatids.2 <- sce.B6[,colData(sce.B6)$broad_clusters == 3]
+sce.spermatids.2 <- sce.spermatids.2[Matrix::rowMeans(logcounts(sce.spermatids.2)) > 0.1,]
+sce.spermatids.2 <- normalize(sce.spermatids.2)
+
+# HVG
+HVG.spermatids.2 <- trendVar(sce.spermatids.2, use.spikes=FALSE)
+HVG.spermatids.2.1 <- decomposeVar(sce.spermatids.2, HVG.spermatids.2)
+
+cur_HVG.genes <- rownames(HVG.spermatids.2.1[order(HVG.spermatids.2.1$bio, decreasing = TRUE),])[1:1000]
+
+# Cluster data
+cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(sce.spermatids.2)[cur_HVG.genes,]), method = "spearman"))/2))
+dendro <- hclust(cur_dist, method = "ward.D2")
+ct <- cutreeDynamic(dendro = dendro, distM = as.matrix(cur_dist), minClusterSize = 10, deepSplit = 0)
+
+clusters_3 <- ct
+
+# Recalculate pca
+sce.spermatids.2 <- scater::runPCA(sce.spermatids.2)
+
+# Visalize 10X spermatocytes and spermatogonia
+ggplot(data.frame(PC1 = reducedDims(sce.spermatids.2)$PCA[,1],
+                  PC2 =reducedDims(sce.spermatids.2)$PCA[,2],
+                  group = as.factor(paste("Group_3",ct, sep = "_")))) +
+  geom_point(aes(PC1, PC2, colour = group))
+```
+
+Next, I'll look at the third spermatid population.
+
+```{r}
+# Dissect sub-groups
+sce.spermatids.3 <- sce.B6[,colData(sce.B6)$broad_clusters == 5]
+sce.spermatids.3 <- sce.spermatids.3[Matrix::rowMeans(logcounts(sce.spermatids.3)) > 0.1,]
+sce.spermatids.3 <- normalize(sce.spermatids.3)
+
+# HVG
+HVG.spermatids.3 <- trendVar(sce.spermatids.3, use.spikes=FALSE)
+HVG.spermatids.3.1 <- decomposeVar(sce.spermatids.3, HVG.spermatids.3)
+
+cur_HVG.genes <- rownames(HVG.spermatids.3.1[order(HVG.spermatids.3.1$bio, decreasing = TRUE),])[1:1000]
+
+# Cluster data
+cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(sce.spermatids.3)[cur_HVG.genes,]), method = "spearman"))/2))
+dendro <- hclust(cur_dist, method = "ward.D2")
+ct <- cutreeDynamic(dendro = dendro, distM = as.matrix(cur_dist), minClusterSize = 10, deepSplit = 0)
+
+clusters_5 <- ct
+
+# Recalculate pca
+sce.spermatids.3 <- scater::runPCA(sce.spermatids.3)
+
+# Visalize 10X spermatocytes and spermatogonia
+ggplot(data.frame(PC1 = reducedDims(sce.spermatids.3)$PCA[,1],
+                  PC2 =reducedDims(sce.spermatids.3)$PCA[,2],
+                  group = as.factor(paste("Group_5",ct, sep = "_")))) +
+  geom_point(aes(PC1, PC2, colour = group))
+```
+Next, I'll look at the forth spermatid population.
+
+```{r}
+# Dissect sub-groups
+sce.spermatids.4 <- sce.B6[,colData(sce.B6)$broad_clusters == 2]
+sce.spermatids.4 <- sce.spermatids.4[Matrix::rowMeans(logcounts(sce.spermatids.4)) > 0.1,]
+sce.spermatids.4 <- normalize(sce.spermatids.4)
+
+# HVG
+HVG.spermatids.4 <- trendVar(sce.spermatids.4, use.spikes=FALSE)
+HVG.spermatids.4.1 <- decomposeVar(sce.spermatids.4, HVG.spermatids.4)
+
+cur_HVG.genes <- rownames(HVG.spermatids.4.1[order(HVG.spermatids.4.1$bio, decreasing = TRUE),])[1:1000]
+
+# Cluster data
+cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(sce.spermatids.4)[cur_HVG.genes,]), method = "spearman"))/2))
+dendro <- hclust(cur_dist, method = "ward.D2")
+ct <- cutreeDynamic(dendro = dendro, distM = as.matrix(cur_dist), minClusterSize = 10, deepSplit = 0)
+
+clusters_2 <- ct
+
+# Recalculate pca
+sce.spermatids.4 <- scater::runPCA(sce.spermatids.4)
+
+# Visalize 10X spermatocytes and spermatogonia
+ggplot(data.frame(PC1 = reducedDims(sce.spermatids.4)$PCA[,1],
+                  PC2 =reducedDims(sce.spermatids.4)$PCA[,2],
+                  group = as.factor(paste("Group_2",ct, sep = "_")))) +
+  geom_point(aes(PC1, PC2, colour = group))
+```
+
+Next, I'll look at the fifth spermatid population.
+
+```{r}
+# Dissect sub-groups
+sce.spermatids.5 <- sce.B6[,colData(sce.B6)$broad_clusters == 4]
+sce.spermatids.5 <- sce.spermatids.5[Matrix::rowMeans(logcounts(sce.spermatids.5)) > 0.1,]
+sce.spermatids.5 <- normalize(sce.spermatids.5)
+
+# HVG
+HVG.spermatids.5 <- trendVar(sce.spermatids.5, use.spikes=FALSE)
+HVG.spermatids.5.1 <- decomposeVar(sce.spermatids.5, HVG.spermatids.5)
+
+cur_HVG.genes <- rownames(HVG.spermatids.5.1[order(HVG.spermatids.5.1$bio, decreasing = TRUE),])[1:1000]
+
+# Cluster data
+cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(sce.spermatids.5)[cur_HVG.genes,]), method = "spearman"))/2))
+dendro <- hclust(cur_dist, method = "ward.D2")
+ct <- cutreeDynamic(dendro = dendro, distM = as.matrix(cur_dist), minClusterSize = 10, deepSplit = 0)
+
+clusters_4 <- ct
+
+# Recalculate pca
+sce.spermatids.5 <- scater::runPCA(sce.spermatids.5)
+
+# Visalize 10X spermatocytes and spermatogonia
+ggplot(data.frame(PC1 = reducedDims(sce.spermatids.5)$PCA[,1],
+                  PC2 =reducedDims(sce.spermatids.5)$PCA[,2],
+                  group = as.factor(paste("Group_4",ct, sep = "_")))) +
+  geom_point(aes(PC1, PC2, colour = group))
+```
+
+In the last step, I will find marker genes specific for each sub-population
+in comparison to all other populations.
+
+```{r}
+# First save a data.frame containing all cluster labels
+df <- data.frame(row.names = colData(sce.B6)$Barcode,
+                 sample = colData(sce.B6)$Sample,
+                 broad_clusters = colData(sce.B6)$broad_clusters)
+df$sub_populations[df$broad_clusters == 1] <- clusters_1
+df$sub_populations[df$broad_clusters == 2] <- clusters_2
+df$sub_populations[df$broad_clusters == 3] <- clusters_3
+df$sub_populations[df$broad_clusters == 4] <- clusters_4
+df$sub_populations[df$broad_clusters == 5] <- clusters_5
+df$sub_populations[df$broad_clusters == 6] <- clusters_6
+
+
+# Now I order the groups by pseudotime
+groupNames <- paste(df$broad_clusters, df$sub_populations, sep = "_")
+df$OrderByPT[groupNames == "1_4"] <- 1
+df$OrderByPT[groupNames == "1_6"] <- 2
+df$OrderByPT[groupNames == "1_5"] <- 3
+df$OrderByPT[groupNames == "1_3"] <- 4
+df$OrderByPT[groupNames == "1_2"] <- 5
+df$OrderByPT[groupNames == "1_1"] <- 6
+df$OrderByPT[groupNames == "6_3"] <- 7
+df$OrderByPT[groupNames == "6_2"] <- 8
+df$OrderByPT[groupNames == "6_1"] <- 9
+df$OrderByPT[groupNames == "6_4"] <- "Outliers"
+df$OrderByPT[groupNames == "3_4"] <- 10
+df$OrderByPT[groupNames == "3_1"] <- 11
+df$OrderByPT[groupNames == "3_3"] <- 12
+df$OrderByPT[groupNames == "3_2"] <- 13
+df$OrderByPT[groupNames == "5_1"] <- 14
+df$OrderByPT[groupNames == "5_3"] <- 15
+df$OrderByPT[groupNames == "5_2"] <- 16
+df$OrderByPT[groupNames == "5_4"] <- "Outliers"
+df$OrderByPT[groupNames == "2_4"] <- 17
+df$OrderByPT[groupNames == "2_3"] <- 18
+df$OrderByPT[groupNames == "2_2"] <- 19
+df$OrderByPT[groupNames == "2_1"] <- 20
+df$OrderByPT[groupNames == "4_1"] <- 21
+df$OrderByPT[groupNames == "4_2"] <- 22
+df$OrderByPT[groupNames == "4_3"] <- 23
+
+# visaulize all sub-clusters
+library(RColorBrewer)
+
+col_vector <- c(brewer.pal(12, "Set3")[4:12],brewer.pal(8, "Set2"), brewer.pal(9, "Set1") )
+
+ggplot(data.frame(tSNE1 = reducedDims(sce.B6)$TSNE[,1],
+                  tSNE2 = reducedDims(sce.B6)$TSNE[,2],
+                  group = factor(df$OrderByPT, levels = c(1:23, "Outliers")))) +
+  geom_point(aes(tSNE1, tSNE2, colour = group)) + 
+  scale_color_manual(values = col_vector) + theme_minimal()
+
+# Find colors 
+library(ggsci)
+col_vector <- c(pal_material(palette = c("brown"),n = 10, reverse = FALSE)(10)[5],
+                pal_material(palette = c("green"),n = 10, reverse = FALSE)(10)[5],
+                pal_material(palette = c("pink"),n = 4, reverse = FALSE)(4),
+                pal_material(palette = c("purple"),n = 4, reverse = TRUE)(4),
+                pal_material(palette = c("blue"),n = 4, reverse = FALSE)(4),
+                pal_material(palette = c("deep-purple"),n = 4, reverse = TRUE)(4),
+                pal_material(palette = c("indigo"),n = 5, reverse = FALSE)(5),
+                pal_material(palette = c("blue-grey"),n = 10, reverse = FALSE)(10)[10])
+
+
+# Find marker genes - remove outliers first
+df.red <- df[!(df$OrderByPT == "Outliers"),]
+B6.red <- sce.B6[,!(df$OrderByPT == "Outliers")]
+B6.red <- normalize(B6.red)
+markers <- findMarkers(B6.red, as.factor(df.red$OrderByPT))
+
+rownames(rowData(B6.red)) <- rowData(B6.red)$ID
+
+markers.spec <- lapply(markers, function(n){
+  cur_n <- n[n$FDR < 0.1 & n[[3]] > 0 & n[[4]] > 0 &  n[[5]] > 0 & n[[6]] > 0 & n[[7]] > 0 & n[[8]] > 0 &
+             n[[9]] > 0 & n[[10]] > 0 & n[[11]] > 0 & n[[12]] > 0 & n[[13]] > 0 & n[[14]] > 0 & 
+             n[[15]] > 0 & n[[16]] > 0 & n[[17]] > 0 & n[[18]] > 0 & n[[19]] > 0 & n[[20]] > 0 &
+             n[[21]] > 0 & n[[22]] > 0  & n[[23]] > 0  & n[[24]] > 0,]
+  cur_n.1 <- cbind(as.data.frame(rowData(B6.red)$Symbol[match(rownames(cur_n), rowData(B6.red)$ID)]),cur_n)
+  rownames(cur_n.1) <- rownames(cur_n)
+  cur_n.1
+})
+
+markers.spec <- markers.spec[order(as.numeric(names(markers)))]
+
+saveRDS(markers.spec, "../10X/Results/Marker_genes/All_markers.rds")
+
+# Write out marker genes
+openxlsx::write.xlsx(markers.spec, file = "Results/Marker_genes/SubGroups.xlsx")
+
+# Save cluster IDs
+colData(sce)$Cluster <- NA
+colData(sce)$Cluster[grepl("B6", colData(sce)$Sample)] <- df$OrderByPT
+```
+
+```{r}
+saveRDS(sce, "../data/10X_data/SCE_all.rds")
+```

@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Reading in data and libraries
 
-```{r}
+```{r libraries, message=FALSE}
 # Load libraries
 library(Matrix)
 library(scran)
@@ -26,7 +26,9 @@ library(ggplot2)
 library(DropletUtils)
 library(scater)
 library(viridis)
+```
 
+```{r data}
 # Read in data - Single cell experiment object per batch
 # B6
 sce.do17815 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17815/filtered_gene_bc_matrices/Mus_human_chr21/")
@@ -107,13 +109,6 @@ sce.all <- normalize(sce.all, return_log = TRUE)
 # Dimensionality reduction and visualization
 
 ```{r}
-# Compute highly variable genes
-HVG <- trendVar(sce.all, use.spikes = FALSE)
-HVG.1 <- decomposeVar(sce.all, HVG)
-rowData(sce.all)$HVG <- DataFrame(HVG.1)
-HVG.1 <- HVG.1[order(HVG.1$bio, decreasing = TRUE),]
-HVG.genes <- rownames(HVG.1)[1:1000]
-
 # Compute tSNE
 set.seed(12345)
 sce.all <- scater::runTSNE(sce.all)
@@ -142,6 +137,13 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   tsne2 = reducedDims(sce.all)$TSNE[,2],
                   gene = colData(sce.all)$total_features)) +
   geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Mitochondrial genes
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  mito = Matrix::colSums(counts(sce.all)[rowData(sce.all)$ID %in%
+                                                mt$Gene.stable.ID,])/
+                    Matrix::colSums(counts(sce.all)))) + geom_point(aes(tsne1, tsne2, colour = mito)) + scale_colour_viridis()
 
 # Stra8 
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
