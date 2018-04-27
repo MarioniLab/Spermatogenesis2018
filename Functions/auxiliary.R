@@ -2,6 +2,25 @@
 #### Script to collect auxiliary functions ####
 ###############################################
 
+# Load libraries needed in this script
+library(scater)
+library(scran)
+library(dynamicTreeCut)
+
+#### Split Single cell experiment
+split.sce <- function(sce, groups, colData.name = "Cluster"){
+  # List to collect individual single cell experiments
+  list.out <- list()
+  for(i in groups){
+    cur_sce <- sce[,colData(sce)[[colData.name]] == i]
+    cur_sce <- normalize(cur_sce)
+    list.out[[i]] <- cur_sce
+  }
+  names(list.out) <- groups
+  list.out
+}
+
+
 #### HVG
 # Calculate highly variable genes
 # sce: one or multiple single cell experiment objects in form of a list
@@ -14,13 +33,17 @@ HVG <- function(sce, numberGenes = 1000){
     rownames(HVG.1)[1:numberGenes]
   }
   # Multiple single cell experiment objects
-  else {
+  else if(typeof(sce) == "list") {
     lapply(sce, function(n){
       HVG <- trendVar(n, use.spikes = FALSE)
       HVG.1 <- decomposeVar(n, HVG)
       HVG.1 <- HVG.1[order(HVG.1$bio, decreasing = TRUE),]
       rownames(HVG.1)[1:numberGenes]
     })
+  }
+  else{
+    print("First argument must either be a single cell experiment object \n
+          or a list")
   }
 }
 
@@ -33,8 +56,8 @@ DTC <- function(sce, HVG.genes, minClusterSize = 10, deepSplit = 0){
     
     dendro <- hclust(dist.all, method = "ward.D2")
     
-    ct <- cutreeDynamic(dendro = dendro, distM = as.matrix(dist.all), 
-                        minClusterSize = minClusterSize, deepSplit = deepSplit)
+    ct <- as.character(cutreeDynamic(dendro = dendro, distM = as.matrix(dist.all), 
+                        minClusterSize = minClusterSize, deepSplit = deepSplit))
   }
   else {
     out <- list()
@@ -44,9 +67,25 @@ DTC <- function(sce, HVG.genes, minClusterSize = 10, deepSplit = 0){
       
       dendro <- hclust(dist.all, method = "ward.D2")
       
-      out[[names(sce)[i]]] <- cutreeDynamic(dendro = dendro, 
+      out[[names(sce)[i]]] <- paste(names(sce)[i], as.character(cutreeDynamic(dendro = dendro, 
                           distM = as.matrix(dist.all), 
-                          minClusterSize = minClusterSize, deepSplit = deepSplit)
+                          minClusterSize = minClusterSize, deepSplit = deepSplit)), sep = "_")
     }
+    names(out) <- names(sce)
+    out
   }
+}
+
+#### Find specifc marker genes
+marker.detection <- function(sce, clusters){
+  # User scran function findMarkers to perform differential expression
+  cur_markers <- findMarkers(sce, clusters)
+  
+  # Collect group specific markers
+  markers.spec <- lapply(cur_markers, function(n){
+    cur_n <- n[n$FDR < 0.1 & apply(n[,3:ncol(n)], 1, function(x){sum(x > 0)}) == ncol(n) - 2,]
+    cur_n$GeneName <- rowData(sce)$Symbol[match(rownames(cur_n), rowData(sce)$ID)]
+    cur_n
+  })
+  
 }
