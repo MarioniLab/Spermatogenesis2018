@@ -67,9 +67,12 @@ DTC <- function(sce, HVG.genes, minClusterSize = 10, deepSplit = 0){
       
       dendro <- hclust(dist.all, method = "ward.D2")
       
-      out[[names(sce)[i]]] <- paste(names(sce)[i], as.character(cutreeDynamic(dendro = dendro, 
-                          distM = as.matrix(dist.all), 
-                          minClusterSize = minClusterSize, deepSplit = deepSplit)), sep = "_")
+      cur_clusters <- paste(names(sce)[i], as.character(cutreeDynamic(dendro = dendro, 
+                                                      distM = as.matrix(dist.all), 
+                minClusterSize = minClusterSize, deepSplit = deepSplit)), sep = "_")
+      names(cur_clusters) <- colData(sce[[i]])$Barcode
+      
+      out[[names(sce)[i]]] <- cur_clusters
     }
     names(out) <- names(sce)
     out
