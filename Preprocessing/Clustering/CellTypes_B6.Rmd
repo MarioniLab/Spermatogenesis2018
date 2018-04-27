@@ -20,9 +20,6 @@ To discover all cell-types in the 10X data, we will use the sorted C1 data as re
 
 ```{r load, message=FALSE}
 # Load libraries and data
-library(scater)
-library(scran)
-library(dynamicTreeCut)
 library(Matrix)
 library(openxlsx)
 source("../../Functions/auxiliary.R")
@@ -55,85 +52,45 @@ ggplot(data.frame(tSNE1 = reducedDims(sce.B6)$TSNE[,1],
   geom_point(aes(tSNE1, tSNE2, colour = sample))
 
 # Find marker genes for each cluster
-markers <- findMarkers(sce.B6, ct)
+markers <- marker.detection(sce.B6, ct)
 
-markers.spec <- lapply(markers, function(n){
-  cur_n <- n[n$FDR < 0.1 & n[[3]] > 0 &  n[[4]] > 0 & n[[5]] > 0 & n[[6]] > 0 & n[[7]] > 0,]
-  cur_n$GeneName <- rowData(sce.B6)$Symbol[rowData(sce.B6)$ID %in% rownames(cur_n)]
-  cur_n
-})
-
-write.xlsx(markers.spec$`1`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group1")
-write.xlsx(markers.spec$`2`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group2", 
-           append = TRUE)
-write.xlsx(markers.spec$`3`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group3", 
-           append = TRUE)
-write.xlsx(markers.spec$`4`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group4", 
-           append = TRUE)
-write.xlsx(markers.spec$`5`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group5", 
-           append = TRUE)
-write.xlsx(markers.spec$`6`, file = "../10X/Results/Marker_genes/BroadGroups.xlsx", sheetName="Group6", 
-           append = TRUE)
+write.xlsx(markers, file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/BroadGroups_B6.xlsx")
 
 colData(sce.B6)$broad_clusters <- ct
 ```
 
-# Mapping of C1 cells
-
-Now we map the 10X cells to C1 cells
-
-```{r}
-mouse.genes <- read.table("../data/Genenames.txt", sep = '\t', header = TRUE, stringsAsFactors = FALSE)
-rownames(mouse.genes) <- mouse.genes[,1]
-mouse.genes <- mouse.genes[rownames(C1.all)[grepl("ENSM", rownames(C1.all))],]
-
-chr21 <- read.csv("../data/chr21.txt", stringsAsFactors = FALSE)
-rownames(chr21) <- chr21$Gene.stable.ID 
-chr21 <- chr21[rownames(C1.all)[grepl("ENSG", rownames(C1.all))],]
-
-genenames <- c(chr21$Gene.stable.ID, mouse.genes[,1])
-
-C1.all <- C1.all[!is.na(genenames),]
-
-# Use the same genes between datasets
-genes <- intersect(rownames(C1.all), rowData(sce.B6)$ID)
-
-# Calculate highly variable genes
-HVG.C1 <- trendVar(log2(as.matrix(C1.all[genes,]) + 1))
-HVG.C1.1 <- decomposeVar(log2(as.matrix(C1.all[genes,]) + 1), HVG.C1)
-HVG.B6 <- trendVar(sce.B6[genes,], use.spikes=FALSE)
-HVG.B6.1 <- decomposeVar(sce.B6[genes,], HVG.B6)
-
-HVG.mixed <- combineVar(HVG.C1.1, HVG.B6.1)
-HVG.mixed <- HVG.mixed[order(HVG.mixed$bio, decreasing = TRUE),]
-HVG <- rownames(HVG.mixed)[1:1000]
-
-# MNN correct
-corrected <- mnnCorrect(log2(as.matrix(C1.all[genes,] + 1)), 
-                        as.matrix(logcounts(sce.B6)[genes,]),
-                        cos.norm.in = TRUE, cos.norm.out = TRUE, subset.row = HVG,
-                        sigma = 0.1)
-
-# Visualize pca with cluster and group labels
-pca <- prcomp(t(cbind(corrected$corrected[[1]][HVG,], 
-                      corrected$corrected[[2]][HVG,])))
-
-col.factor <- as.factor(c(as.character(sapply(colnames(C1.all), 
-                                              function(n){unlist(strsplit(n, "_"))[3]})),
-                          ct))
-
-ggplot(data.frame(PC1 = pca$x[,1],
-                  PC2 = pca$x[,2],
-                  group = col.factor,
-                  C1_10X = ifelse(grepl("S", as.character(col.factor)), "C1", "10X"))) +
-  geom_point(aes(PC1, PC2, colour = group, size = C1_10X))
-```
-
 # Subpopulation detection
 
-Now I will look the subpopulation analysis with spermatocytes and spermatogonia.
-
 ```{r}
+# Split sce into subgroups
+all.sce <- split.sce(sce.B6, groups = unique(ct), colData.name = "broad_clusters")
+
+# Calculate HVG
+all.HVG.genes <- HVG(all.sce)
+
+# Cluster each group
+all.ct <- DTC(all.sce, all.HVG.genes)
+
+# Visualize all groups
+clusters <- unlist(all.ct)
+sce.B6 <- do.call("cbind", all.sce)
+sce.B6 <- normalize(sce.B6)
+
+set.seed(12345)
+sce.B6 <- scater::runTSNE(sce.B6)
+
+# Broad clusters
+ggplot(data.frame(tSNE1 = reducedDims(sce.B6)$TSNE[,1],
+                  tSNE2 = reducedDims(sce.B6)$TSNE[,2],
+                  sample = as.factor(colData(sce.B6)$broad_clusters))) +
+  geom_point(aes(tSNE1, tSNE2, colour = sample))
+
+# Subclusters
+ggplot(data.frame(tSNE1 = reducedDims(sce.B6)$TSNE[,1],
+                  tSNE2 = reducedDims(sce.B6)$TSNE[,2],
+                  sample = as.factor(clusters))) +
+  geom_point(aes(tSNE1, tSNE2, colour = sample))
+
 # Dissect sub-groups
 sce.spermatocytes <- sce.B6[,colData(sce.B6)$broad_clusters == 1]
 sce.spermatocytes <- normalize(sce.spermatocytes)
