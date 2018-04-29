@@ -92,3 +92,33 @@ marker.detection <- function(sce, clusters){
   })
   
 }
+
+#### Compute pseudotime
+PT <- function(rd, clusters, col_vector, 
+               exclude = NULL, start = NULL, end = NULL){
+    if(!is.null(exclude)){
+      cur_rd <- rd[!(clusters %in% exclude),]
+      
+      cur_lin <- getLineages(cur_rd, clusters[!(clusters %in% exclude)],  
+        start.clus = start, end.clus = end)
+      
+      cur_crv <- getCurves(cur_lin)
+      
+      plot(cur_rd, col = col_vector[clusters[!(clusters %in% exclude)]], 
+           pch = 16, type = "p")
+      lines(cur_crv, lwd = 3)
+      pseudotime(cur_crv)[,1]
+
+    }
+    else{
+      cur_lin <- getLineages(rd, clusters,  
+                             start.clus = start, end.clus = end)
+      
+      cur_crv <- getCurves(cur_lin)
+      
+      plot(rd, col = col_vector[clusters], 
+           pch = 16, type = "p")
+      lines(cur_crv, lwd = 3)
+      pseudotime(cur_crv)[,1]
+    }
+}
