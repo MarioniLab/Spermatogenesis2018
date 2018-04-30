@@ -1,8 +1,13 @@
 ---
 title: "Juvenile filtering"
 author: "Nils Eling"
-date: "08/03/2018"
-output: html_document
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/QualityControl/JuvenileFiltering.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -11,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Read in data
 
-```{r}
+```{r libraries, message=FALSE}
 # Load libraries
 library(Matrix)
 library(scran)
@@ -54,7 +59,7 @@ genes <- read.table("../../data/Mouse_genes.txt", sep = "\t", header = TRUE)
 mt <- genes[genes$Chromosome.scaffold.name == "MT",]
 plot(Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts, 
      pch = 16, ylab = "% mitochondrial reads")
-sce.all <- sce.all[,Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts < 0.04]
+sce.all <- sce.all[,Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts < 0.05]
 
 # Remove genes that are not expressed
 sce.all <- sce.all[rowData(sce.all)$mean_counts > 0,]
@@ -139,5 +144,5 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
 # Save sce object
 
 ```{r}
-saveRDS(sce.all, "../../data/10X_data/SCE_juvenile.rds")
+saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_juvenile.rds")
 ```
