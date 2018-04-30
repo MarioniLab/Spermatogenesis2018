@@ -24,6 +24,7 @@ library(Matrix)
 library(openxlsx)
 library(RColorBrewer)
 library(viridis)
+library(ggsci)
 source("../../Functions/auxiliary.R")
 
 # Wild type 10X data
@@ -171,105 +172,67 @@ new.clusters[clusters == "2_6"] <- "1"
 # Spermatogonia
 new.clusters[clusters == "2_7"] <- "2"
 
-# Calculate pseudotime across PC1 and PC2 - excluding somatic cells and
+# Calculate pseudotime across PC1 - PC3 - excluding somatic cells and
 # spermatogonia and outliers
-PT.B6 <- PT(rd = pca$x[,1:2], clusters = clusters,
-            col_vector = col_vector, exclude = c("2_6", "2_7", "3_5"),
-            start = "2_4", end = "1_3")
+PT.B6 <- PT(rd = pca$x[,1:3], clusters = clusters,
+            col_vector = col_vector, exclude = clusters %in% c("2_6", "2_7") | 
+                                                      new.clusters == "Outliers")
 
-# First save a data.frame containing all cluster labels
-df <- data.frame(row.names = colData(sce.B6)$Barcode,
-                 sample = colData(sce.B6)$Sample,
-                 broad_clusters = colData(sce.B6)$broad_clusters)
-df$sub_populations[df$broad_clusters == 1] <- clusters_1
-df$sub_populations[df$broad_clusters == 2] <- clusters_2
-df$sub_populations[df$broad_clusters == 3] <- clusters_3
-df$sub_populations[df$broad_clusters == 4] <- clusters_4
-df$sub_populations[df$broad_clusters == 5] <- clusters_5
-df$sub_populations[df$broad_clusters == 6] <- clusters_6
+plot(PT.B6[,"rank"], PT.B6[,"PC1"], col = col_vector[clusters])
 
+# Compute median rank for each cluster
+pos.PT <- vector(length = length(unique(clusters)))
+names(pos.PT) <- unique(clusters)
 
-# Now I order the groups by pseudotime
-groupNames <- paste(df$broad_clusters, df$sub_populations, sep = "_")
-df$OrderByPT[groupNames == "1_4"] <- 1
-df$OrderByPT[groupNames == "1_6"] <- 2
-df$OrderByPT[groupNames == "1_5"] <- 3
-df$OrderByPT[groupNames == "1_3"] <- 4
-df$OrderByPT[groupNames == "1_2"] <- 5
-df$OrderByPT[groupNames == "1_1"] <- 6
-df$OrderByPT[groupNames == "6_3"] <- 7
-df$OrderByPT[groupNames == "6_2"] <- 8
-df$OrderByPT[groupNames == "6_1"] <- 9
-df$OrderByPT[groupNames == "6_4"] <- "Outliers"
-df$OrderByPT[groupNames == "3_4"] <- 10
-df$OrderByPT[groupNames == "3_1"] <- 11
-df$OrderByPT[groupNames == "3_3"] <- 12
-df$OrderByPT[groupNames == "3_2"] <- 13
-df$OrderByPT[groupNames == "5_1"] <- 14
-df$OrderByPT[groupNames == "5_3"] <- 15
-df$OrderByPT[groupNames == "5_2"] <- 16
-df$OrderByPT[groupNames == "5_4"] <- "Outliers"
-df$OrderByPT[groupNames == "2_4"] <- 17
-df$OrderByPT[groupNames == "2_3"] <- 18
-df$OrderByPT[groupNames == "2_2"] <- 19
-df$OrderByPT[groupNames == "2_1"] <- 20
-df$OrderByPT[groupNames == "4_1"] <- 21
-df$OrderByPT[groupNames == "4_2"] <- 22
-df$OrderByPT[groupNames == "4_3"] <- 23
+for(i in 1:length(unique(clusters))){
+  pos.PT[i] <- median(PT.B6[clusters == names(pos.PT)[i], "rank"], na.rm = TRUE)
+}
 
-# visaulize all sub-clusters
-library(RColorBrewer)
+pos.PT[order(pos.PT)]
+pos.PT <- pos.PT[!is.na(pos.PT)]
 
-col_vector <- c(brewer.pal(12, "Set3")[4:12],brewer.pal(8, "Set2"), brewer.pal(9, "Set1") )
+# Rename subclusters based on their position on pseudotime
+counter <- 3
+for(i in rev(names(pos.PT[order(pos.PT)]))){
+  new.clusters[clusters == i & new.clusters != "Outliers"] <- as.numeric(counter)
+  counter <- counter + 1
+}
 
+# Visualize all subcluster
 ggplot(data.frame(tSNE1 = reducedDims(sce.B6)$TSNE[,1],
                   tSNE2 = reducedDims(sce.B6)$TSNE[,2],
-                  group = factor(df$OrderByPT, levels = c(1:23, "Outliers")))) +
-  geom_point(aes(tSNE1, tSNE2, colour = group)) + 
-  scale_color_manual(values = col_vector) + theme_minimal()
+                  sample = factor(new.clusters, 
+                                     levels = c(1:23, "Outliers")))) +
+  geom_point(aes(tSNE1, tSNE2, colour = sample)) + 
+  scale_color_manual(values = col_vector)
 
-# Find colors 
-library(ggsci)
-col_vector <- c(pal_material(palette = c("brown"),n = 10, reverse = FALSE)(10)[5],
-                pal_material(palette = c("green"),n = 10, reverse = FALSE)(10)[5],
-                pal_material(palette = c("pink"),n = 4, reverse = FALSE)(4),
-                pal_material(palette = c("purple"),n = 4, reverse = TRUE)(4),
-                pal_material(palette = c("blue"),n = 4, reverse = FALSE)(4),
-                pal_material(palette = c("deep-purple"),n = 4, reverse = TRUE)(4),
-                pal_material(palette = c("indigo"),n = 5, reverse = FALSE)(5),
-                pal_material(palette = c("blue-grey"),n = 10, reverse = FALSE)(10)[10])
+# Save sub cluster info and indicate outliers in in broad clusters
+colData(sce.B6)$subclusters <- new.clusters
+colData(sce.B6)$broad_clusters[new.clusters == "Outliers"] <- "Outliers"
+```
+
+# Find marker genes
+
+```{r marker}
+# Remove outliers first
+markers <- marker.detection(sce.B6[,colData(sce.B6)$subclusters != "Outliers"], 
+        colData(sce.B6)$subclusters[colData(sce.B6)$subclusters != "Outliers"])
 
 
-# Find marker genes - remove outliers first
-df.red <- df[!(df$OrderByPT == "Outliers"),]
-B6.red <- sce.B6[,!(df$OrderByPT == "Outliers")]
-B6.red <- normalize(B6.red)
-markers <- findMarkers(B6.red, as.factor(df.red$OrderByPT))
-
-rownames(rowData(B6.red)) <- rowData(B6.red)$ID
-
-markers.spec <- lapply(markers, function(n){
-  cur_n <- n[n$FDR < 0.1 & n[[3]] > 0 & n[[4]] > 0 &  n[[5]] > 0 & n[[6]] > 0 & n[[7]] > 0 & n[[8]] > 0 &
-             n[[9]] > 0 & n[[10]] > 0 & n[[11]] > 0 & n[[12]] > 0 & n[[13]] > 0 & n[[14]] > 0 & 
-             n[[15]] > 0 & n[[16]] > 0 & n[[17]] > 0 & n[[18]] > 0 & n[[19]] > 0 & n[[20]] > 0 &
-             n[[21]] > 0 & n[[22]] > 0  & n[[23]] > 0  & n[[24]] > 0,]
-  cur_n.1 <- cbind(as.data.frame(rowData(B6.red)$Symbol[match(rownames(cur_n), rowData(B6.red)$ID)]),cur_n)
-  rownames(cur_n.1) <- rownames(cur_n)
-  cur_n.1
-})
-
-markers.spec <- markers.spec[order(as.numeric(names(markers)))]
-
-saveRDS(markers.spec, "../10X/Results/Marker_genes/All_markers.rds")
+saveRDS(markers, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/All_markers.rds")
 
 # Write out marker genes
-openxlsx::write.xlsx(markers.spec, file = "Results/Marker_genes/SubGroups.xlsx")
+openxlsx::write.xlsx(markers, file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/SubGroups.xlsx")
 
 # Save cluster IDs
-colData(sce)$Cluster <- NA
-colData(sce)$Cluster[grepl("B6", colData(sce)$Sample)] <- df$OrderByPT
+colData(sce)$BroadCluster <- NA
+colData(sce)$BroadCluster[grepl("B6", colData(sce)$Sample)] <- colData(sce.B6)$broad_clusters
+colData(sce)$SubCluster <- NA
+colData(sce)$SubCluster[grepl("B6", colData(sce)$Sample)] <- colData(sce.B6)$subclusters
 ```
 
 ```{r}
-saveRDS(sce, "../data/10X_data/SCE_all.rds")
+saveRDS(sce, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```
+
+
