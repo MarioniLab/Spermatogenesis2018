@@ -10,11 +10,11 @@ library(slingshot)
 library(dbscan)
 
 #### Split Single cell experiment
-split.sce <- function(sce, groups, colData.name = "Cluster"){
+split.sce <- function(sce, groups, colData.name = "SubCluster"){
   # List to collect individual single cell experiments
   list.out <- list()
   for(i in groups){
-    cur_sce <- sce[,colData(sce)[[colData.name]] == i]
+    cur_sce <- sce[,as.character(colData(sce)[[colData.name]]) == as.character(i)]
     cur_sce <- normalize(cur_sce)
     list.out[[i]] <- cur_sce
   }
@@ -129,8 +129,8 @@ PT <- function(rd, clusters, col_vector,
       rownames(mat.out) <- names(clusters)
       colnames(mat.out) <- c(colnames(cur_rd), "rank")
       
-      mat.out[!exclude,1:ncol(cur_rd)] <- cur_lin$s
-      mat.out[!exclude,"rank"] <- order(cur_lin$tag)
+      mat.out[,1:ncol(cur_rd)] <- cur_lin$s
+      mat.out[,"rank"] <- order(cur_lin$tag)
       
       mat.out
     }
