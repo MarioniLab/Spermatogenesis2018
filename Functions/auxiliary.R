@@ -6,6 +6,8 @@
 library(scater)
 library(scran)
 library(dynamicTreeCut)
+library(slingshot)
+library(dbscan)
 
 #### Split Single cell experiment
 split.sce <- function(sce, groups, colData.name = "Cluster"){
@@ -93,32 +95,43 @@ marker.detection <- function(sce, clusters){
   
 }
 
-#### Compute pseudotime
+#### Compute pseudorank
 PT <- function(rd, clusters, col_vector, 
                exclude = NULL, start = NULL, end = NULL){
     if(!is.null(exclude)){
-      cur_rd <- rd[!(clusters %in% exclude),]
+      cur_rd <- rd[!exclude,]
       
-      cur_lin <- getLineages(cur_rd, clusters[!(clusters %in% exclude)],  
-        start.clus = start, end.clus = end)
+      cur_lin <- principal.curve(cur_rd)
       
-      cur_crv <- getCurves(cur_lin)
-      
-      plot(cur_rd, col = col_vector[clusters[!(clusters %in% exclude)]], 
+      plot(cur_rd, col = col_vector[clusters[!exclude]], 
            pch = 16, type = "p")
-      lines(cur_crv, lwd = 3)
-      pseudotime(cur_crv)[,1]
-
+      lines(cur_lin, lwd = 3)
+      
+      mat.out <- matrix(data = NA, ncol = ncol(cur_rd) + 1, nrow = length(clusters))
+      rownames(mat.out) <- names(clusters)
+      colnames(mat.out) <- c(colnames(cur_rd), "rank")
+      
+      mat.out[!exclude,1:ncol(cur_rd)] <- cur_lin$s
+      mat.out[!exclude,"rank"] <- order(cur_lin$tag)
+      
+      mat.out
     }
     else{
-      cur_lin <- getLineages(rd, clusters,  
-                             start.clus = start, end.clus = end)
+      cur_rd <- rd
       
-      cur_crv <- getCurves(cur_lin)
+      cur_lin <- principal.curve(cur_rd)
       
-      plot(rd, col = col_vector[clusters], 
+      plot(cur_rd, col = col_vector[clusters], 
            pch = 16, type = "p")
-      lines(cur_crv, lwd = 3)
-      pseudotime(cur_crv)[,1]
+      lines(cur_lin, lwd = 3)
+      
+      mat.out <- matrix(data = NA, ncol = ncol(cur_rd) + 1, nrow = length(clusters))
+      rownames(mat.out) <- names(clusters)
+      colnames(mat.out) <- c(colnames(cur_rd), "rank")
+      
+      mat.out[!exclude,1:ncol(cur_rd)] <- cur_lin$s
+      mat.out[!exclude,"rank"] <- order(cur_lin$tag)
+      
+      mat.out
     }
 }
