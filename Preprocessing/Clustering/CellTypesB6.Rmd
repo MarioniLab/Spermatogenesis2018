@@ -25,6 +25,7 @@ library(openxlsx)
 library(RColorBrewer)
 library(viridis)
 library(ggsci)
+library(randomForest)
 source("../../Functions/auxiliary.R")
 
 # Wild type 10X data
@@ -55,18 +56,18 @@ ggplot(data.frame(tSNE1 = reducedDims(sce.B6)$TSNE[,1],
   geom_point(aes(tSNE1, tSNE2, colour = sample))
 
 # Find marker genes for each cluster
-markers <- marker.detection(sce.B6, ct)
+markers.broad <- marker.detection(sce.B6, ct)
 
-write.xlsx(markers, file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/BroadGroups_B6.xlsx")
+write.xlsx(markers.broad, file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/BroadGroups_B6.xlsx")
 
-colData(sce.B6)$broad_clusters <- ct
+colData(sce.B6)$BroadCluster <- ct
 ```
 
 # Subpopulation detection
 
 ```{r}
 # Split sce into subgroups
-all.sce <- split.sce(sce.B6, groups = unique(ct), colData.name = "broad_clusters")
+all.sce <- split.sce(sce.B6, groups = unique(ct), colData.name = "BroadCluster")
 
 # Calculate HVG
 all.HVG.genes <- HVG(all.sce)
@@ -82,10 +83,10 @@ clusters <- clusters[colData(sce.B6)$Barcode]
 # Broad clusters
 ggplot(data.frame(tSNE1 = reducedDims(sce.B6)$TSNE[,1],
                   tSNE2 = reducedDims(sce.B6)$TSNE[,2],
-                  sample = as.factor(colData(sce.B6)$broad_clusters))) +
+                  sample = as.factor(colData(sce.B6)$BroadCluster))) +
   geom_point(aes(tSNE1, tSNE2, colour = sample))
 
-# Subclusters
+# SubCluster
 col_vector <- c(brewer.pal(8, name = "Set1"), brewer.pal(8, name = "Set2"),
                                 brewer.pal(8, name = "Set3"))
 names(col_vector) <- unique(clusters)
@@ -191,7 +192,7 @@ for(i in 1:length(unique(clusters))){
 pos.PT[order(pos.PT)]
 pos.PT <- pos.PT[!is.na(pos.PT)]
 
-# Rename subclusters based on their position on pseudotime
+# Rename SubCluster based on their position on pseudotime
 counter <- 3
 for(i in rev(names(pos.PT[order(pos.PT)]))){
   new.clusters[clusters == i & new.clusters != "Outliers"] <- as.numeric(counter)
@@ -210,31 +211,94 @@ ggplot(data.frame(tSNE1 = reducedDims(sce.B6)$TSNE[,1],
   scale_color_manual(values = col_vector)
 
 # Save sub cluster info and indicate outliers in in broad clusters
-colData(sce.B6)$subclusters <- new.clusters
-colData(sce.B6)$broad_clusters[new.clusters == "Outliers"] <- "Outliers"
+colData(sce.B6)$SubCluster <- new.clusters
+colData(sce.B6)$BroadCluster[new.clusters == "Outliers"] <- "Outliers"
 ```
 
 # Find marker genes
 
 ```{r marker}
 # Remove outliers first
-markers <- marker.detection(sce.B6[,colData(sce.B6)$subclusters != "Outliers"], 
-        colData(sce.B6)$subclusters[colData(sce.B6)$subclusters != "Outliers"])
-
-
-saveRDS(markers, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/All_markers.rds")
+markers.sub <- marker.detection(sce.B6[,colData(sce.B6)$SubCluster != "Outliers"], 
+        colData(sce.B6)$SubCluster[colData(sce.B6)$SubCluster != "Outliers"])
 
 # Write out marker genes
-openxlsx::write.xlsx(markers, file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/SubGroups.xlsx")
+openxlsx::write.xlsx(markers.sub, file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/SubGroups.xlsx")
 
 # Save cluster IDs
 colData(sce)$BroadCluster <- NA
-colData(sce)$BroadCluster[grepl("B6", colData(sce)$Sample)] <- colData(sce.B6)$broad_clusters
+colData(sce)$BroadCluster[grepl("B6", colData(sce)$Sample)] <- colData(sce.B6)$BroadCluster
 colData(sce)$SubCluster <- NA
-colData(sce)$SubCluster[grepl("B6", colData(sce)$Sample)] <- colData(sce.B6)$subclusters
+colData(sce)$SubCluster[grepl("B6", colData(sce)$Sample)] <- colData(sce.B6)$SubCluster
 ```
 
 ```{r}
 saveRDS(sce, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```
+
+# Random forrest classifier for cell type detection in other samples
+
+## First for broad groups
+
+```{r}
+# Select marker genes
+genes <- lapply(markers.broad, function(n){rownames(n)[1:100]})
+genes <- as.character(unlist(genes))
+genes <- genes[!is.na(genes)]
+
+# Create Test and Trainings dataset
+labels <- factor(colData(sce.B6)$BroadCluster, levels = c(1:5, "Outliers"))
+
+set.seed(1234)
+sam <- sample(1:ncol(sce.B6), 2000)
+train.labels <- labels[sam] 
+train.data <- logcounts(sce.B6)[genes,sam]
+test.labels <- labels[-sam] 
+test.data <- logcounts(sce.B6)[genes,-sam]
+
+# Train the model
+Tree.broad <- randomForest(x = t(as.matrix(train.data)), y = train.labels, 
+                     xtest = t(as.matrix(test.data)), ytest = test.labels, keep.forest = TRUE)
+
+# Confudion matrix
+Tree.broad$confusion
+
+# Save genes for generation in object
+Tree.broad$Genes <- genes
+
+saveRDS(Tree.broad, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/Tree_broad_B6.rds")
+```
+
+## Now for sub-groups
+
+```{r}
+# Select marker genes
+genes <- lapply(markers.sub, function(n){rownames(n)[1:100]})
+genes <- as.character(unlist(genes))
+genes <- genes[!is.na(genes)]
+
+# Create Test and Trainings dataset
+labels <- factor(colData(sce.B6)$SubCluster, levels = c(1:23, "Outliers"))
+
+set.seed(1234)
+sam <- sample(1:ncol(sce.B6), 2000)
+train.labels <- labels[sam] 
+train.data <- logcounts(sce.B6)[genes,sam]
+test.labels <- labels[-sam] 
+test.data <- logcounts(sce.B6)[genes,-sam]
+
+# Train the model
+Tree.sub <- randomForest(x = t(as.matrix(train.data)), y = train.labels, 
+                     xtest = t(as.matrix(test.data)), ytest = test.labels, keep.forest = TRUE)
+
+# Confudion matrix
+Tree.sub$confusion
+
+# Save genes for generation in object
+Tree.sub$Genes <- genes
+
+saveRDS(Tree.sub, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/Tree_sub_B6.rds")
+```
+
+
 
