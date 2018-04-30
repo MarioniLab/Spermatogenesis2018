@@ -199,6 +199,9 @@ for(i in rev(names(pos.PT[order(pos.PT)]))){
 }
 
 # Visualize all subcluster
+col_vector <- c(brewer.pal(8, name = "Set1"), brewer.pal(8, name = "Set2"),
+                                brewer.pal(8, name = "Set3"))
+names(col_vector) <- unique(new.clusters)
 ggplot(data.frame(tSNE1 = reducedDims(sce.B6)$TSNE[,1],
                   tSNE2 = reducedDims(sce.B6)$TSNE[,2],
                   sample = factor(new.clusters, 
@@ -234,5 +237,4 @@ colData(sce)$SubCluster[grepl("B6", colData(sce)$Sample)] <- colData(sce.B6)$sub
 ```{r}
 saveRDS(sce, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```
-
 
