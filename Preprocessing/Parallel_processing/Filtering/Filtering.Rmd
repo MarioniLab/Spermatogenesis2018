@@ -26,6 +26,7 @@ library(ggplot2)
 library(DropletUtils)
 library(scater)
 library(viridis)
+library(RColorBrewer)
 
 # Read in data - Single cell experiment object per batch
 # P10
@@ -174,13 +175,15 @@ sce.all <- normalize(sce.all, return_log = TRUE)
 
 ```{r plotting}
 set.seed(12345)
-sce.all <- scater::runTSNE(sce.all)
+sce.all <- scater::runTSNE(sce.all, perplexity = 100)
 
 # Batches
+col_vector <- c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(8, "Set3"))
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   tsne2 = reducedDims(sce.all)$TSNE[,2],
                   batch = colData(sce.all)$Sample)) +
-  geom_point(aes(tsne1, tsne2, colour = batch))
+  geom_point(aes(tsne1, tsne2, colour = batch)) +
+  scale_color_manual(values = col_vector)
 
 # Verification of chr21 expression: PDXK
 # PDXK 
@@ -212,25 +215,29 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   tsne2 = reducedDims(sce.all)$TSNE[,2],
                   gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Stra8"],])) +
-  geom_point(aes(tsne1, tsne2, colour = gene))
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
 
 # Defb19 
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   tsne2 = reducedDims(sce.all)$TSNE[,2],
                   gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Defb19"],])) +
-  geom_point(aes(tsne1, tsne2, colour = gene))
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
 
 # Prm1 
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   tsne2 = reducedDims(sce.all)$TSNE[,2],
                   gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Prm1"],])) +
-  geom_point(aes(tsne1, tsne2, colour = gene))
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
 
 # Dazl 
   ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   tsne2 = reducedDims(sce.all)$TSNE[,2],
                   gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Dazl"],])) +
-  geom_point(aes(tsne1, tsne2, colour = gene))
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
 
 
+```
+
+```{r}
+saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_QC.rds")
 ```
