@@ -91,7 +91,7 @@ corrected <- mnnCorrect(as.matrix(logcounts(B6.1)[HVG,]),
                         as.matrix(logcounts(P15)[HVG,]),
                         as.matrix(logcounts(P20)[HVG,]),
                         as.matrix(logcounts(P30)[HVG,]),
-                        as.matrix(logcounts(P35)[HVG,]),
+                        as.matrix(logcountss(P35)[HVG,]),
                         cos.norm.in = TRUE, cos.norm.out = TRUE,
                                   sigma = 0.1)
 
