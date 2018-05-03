@@ -1,0 +1,45 @@
+---
+title: "Clustering"
+author: "Nils Eling"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/QualityControl/Clustering.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Read the data and libraries
+
+```{r data, message=FALSE}
+library(scran)
+library(scater)
+library(dynamicTreeCut)
+library(RColorBrewer)
+library(dbscan)
+source("../../Functions/auxiliary.R")
+
+# Read in data
+sce.all <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_BatchCorrected.rds")
+```
+
+# Clustering on batch corrected counts
+
+```{r clustering}
+# Use the SNN approach
+g <- buildSNNGraph(metadata(sce.all)$corrected, k = 3, pc.approx = TRUE)
+
+clusters <- igraph::cluster_fast_greedy(g)$membership
+
+# Visualize clustering
+col_vector <- c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(8, "Set3"), brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(8, "Set3"), brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(8, "Set3"), brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(8, "Set3"))
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  cluster = as.factor(clusters))) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) +
+  scale_color_manual(values = col_vector)
+```
