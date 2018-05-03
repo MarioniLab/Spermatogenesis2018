@@ -76,6 +76,9 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
   geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
 
 # Mitochondrial genes
+mt <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE,
+                 stringsAsFactors = FALSE)
+mt <- mt[mt$Chromosome.scaffold.name == "MT",]
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   tsne2 = reducedDims(sce.all)$TSNE[,2],
                   mito = Matrix::colSums(counts(sce.all)[rowData(sce.all)$ID %in%
