@@ -150,7 +150,7 @@ batch.correction <- function(sce, number.HVG = 1000){
   
   # Batch correction
   func <- paste0("mnnCorrect(", 
-                     paste0("as.matrix(logcounts(sce[[", 1:length(sce.single), "]])[genes,])", collapse=", "), 
+                     paste0("as.matrix(logcounts(sce[[", 1:length(sce), "]])[genes,])", collapse=", "), 
                      ", cos.norm.in=TRUE, cos.norm.out=TRUE, sigma=0.1)")
   corrected <- eval( parse(text=func) )
   do.call("cbind", corrected$corrected)
