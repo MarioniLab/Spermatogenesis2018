@@ -101,6 +101,7 @@ set.seed(100)
 empty.droplets <- emptyDrops(counts(sce.do17827)) 
 is.cell <- empty.droplets$FDR <= 0.01
 is.cell[is.na(is.cell)] <- FALSE
+
 sce.do17827 <- sce.do17827[,is.cell]
 
 sce.do17827 <- calculateQCMetrics(sce.do17827)
