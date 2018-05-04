@@ -74,7 +74,7 @@ shinyServer(function(input, output, session) {
                                                   colData(sce)$Sample),
                                                   "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = group, alpha = shown)) +
-      scale_color_manual(values = col_vector) + theme_minimal() + 
+      scale_color_manual(values = color_vector) + theme_minimal() + 
       scale_alpha_manual(values = to.show) + 
       guides(alpha=FALSE)
     })
