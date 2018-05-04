@@ -48,6 +48,8 @@ shinyServer(function(input, output, session) {
   createPlot.sample <- eventReactive(input$goButton, {
     #cur_sce <- sce[,grepl(input$select, colData(sce)$Sample)]
     
+    cur_col_vector <- c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(8, "Set3"))
+    
     ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
                       tSNE2 = reducedDims(sce)$TSNE[,2],
                       sample = colData(sce)$Sample,
@@ -55,7 +57,7 @@ shinyServer(function(input, output, session) {
                                            colData(sce)$Sample),
                                      "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = sample, alpha = shown)) + theme_minimal() + 
-      scale_color_brewer(palette = "Set1") + scale_alpha_manual(values = to.show) + 
+      scale_color_manual(values = cur_col_vector) + scale_alpha_manual(values = to.show) + 
       guides(alpha=FALSE)
   })
   
@@ -67,7 +69,7 @@ shinyServer(function(input, output, session) {
     
     ggplot(data = data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
                              tSNE2 = reducedDims(sce)$TSNE[,2],
-                             group = colData(sce)$Cluster,
+                             group = colData(sce)$CLusters,
                              shown = factor(ifelse(grepl(paste(input$dataset,collapse="|"), 
                                                   colData(sce)$Sample),
                                                   "Included", "Excluded"), levels = c("Excluded", "Included")))) +
@@ -94,7 +96,7 @@ shinyServer(function(input, output, session) {
     
     ggplot(data.frame(value = Gene[grepl(paste(input$dataset,collapse="|"), 
                                          colData(sce)$Sample)],
-                      cluster = factor(sce$Cluster[grepl(paste(input$dataset,collapse="|"), 
+                      cluster = factor(sce$CLusters[grepl(paste(input$dataset,collapse="|"), 
                                                          colData(sce)$Sample)],
                                      levels = names(col_vector)),
                       sample = factor(colData(sce)$Sample[grepl(paste(input$dataset,collapse="|"), 
