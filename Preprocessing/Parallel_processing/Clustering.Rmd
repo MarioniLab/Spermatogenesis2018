@@ -24,7 +24,7 @@ library(dbscan)
 source("../../Functions/auxiliary.R")
 
 # Read in data
-sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_BatchCorrected.rds")
+sce.all <- readRDS("/Users/ernst01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_BatchCorrected.rds")
 ```
 
 # Clustering on batch corrected counts
@@ -40,11 +40,13 @@ clusters[clusters == names(table(clusters))[table(clusters) < 30]] <- "Outliers"
 # Visualize clustering
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+color_vector = c("#242435", "#D9D9ED","#D62261","#BCBCC2","#B19B31","#282B69","#572972","#421449","#4A1028","#851A4F","#643F18","#0F1131","#FFDFB2","#60AC78","#985D25","#176D38","#C58C58","#827BAF","#F36E21","#71719A","#47476B","#AFB3DA","#9595C9","#93381F","#A58D81","#8A8A9B","#2A348B","#6167AF","#5F4E97","#EE6493","#CECAE5","#ff00ff")
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   tsne2 = reducedDims(sce.all)$TSNE[,2],
                   cluster = as.factor(clusters))) +
   geom_point(aes(tsne1, tsne2, colour = cluster)) +
-  scale_color_manual(values = col_vector)
+  scale_color_manual(values = color_vector)
+
 
 # Visualize sample
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
@@ -59,7 +61,7 @@ colData(sce.all)$CLusters <- clusters
 # Save sce
 
 ```{r save}
-saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+saveRDS(sce.all, "/Users/ernst01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 ```
 
 
@@ -67,37 +69,37 @@ saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/A
 
 ```{r annotation}
 new.clusters <- new.clusters
-new.clusters[new.clusters == 1] <- "Sp_1"
-new.clusters[new.clusters == 2] <- "ElSp_6"
-new.clusters[new.clusters == 3] <- "Spermatocytes_2"
-new.clusters[new.clusters == 4] <- "ElSp_5"
-new.clusters[new.clusters == 5] <- "ElSp_4"
-new.clusters[new.clusters == 7] <- "Spermatocytes_7"
-new.clusters[new.clusters == 8] <- "Spermatocytes_1"
-new.clusters[new.clusters == 9] <- "ElSp_2"
-new.clusters[new.clusters == 10] <- "ElSp_1"
-new.clusters[new.clusters == 11] <- ""
-new.clusters[new.clusters == 12] <- ""
-new.clusters[new.clusters == 13] <- "Spermatocytes_8"
-new.clusters[new.clusters == 14] <- ""
-new.clusters[new.clusters == 15] <- ""
-new.clusters[new.clusters == 16] <- ""
-new.clusters[new.clusters == 17] <- "Spermatocytes_4"
-new.clusters[new.clusters == 18] <- "Spermatocytes_6"
-new.clusters[new.clusters == 19] <- ""
-new.clusters[new.clusters == 20] <- "Sp_3"
-new.clusters[new.clusters == 21] <- "ElSp_3"
-new.clusters[new.clusters == 22] <- ""
-new.clusters[new.clusters == 23] <- "Spermatocytes_5"
+new.clusters[new.clusters == 1] <- "S10"
+new.clusters[new.clusters == 2] <- "S9"
+new.clusters[new.clusters == 3] <- "S5"
+new.clusters[new.clusters == 4] <- "S7"
+new.clusters[new.clusters == 5] <- "S6"
+new.clusters[new.clusters == 7] <- "Meiosis"
+new.clusters[new.clusters == 8] <- "Early Spermatocytes"
+new.clusters[new.clusters == 9] <- "S4"
+new.clusters[new.clusters == 10] <- "S3"
+new.clusters[new.clusters == 11] <- "Early Spermatocytes"
+new.clusters[new.clusters == 12] <- "S14"
+new.clusters[new.clusters == 13] <- "Outlier?"
+new.clusters[new.clusters == 14] <- "S8"
+new.clusters[new.clusters == 15] <- "Late Spermatocytes"
+new.clusters[new.clusters == 16] <- "Late Spermatocytes"
+new.clusters[new.clusters == 17] <- "Mid Spermatocytes"
+new.clusters[new.clusters == 18] <- "Mid Spermatocytes"
+new.clusters[new.clusters == 19] <- "P10_"
+new.clusters[new.clusters == 20] <- "Peritubular Myoid Cells"
+new.clusters[new.clusters == 21] <- ""
+new.clusters[new.clusters == 22] <- "Leydig cells"
+new.clusters[new.clusters == 23] <- "Spermatogonia"
 new.clusters[new.clusters == 24] <- ""
-new.clusters[new.clusters == 25] <- ""
-new.clusters[new.clusters == 26] <- ""
-new.clusters[new.clusters == 27] <- ""
-new.clusters[new.clusters == 28] <- "Sp_2"
-new.clusters[new.clusters == 29] <- "Spermatocytes_9"
-new.clusters[new.clusters == 30] <- "Spermatocytes_3"
+new.clusters[new.clusters == 25] <- "S1"
+new.clusters[new.clusters == 26] <- "Mature Sertoli Cells?"
+new.clusters[new.clusters == 27] <- "S12"
+new.clusters[new.clusters == 28] <- "S11"
+new.clusters[new.clusters == 29] <- "S2"
+new.clusters[new.clusters == 30] <- "Sertoli cells"
 new.clusters[new.clusters == 31] <- ""
-new.clusters[new.clusters == 32] <- "Sp_4"
+new.clusters[new.clusters == 32] <- "S13"
 
 ```
 
