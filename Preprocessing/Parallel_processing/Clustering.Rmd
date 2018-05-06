@@ -24,7 +24,7 @@ library(dbscan)
 source("../../Functions/auxiliary.R")
 
 # Read in data
-sce.all <- readRDS("/Users/ernst01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_BatchCorrected.rds")
+sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_BatchCorrected.rds")
 ```
 
 # Clustering on batch corrected counts
@@ -55,13 +55,13 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
   geom_point(aes(tsne1, tsne2, colour = cluster)) +
   scale_color_manual(values = col_vector)
 
-colData(sce.all)$CLusters <- clusters
+colData(sce.all)$Clusters <- clusters
 ```
 
 # Save sce
 
 ```{r save}
-saveRDS(sce.all, "/Users/ernst01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 ```
 
 

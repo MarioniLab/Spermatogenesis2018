@@ -48,7 +48,7 @@ shinyServer(function(input, output, session) {
   createPlot.sample <- eventReactive(input$goButton, {
     #cur_sce <- sce[,grepl(input$select, colData(sce)$Sample)]
     
-    cur_col_vector <- c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(8, "Set3"))
+    cur_color_vector <- c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(8, "Set3"))
     
     ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
                       tSNE2 = reducedDims(sce)$TSNE[,2],
@@ -57,7 +57,7 @@ shinyServer(function(input, output, session) {
                                            colData(sce)$Sample),
                                      "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = sample, alpha = shown)) + theme_minimal() + 
-      scale_color_manual(values = cur_col_vector) + scale_alpha_manual(values = to.show) + 
+      scale_color_manual(values = cur_color_vector) + scale_alpha_manual(values = to.show) + 
       guides(alpha=FALSE)
   })
   
@@ -69,7 +69,7 @@ shinyServer(function(input, output, session) {
     
     ggplot(data = data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
                              tSNE2 = reducedDims(sce)$TSNE[,2],
-                             group = colData(sce)$CLusters,
+                             group = colData(sce)$Clusters,
                              shown = factor(ifelse(grepl(paste(input$dataset,collapse="|"), 
                                                   colData(sce)$Sample),
                                                   "Included", "Excluded"), levels = c("Excluded", "Included")))) +
@@ -96,15 +96,15 @@ shinyServer(function(input, output, session) {
     
     ggplot(data.frame(value = Gene[grepl(paste(input$dataset,collapse="|"), 
                                          colData(sce)$Sample)],
-                      cluster = factor(sce$CLusters[grepl(paste(input$dataset,collapse="|"), 
+                      cluster = factor(sce$Clusters[grepl(paste(input$dataset,collapse="|"), 
                                                          colData(sce)$Sample)],
-                                     levels = names(col_vector)),
+                                     levels = names(color_vector)),
                       sample = factor(colData(sce)$Sample[grepl(paste(input$dataset,collapse="|"), 
                                                          colData(sce)$Sample)], 
                                       levels = input$dataset))) +
       geom_boxplot(aes(x = cluster, y = value, fill = cluster, 
                        group = interaction(cluster, sample))) + 
-      scale_fill_manual(values = col_vector) + 
+      scale_fill_manual(values = color_vector) + 
       theme(axis.text.x = element_text(angle = 45, hjust = 1),
             panel.background = element_blank()) 
   })
