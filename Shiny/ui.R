@@ -1,7 +1,7 @@
 library(shiny)
 
 # Define UI for application that draws a histogram
-shinyUI(fillPage(
+shinyUI(fluidPage(
   
   # Application title
   titlePanel("Tsne representation of spermatognesis"),

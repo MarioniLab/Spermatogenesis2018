@@ -100,8 +100,7 @@ shinyServer(function(input, output, session) {
                                                          colData(sce)$Sample)],
                                      levels = names(color_vector)),
                       sample = factor(colData(sce)$Sample[grepl(paste(input$dataset,collapse="|"), 
-                                                         colData(sce)$Sample)], 
-                                      levels = input$dataset))) +
+                                                         colData(sce)$Sample)]))) +
       geom_boxplot(aes(x = cluster, y = value, fill = cluster, 
                        group = interaction(cluster, sample))) + 
       scale_fill_manual(values = color_vector) + 
