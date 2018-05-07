@@ -81,7 +81,7 @@ is.cell <- empty.droplets$FDR <= 0.01
 is.cell[is.na(is.cell)] <- FALSE
 sce.do17821.empty <- sce.do17821[,!is.cell]
 sce.do17821 <- sce.do17821[,is.cell]
-saveRDS(sce.do17821.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17821_empty.rds")
+#saveRDS(sce.do17821.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17821_empty.rds")
 rm(sce.do17821.empty)
 
 # P15
@@ -91,7 +91,7 @@ is.cell <- empty.droplets$FDR <= 0.01
 is.cell[is.na(is.cell)] <- FALSE
 sce.do17828.empty <- sce.do17828[,!is.cell]
 sce.do17828 <- sce.do17828[,is.cell]
-saveRDS(sce.do17828.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17828_empty.rds")
+#saveRDS(sce.do17828.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17828_empty.rds")
 rm(sce.do17828.empty)
 
 # P20
@@ -111,7 +111,7 @@ is.cell <- empty.droplets$FDR <= 0.01
 is.cell[is.na(is.cell)] <- FALSE
 sce.do17825.empty <- sce.do17825[,!is.cell]
 sce.do17825 <- sce.do17825[,is.cell]
-saveRDS(sce.do17825.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17825_empty.rds")
+#saveRDS(sce.do17825.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17825_empty.rds")
 rm(sce.do17825.empty)
 
 # P35
@@ -121,7 +121,7 @@ is.cell <- empty.droplets$FDR <= 0.01
 is.cell[is.na(is.cell)] <- FALSE
 sce.do17827.empty <- sce.do17827[,!is.cell]
 sce.do17827 <- sce.do17827[,is.cell]
-saveRDS(sce.do17827.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17827_empty.rds")
+#saveRDS(sce.do17827.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17827_empty.rds")
 rm(sce.do17827.empty)
 
 # B6
@@ -131,7 +131,7 @@ is.cell <- empty.droplets$FDR <= 0.01
 is.cell[is.na(is.cell)] <- FALSE
 sce.do17815.empty <- sce.do17815[,!is.cell]
 sce.do17815 <- sce.do17815[,is.cell]
-saveRDS(sce.do17815.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17815_empty.rds")
+#saveRDS(sce.do17815.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17815_empty.rds")
 rm(sce.do17815.empty)
 
 set.seed(100)
@@ -140,7 +140,7 @@ is.cell <- empty.droplets$FDR <= 0.01
 is.cell[is.na(is.cell)] <- FALSE
 sce.do17816.empty <- sce.do17816[,!is.cell]
 sce.do17816 <- sce.do17816[,is.cell]
-saveRDS(sce.do17816.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17816_empty.rds")
+#saveRDS(sce.do17816.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17816_empty.rds")
 rm(sce.do17816.empty)
 
 # TC0
@@ -150,7 +150,7 @@ is.cell <- empty.droplets$FDR <= 0.01
 is.cell[is.na(is.cell)] <- FALSE
 sce.do15984.empty <- sce.do15984[,!is.cell]
 sce.do15984 <- sce.do15984[,is.cell]
-saveRDS(sce.do15984.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do15984_empty.rds")
+#saveRDS(sce.do15984.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do15984_empty.rds")
 rm(sce.do15984.empty)
 
 set.seed(100)
@@ -159,7 +159,7 @@ is.cell <- empty.droplets$FDR <= 0.01
 is.cell[is.na(is.cell)] <- FALSE
 sce.do17622.empty <- sce.do17622[,!is.cell]
 sce.do17622 <- sce.do17622[,is.cell]
-saveRDS(sce.do17622.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17622_empty.rds")
+#saveRDS(sce.do17622.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17622_empty.rds")
 rm(sce.do17622.empty)
 
 # Tc1
@@ -169,7 +169,7 @@ is.cell <- empty.droplets$FDR <= 0.01
 is.cell[is.na(is.cell)] <- FALSE
 sce.do15983.empty <- sce.do15983[,!is.cell]
 sce.do15983 <- sce.do15983[,is.cell]
-saveRDS(sce.do15983.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do15983_empty.rds")
+#saveRDS(sce.do15983.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do15983_empty.rds")
 rm(sce.do15983.empty)
 
 set.seed(100)
@@ -178,7 +178,39 @@ is.cell <- empty.droplets$FDR <= 0.01
 is.cell[is.na(is.cell)] <- FALSE
 sce.do17623.empty <- sce.do17623[,!is.cell]
 sce.do17623 <- sce.do17623[,is.cell]
-saveRDS(sce.do17623.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17623_empty.rds")
+#saveRDS(sce.do17623.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17623_empty.rds")
 rm(sce.do17623.empty)
+
+```
+
+# Filtering
+
+```{r filtering}
+# Merge datasets
+sce.all <- cbind(sce.do17815, sce.do17816, sce.do15984, sce.do17622, 
+                  sce.do15983, sce.do17623, sce.do17821, sce.do17828, sce.do17824, 
+                 sce.do17825, sce.do17827)
+rm(list=setdiff(ls(), "sce.all"))
+
+sce.all <- calculateQCMetrics(sce.all)
+
+plot(colData(sce.all)$total_counts, colData(sce.all)$total_features, log = "x", pch = 16, 
+     xlab = "Total counts", ylab = "Number of genes", 
+     col = ifelse(colData(sce.all)$total_features > 500, "black", "red"))
+sce.all <- sce.all[,colData(sce.all)$total_features > 500]
+
+# Remove cells with high mitochondrial reads
+mt <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE,
+                 stringsAsFactors = FALSE)
+mt <- mt[mt$Chromosome.scaffold.name == "MT",]
+plot(Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts, 
+     pch = 16, ylab = "% mitochondrial reads")
+sce.all <- sce.all[,Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts < 0.1]
+
+# Remove duplicated barcodes
+#sce.all <- sce.all[,-which(colData(sce.all)$Barcode %in% colData(sce.all)$Barcode[which(duplicated(colData(sce.all)$Barcode))])]
+
+# Remove genes that are not expressed
+#sce.all <- sce.all[Matrix::rowSums(counts(sce.all)) > 0,]
 
 ```

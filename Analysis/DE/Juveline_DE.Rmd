@@ -1,8 +1,13 @@
 ---
 title: "Juveline differential expression analysis"
-author: "eling01 Eling"
-date: "18/04/2018"
-output: html_document
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/DE/Juvenile_DE.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -19,52 +24,45 @@ between juveline animals and adult animals.
 library(scran)
 library(scater)
 library(openxlsx)
+library(DropletUtils)
 library(goseq)
 library(GO.db)
 library(org.Mm.eg.db)
 
 # Read in data
-# Adult
-sce.adult <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-sce.adult <- sce.adult[,grepl("B6", colData(sce.adult)$Sample)]
-sce.adult <- normalize(sce.adult)
-rowData(sce.adult) <- rowData(sce.adult)[,1:3]
-
-# Juvenile
-sce.juvenile <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_juvenile.rds")
-rowData(sce.juvenile) <- rowData(sce.juvenile)[,1:3]
-sce.P15 <- sce.juvenile[,grepl("P15", colData(sce.juvenile)$Sample)]
-sce.P15 <- normalize(sce.P15)
-
-sce.P20 <- sce.juvenile[,grepl("P20", colData(sce.juvenile)$Sample)]
-sce.P20 <- normalize(sce.P20)
-
-sce.P30 <- sce.juvenile[,grepl("P30", colData(sce.juvenile)$Sample)]
-sce.P30 <- normalize(sce.P30)
-
-# P10
-sce.P10 <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_P10.rds")
-rowData(sce.P10) <- rowData(sce.P10)[,1:3]
-colData(sce.P10)$Cluster <- colData(sce.P10)$Clusters
-colData(sce.P10)$Clusters <- NULL
-
-# P35
-sce.P35 <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_P35.rds")
-rowData(sce.P35) <- rowData(sce.P35)[,1:3]
+sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 
 # Read in length of genes
 genelength <- read.table("../../Data/Genelength.txt", header = TRUE, sep = "\t")
 ```
 
-# Perfom differnetial expression and GO enrichment 
+# Perfom differential expression testing and GO enrichment 
 
 ## P10 vs adult
 
 ```{r}
 # Combine data for testing
-genes <- intersect(rownames(sce.adult), rownames(sce.P10))
-cur_sce <- cbind(sce.adult[genes,], sce.P10[genes,])
+cur_sce <- sce.all[,grepl("P10", colData(sce.all)$Sample) | 
+                     grepl("B6", colData(sce.all)$Sample)]
 cur_sce <- normalize(cur_sce)
+dge <- convertTo(cur_sce, "edgeR")
+
+# Read in empty droplets and compute log2FC
+sce.B6.1.empty <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17815_empty.rds")
+sce.B6.2.empty <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17816_empty.rds")
+sce.P10.empty <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17821_empty.rds")
+
+# Subsample by library size
+counts(sce.B6.1.empty) <- downsampleMatrix(counts(sce.B6.1.empty),
+                        prop=sum(counts(sce.P10.empty))/sum(counts(sce.B6.1.empty)))
+counts(sce.B6.2.empty) <- downsampleMatrix(counts(sce.B6.2.empty),
+                        prop=sum(counts(sce.P10.empty))/sum(counts(sce.B6.2.empty)))
+sce.B6.empty <- cbind(sce.B6.1.empty, sce.B6.2.empty)
+
+log2FC.Null <- log2(Matrix::rowMeans(counts(sce.B6.empty))/
+                      Matrix::rowMeans(counts(sce.P10.empty)))
+log2FC.Null[is.nan(log2FC.Null)] <- 0
+
 
 # Perform differential expression analysis for cell groups detected in P10
 results.DE <- list()
@@ -72,12 +70,6 @@ results.GO <- list()
 
 # Perform differential expression testing only between spermatogonia
 
-# Specify genes that capture batch effect
-# P10
-#P10.genes <- c("Rpl41", "Rpl37", "Rpl23", "Rps27", "Rps29")
-
-# Adult
-#adult.genes <- c("Prm1", "Prm2", "Tnp1", "Tnp2", "Prm3")
 
 
 cur_markers <- findMarkers(cur_sce[,colData(cur_sce)$Cluster == "2" | colData(cur_sce)$Cluster == "P10_2"],
