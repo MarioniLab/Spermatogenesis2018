@@ -41,7 +41,7 @@ clusters[clusters == names(table(clusters))[table(clusters) < 30]] <- "Outliers"
 # Visualize clustering
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
-color_vector = c("#242435", "#D9D9ED","#D62261","#BCBCC2","#B19B31","#282B69","#572972","#421449","#4A1028","#851A4F","#643F18","#0F1131","#FFDFB2","#60AC78","#985D25","#176D38","#C58C58","#827BAF","#F36E21","#71719A","#47476B","#AFB3DA","#9595C9","#93381F","#A58D81","#8A8A9B","#2A348B","#6167AF","#5F4E97","#EE6493","#CECAE5","#ff00ff")
+color_vector = c("#47476B", "#F36E21","#985D25","#643F18","#5F4E97","#C58C58","#B19B31","#572972","#D62261","#851A4F","#FFDFB2","#71719A","#9595C9","#AFB3DA","#176D38","#421449","#EE6493","#2A348B","#827BAF","#93381F","#D9D9ED","#242435","#CECAE5","#067277","#8A8A9B","#6167AF","#0F1131","#282B69","#BCBCC2","#4A1028","#A58D81","#ff00ff")
 names(color_vector) <- levels(as.factor(clusters))
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   tsne2 = reducedDims(sce.all)$TSNE[,2],
@@ -71,37 +71,37 @@ saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/A
 
 ```{r annotation}
 new.clusters <- new.clusters
-new.clusters[new.clusters == 1] <- "S10"
-new.clusters[new.clusters == 2] <- "S9"
-new.clusters[new.clusters == 3] <- "S5"
-new.clusters[new.clusters == 4] <- "S7"
-new.clusters[new.clusters == 5] <- "S6"
-new.clusters[new.clusters == 7] <- "Meiosis"
-new.clusters[new.clusters == 8] <- "Early Spermatocytes"
-new.clusters[new.clusters == 9] <- "S4"
-new.clusters[new.clusters == 10] <- "S3"
-new.clusters[new.clusters == 11] <- "Early Spermatocytes"
-new.clusters[new.clusters == 12] <- "S14"
-new.clusters[new.clusters == 13] <- "Outlier?"
-new.clusters[new.clusters == 14] <- "S8"
-new.clusters[new.clusters == 15] <- "Late Spermatocytes"
+new.clusters[new.clusters == 1] <- "S11"
+new.clusters[new.clusters == 2] <- "S12"
+new.clusters[new.clusters == 3] <- "S4"
+new.clusters[new.clusters == 4] <- "S9"
+new.clusters[new.clusters == 5] <- "S8"
+new.clusters[new.clusters == 6] <- "S14"
+new.clusters[new.clusters == 7] <- "Mid Spermatocytes"
+new.clusters[new.clusters == 9] <- "P10_"
+new.clusters[new.clusters == 10] <- "P10_Leydig?"
+new.clusters[new.clusters == 11] <- "Leydig"
+new.clusters[new.clusters == 12] <- "Sertoli"
+new.clusters[new.clusters == 13] <- "Meiosis"
+new.clusters[new.clusters == 14] <- "Peritubular Myoid Cells"
+new.clusters[new.clusters == 15] <- "Mainly_P15_P20"
 new.clusters[new.clusters == 16] <- "Late Spermatocytes"
-new.clusters[new.clusters == 17] <- "Mid Spermatocytes"
+new.clusters[new.clusters == 17] <- "Early Spermatocytes"
 new.clusters[new.clusters == 18] <- "Mid Spermatocytes"
 new.clusters[new.clusters == 19] <- "P10_"
-new.clusters[new.clusters == 20] <- "Peritubular Myoid Cells"
-new.clusters[new.clusters == 21] <- ""
-new.clusters[new.clusters == 22] <- "Leydig cells"
-new.clusters[new.clusters == 23] <- "Spermatogonia"
-new.clusters[new.clusters == 24] <- ""
-new.clusters[new.clusters == 25] <- "S1"
-new.clusters[new.clusters == 26] <- "Mature Sertoli Cells?"
-new.clusters[new.clusters == 27] <- "S12"
-new.clusters[new.clusters == 28] <- "S11"
-new.clusters[new.clusters == 29] <- "S2"
-new.clusters[new.clusters == 30] <- "Sertoli cells"
-new.clusters[new.clusters == 31] <- ""
-new.clusters[new.clusters == 32] <- "S13"
+new.clusters[new.clusters == 20] <- "S5"
+new.clusters[new.clusters == 21] <- "S2"
+new.clusters[new.clusters == 22] <- "Spermatogonia"
+new.clusters[new.clusters == 23] <- "Late Spermatocytes"
+new.clusters[new.clusters == 24] <- "Early Spermatocytes"
+new.clusters[new.clusters == 25] <- "S7"
+new.clusters[new.clusters == 26] <- "S1"
+new.clusters[new.clusters == 27] <- "Adult?"
+new.clusters[new.clusters == 28] <- "S3"
+new.clusters[new.clusters == 29] <- "S10"
+new.clusters[new.clusters == 30] <- "Adult?"
+new.clusters[new.clusters == 31] <- "S13"
+new.clusters[new.clusters == 32] <- "S6"
 
 ```
 
