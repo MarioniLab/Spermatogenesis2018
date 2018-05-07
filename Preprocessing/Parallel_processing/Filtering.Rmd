@@ -30,7 +30,7 @@ library(RColorBrewer)
 
 # Read in data - Single cell experiment object per batch
 # P10
-sce.do17821 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17821/raw_gene_bc_matrices/Mus_human_chr21/")
+sce.do17821 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17821/filtered_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do17821)$Sample <- rep("P10_do17821", ncol(sce.do17821))
 
 # P15
@@ -46,7 +46,7 @@ sce.do17825 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Chri
 colData(sce.do17825)$Sample <- rep("P30_do17825", ncol(sce.do17825))
 
 # P35
-sce.do17827 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17827/raw_gene_bc_matrices/Mus_human_chr21/")
+sce.do17827 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17827/filtered_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do17827)$Sample <- rep("P35_do17827", ncol(sce.do17827))
 
 # B6
@@ -71,82 +71,25 @@ sce.do17623 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Chri
 colData(sce.do17623)$Sample <- rep("Tc1_do17623", ncol(sce.do17623))
 ```
 
-# P10 filtering
-
-```{r P10}
-# Empty droplets
-set.seed(100)
-empty.droplets <- emptyDrops(counts(sce.do17821)) 
-is.cell <- empty.droplets$FDR <= 0.01
-is.cell[is.na(is.cell)] <- FALSE
-sce.do17821 <- sce.do17821[,is.cell]
-
-# Apply more filtering steps on these cells
-sce.do17821 <- calculateQCMetrics(sce.do17821)
-
-# Number of genes detected
-plot(colData(sce.do17821)$total_counts, colData(sce.do17821)$total_features, log = "x", pch = 16, 
-     xlab = "Total counts", ylab = "Number of genes", 
-     col = ifelse(colData(sce.do17821)$total_features > 200, "black", "red"))
-sce.do17821 <- sce.do17821[,colData(sce.do17821)$total_features > 200]
-
-rowData(sce.do17821) <- rowData(sce.do17821)[,c("ID", "Symbol")]
-```
-
-# P35 filtering
-
-```{r P35}
-# Empty droplets
-set.seed(100)
-empty.droplets <- emptyDrops(counts(sce.do17827)) 
-is.cell <- empty.droplets$FDR <= 0.01
-is.cell[is.na(is.cell)] <- FALSE
-sce.do17827 <- sce.do17827[,is.cell]
-
-sce.do17827 <- calculateQCMetrics(sce.do17827)
-
-# Number of genes detected
-plot(colData(sce.do17827)$total_counts, colData(sce.do17827)$total_features, log = "x", pch = 16, 
-     xlab = "Total counts", ylab = "Number of genes", 
-     col = ifelse(colData(sce.do17827)$total_features > 500, "black", "red"))
-sce.do17827 <- sce.do17827[,colData(sce.do17827)$total_features > 500]
-
-# Total features
-plot(colData(sce.do17827)$total_counts, colData(sce.do17827)$total_features, log = "x", pch = 16, 
-     xlab = "Total counts", ylab = "Number of genes", 
-     col = ifelse(colData(sce.do17827)$total_counts > 3000, "black", "red"))
-sce.do17827 <- sce.do17827[,colData(sce.do17827)$total_counts > 3000]
-
-rowData(sce.do17827) <- rowData(sce.do17827)[,c("ID", "Symbol")]
-```
-
-# Filtering on remaining samples
+# Filtering 
 
 ```{r Other}
 # Merge reamining datasets
-sce.rest <- cbind(sce.do17815, sce.do17816, sce.do15984, sce.do17622, 
-                  sce.do15983, sce.do17623, sce.do17824, sce.do17825, 
-                  sce.do17828)
+sce.all <- cbind(sce.do17815, sce.do17816, sce.do15984, sce.do17622, 
+                  sce.do15983, sce.do17623, sce.do17821, sce.do17828, sce.do17824, 
+                 sce.do17825, sce.do17827)
 
 # Calculate QC metrics
-sce.rest <- calculateQCMetrics(sce.rest)
+sce.all <- calculateQCMetrics(sce.all)
 
 # Remove cells with few features
-plot(colData(sce.rest)$total_counts, colData(sce.rest)$total_features, log = "x", pch = 16, 
+plot(colData(sce.all)$total_counts, colData(sce.all)$total_features, log = "x", pch = 16, 
      xlab = "Total counts", ylab = "Number of genes", 
-     col = ifelse(colData(sce.rest)$total_features > 2000, "black", "red"))
-sce.rest <- sce.rest[,colData(sce.rest)$total_features > 2000]
+     col = ifelse(colData(sce.all)$total_features > 2000, "black", "red"))
+sce.all <- sce.all[,colData(sce.all)$total_features > 2000]
 
-rowData(sce.rest) <- rowData(sce.rest)[,c("ID", "Symbol")]
-```
-
-# Merge data and further QC
-
-```{r further_filtering}
-sce.all <- cbind(sce.rest, sce.do17821, sce.do17827)
-
-# Remove 
-mt <- read.table("../../../Data/Mouse_genes.txt", sep = "\t", header = TRUE,
+# Remove cells with high mitochondrial reads
+mt <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE,
                  stringsAsFactors = FALSE)
 mt <- mt[mt$Chromosome.scaffold.name == "MT",]
 plot(Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts, 
