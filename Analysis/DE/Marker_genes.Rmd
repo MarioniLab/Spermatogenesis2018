@@ -14,3 +14,36 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Read in data
+
+```{r data, message=FALSE}
+library(scater)
+library(scran)
+library(openxlsx)
+source("../../Functions/auxiliary.R")
+
+# All cells
+sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+
+# B6 cells
+sce.B6 <- sce.all[,grepl("B6", colData(sce.all)$Sample)]
+sce.B6 <- normalize(sce.B6)
+
+# P10 cells
+sce.P10 <- sce.all[,grepl("P10", colData(sce.all)$Sample)]
+sce.P10 <- normalize(sce.P10)
+```
+
+# Spermatogenesis marker genes
+
+```{r spermatogenesis}
+sperm.markers <- marker.detection(sce.B6, colData(sce.B6)$Clusters)
+write.xlsx(sperm.markers, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.xlsx")
+```
+
+# Somatic cells marker genes
+
+```{r spermatogenesis}
+somatic.markers <- marker.detection(sce.P10, colData(sce.P10)$Clusters)
+write.xlsx(somatic.markers, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_P10.xlsx")
+```
