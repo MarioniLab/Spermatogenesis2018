@@ -1,0 +1,184 @@
+---
+title: "Empty Droplets"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/QualityControl/EmptyDrops.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Read in data
+
+```{r data, message=FALSE}
+# Load libraries
+library(Matrix)
+library(scran)
+library(plot3D)
+library(Rtsne)
+library(ggplot2)
+library(DropletUtils)
+library(scater)
+library(viridis)
+library(RColorBrewer)
+
+# Read in data - Single cell experiment object per batch
+# P10
+sce.do17821 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17821/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17821)$Sample <- rep("P10_do17821", ncol(sce.do17821))
+
+# P15
+sce.do17828 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17828/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17828)$Sample <- rep("P15_do17828", ncol(sce.do17828))
+
+# P20
+sce.do17824 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17824/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17824)$Sample <- rep("P20_do17824", ncol(sce.do17824))
+
+# P30
+sce.do17825 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17825/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17825)$Sample <- rep("P30_do17825", ncol(sce.do17825))
+
+# P35
+sce.do17827 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17827/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17827)$Sample <- rep("P35_do17827", ncol(sce.do17827))
+
+# B6
+sce.do17815 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17815/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17815)$Sample <- rep("B6_do17815", ncol(sce.do17815))
+
+sce.do17816 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17816/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17816)$Sample <- rep("B6_do17816", ncol(sce.do17816))
+
+# Tc0
+sce.do15984 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15984/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do15984)$Sample <- rep("Tc0_do15984", ncol(sce.do15984))
+
+sce.do17622 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17622/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17622)$Sample <- rep("Tc0_do17622", ncol(sce.do17622))
+
+# Tc1
+sce.do15983 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do15983)$Sample <- rep("Tc1_do15983", ncol(sce.do15983))
+
+sce.do17623 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17623/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do17623)$Sample <- rep("Tc1_do17623", ncol(sce.do17623))
+```
+
+# Identify empty droplets
+
+```{r emptyDrops}
+# P10
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do17821)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do17821.empty <- sce.do17821[,!is.cell]
+sce.do17821 <- sce.do17821[,is.cell]
+saveRDS(sce.do17821.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17821_empty.rds")
+rm(sce.do17821.empty)
+
+# P15
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do17828)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do17828.empty <- sce.do17828[,!is.cell]
+sce.do17828 <- sce.do17828[,is.cell]
+saveRDS(sce.do17828.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17828_empty.rds")
+rm(sce.do17828.empty)
+
+# P20
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do17824)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do17824.empty <- sce.do17824[,!is.cell]
+sce.do17824 <- sce.do17824[,is.cell]
+saveRDS(sce.do17824.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17824_empty.rds")
+rm(sce.do17824.empty)
+
+# P30
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do17825)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do17825.empty <- sce.do17825[,!is.cell]
+sce.do17825 <- sce.do17825[,is.cell]
+saveRDS(sce.do17825.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17825_empty.rds")
+rm(sce.do17825.empty)
+
+# P35
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do17827)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do17827.empty <- sce.do17827[,!is.cell]
+sce.do17827 <- sce.do17827[,is.cell]
+saveRDS(sce.do17827.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17827_empty.rds")
+rm(sce.do17827.empty)
+
+# B6
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do17815)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do17815.empty <- sce.do17815[,!is.cell]
+sce.do17815 <- sce.do17815[,is.cell]
+saveRDS(sce.do17815.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17815_empty.rds")
+rm(sce.do17815.empty)
+
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do17816)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do17816.empty <- sce.do17816[,!is.cell]
+sce.do17816 <- sce.do17816[,is.cell]
+saveRDS(sce.do17816.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17816_empty.rds")
+rm(sce.do17816.empty)
+
+# TC0
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do15984)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do15984.empty <- sce.do15984[,!is.cell]
+sce.do15984 <- sce.do15984[,is.cell]
+saveRDS(sce.do15984.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do15984_empty.rds")
+rm(sce.do15984.empty)
+
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do17622)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do17622.empty <- sce.do17622[,!is.cell]
+sce.do17622 <- sce.do17622[,is.cell]
+saveRDS(sce.do17622.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17622_empty.rds")
+rm(sce.do17622.empty)
+
+# Tc1
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do15983)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do15983.empty <- sce.do15983[,!is.cell]
+sce.do15983 <- sce.do15983[,is.cell]
+saveRDS(sce.do15983.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do15983_empty.rds")
+rm(sce.do15983.empty)
+
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do17623)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do17623.empty <- sce.do17623[,!is.cell]
+sce.do17623 <- sce.do17623[,is.cell]
+saveRDS(sce.do17623.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17623_empty.rds")
+rm(sce.do17623.empty)
+
+```
