@@ -70,38 +70,89 @@ saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/A
 # Annotation of clusters
 
 ```{r annotation}
-new.clusters <- new.clusters
+sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+
+new.clusters <- colData(sce.all)$Clusters
 new.clusters[new.clusters == 1] <- "S11"
 new.clusters[new.clusters == 2] <- "S12"
 new.clusters[new.clusters == 3] <- "S4"
 new.clusters[new.clusters == 4] <- "S9"
 new.clusters[new.clusters == 5] <- "S8"
 new.clusters[new.clusters == 6] <- "S14"
-new.clusters[new.clusters == 7] <- "Mid Spermatocytes"
-new.clusters[new.clusters == 9] <- "P10_"
-new.clusters[new.clusters == 10] <- "P10_Leydig?"
+new.clusters[new.clusters == 7] <- "Mid Spermatocytes 2"
+new.clusters[new.clusters == 9] <- "ECM"
+new.clusters[new.clusters == 10] <- "tMg"
 new.clusters[new.clusters == 11] <- "Leydig"
 new.clusters[new.clusters == 12] <- "Sertoli"
 new.clusters[new.clusters == 13] <- "Meiosis"
-new.clusters[new.clusters == 14] <- "Peritubular Myoid Cells"
-new.clusters[new.clusters == 15] <- "Mainly_P15_P20"
-new.clusters[new.clusters == 16] <- "Late Spermatocytes"
-new.clusters[new.clusters == 17] <- "Early Spermatocytes"
-new.clusters[new.clusters == 18] <- "Mid Spermatocytes"
-new.clusters[new.clusters == 19] <- "P10_"
+new.clusters[new.clusters == 14] <- "PTM 1"
+new.clusters[new.clusters == 15] <- "Outliers"
+new.clusters[new.clusters == 16] <- "Late Spermatocytes 2"
+new.clusters[new.clusters == 17] <- "Early Spermatocytes 2"
+new.clusters[new.clusters == 18] <- "Mid Spermatocytes 1"
+new.clusters[new.clusters == 19] <- "PTM 2"
 new.clusters[new.clusters == 20] <- "S5"
 new.clusters[new.clusters == 21] <- "S2"
 new.clusters[new.clusters == 22] <- "Spermatogonia"
-new.clusters[new.clusters == 23] <- "Late Spermatocytes"
-new.clusters[new.clusters == 24] <- "Early Spermatocytes"
+new.clusters[new.clusters == 23] <- "Late Spermatocytes 1"
+new.clusters[new.clusters == 24] <- "Early Spermatocytes 1"
 new.clusters[new.clusters == 25] <- "S7"
 new.clusters[new.clusters == 26] <- "S1"
-new.clusters[new.clusters == 27] <- "Adult?"
+new.clusters[new.clusters == 27] <- "Outliers"
 new.clusters[new.clusters == 28] <- "S3"
 new.clusters[new.clusters == 29] <- "S10"
-new.clusters[new.clusters == 30] <- "Adult?"
+new.clusters[new.clusters == 30] <- "Outliers"
 new.clusters[new.clusters == 31] <- "S13"
 new.clusters[new.clusters == 32] <- "S6"
 
+colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
+      levels = c("Spermatogonia", "Early Spermatocytes 1", 
+                   "Early Spermatocytes 2", "Mid Spermatocytes 1" , 
+                   "Mid Spermatocytes 2", "Late Spermatocytes 1" ,
+                   "Late Spermatocytes 2", "Meiosis", "S1", "S2",
+                   "S3", "S4", "S5", "S6", "S7", "S8", "S9",
+                   "S10", "S11", "S12", "S13",
+                   "S14", "Leydig", "Sertoli", "PTM 1", 
+                   "PTM 2", "tMg", "ECM", "Outliers"))
+
+colour_vector <- c("Spermatogonia" = "#166D37", 
+                   "Early Spermatocytes 1" = "#EE6493", 
+                   "Early Spermatocytes 2" = "#D62361",
+                   "Mid Spermatocytes 1" = "#851A4F", 
+                   "Mid Spermatocytes 2" = "#58253A",
+                   "Late Spermatocytes 1" = "#421449",
+                   "Late Spermatocytes 2" = "#572972", 
+                   "Meiosis" = "#5F4E97",
+                   "S1" = "#827BAF",
+                   "S2" = "#AFB3DA",
+                   "S3" = "#D9D9ED",
+                   "S4" = "#CECAE5",
+                   "S5" = "#9595C9",
+                   "S6" = "#6167AF",
+                   "S7" = "#2A348B",
+                   "S8" = "#282B69",
+                   "S9" = "#0F1131",
+                   "S10" = "#242535",
+                   "S11" = "#47466B",
+                   "S12" = "#71719A",
+                   "S13" = "#8A8A9B",
+                   "S14" = "#BCBCC2",
+                   "Leydig" = "#985D25",
+                   "Sertoli" = "#643F18",
+                   "PTM 1" = "#C58C58", 
+                   "PTM 2" = "#FFDFB2",
+                   "tMg" = "#F36E20",
+                   "ECM" = "#A58D81",
+                   "Outliers" = "#067277")
+
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  cluster = as.factor(colData(sce.all)$Sample))) +
+  geom_point(aes(tsne1, tsne2, colour = colData(sce.all)$AnnotatedClusters)) +
+  scale_color_manual(values = colour_vector)
+```
+
+```{r}
+saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 ```
 
