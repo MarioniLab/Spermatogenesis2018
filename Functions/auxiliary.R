@@ -8,6 +8,7 @@ library(scran)
 library(dynamicTreeCut)
 library(slingshot)
 library(dbscan)
+library(edgeR)
 
 #### Split Single cell experiment
 split.sce <- function(sce, groups, colData.name = "SubCluster"){
@@ -161,4 +162,33 @@ batch.correction <- function(sce, number.HVG = 1000){
                      ", cos.norm.in=TRUE, cos.norm.out=TRUE, sigma=0.1)")
   corrected <- eval( parse(text=func) )
   do.call("cbind", corrected$corrected)
+}
+
+#### DE between ambient profiles
+DE.ambient <- function(sce.ambient, sample.names, lfc = 1, seed = 12345){
+  # Generate pseudo bulk replicates for each 10X run
+  set.seed(seed)
+  mat <- matrix(data = NA, ncol = 5*length(unique(colData(sce.ambient)$Sample)), 
+                nrow = nrow(counts(sce.ambient)))
+  rownames(mat) <- rownames(counts(sce.ambient))
+  colnames(mat) <- paste(rep(unique(colData(sce.ambient)$Sample), each = 5), 1:5, sep = "_")
+
+  for(i in unique(colData(sce.ambient)$Sample)){
+    cur_sample <- sample(5, sum(colData(sce.ambient)$Sample == i), replace = TRUE)
+    cur_data <- counts(sce.ambient)[,colData(sce.ambient)$Sample == i]
+    for(j in 1:5){
+      mat[,paste(i, j, sep = "_")] <- Matrix::rowSums(cur_data[,cur_sample == j]) 
+    }
+  }
+  
+  # Perform differential testing
+  y <- DGEList(counts=mat,group=sapply(colnames(mat), function(n){unlist(strsplit(n, "_"))[1]}))
+  y <- calcNormFactors(y)
+  design <- model.matrix(~sapply(colnames(mat), function(n){unlist(strsplit(n, "_"))[1]}))
+  y <- estimateDisp(y,design)
+  
+  fit <- glmQLFit(y,design)
+  qlf <- glmTreat(fit,coef=2, lfc = lfc)
+  topTags(qlf, n = nrow(qlf$table))$table
+  
 }
