@@ -12,7 +12,7 @@ shinyUI(fluidPage(
                        list(placeholder = 'Select a gene name', maxItems = 1, 
                             maxOptions = 5)),
       selectizeInput("dataset", label = "Select dataset", 
-                  choices = c("B6", "P10", "P15", "P20", "P30", "P35", "Tc1", "Tc2"),
+                  choices = c("B6", "P10", "P15", "P20", "P30", "P35", "Tc0", "Tc1"),
                   options = list(placeholder = 'Select one or multiple datasets',
                                  maxItems = 6)),
       actionButton("goButton", "Go!")
