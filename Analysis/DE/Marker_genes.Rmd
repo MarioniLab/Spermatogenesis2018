@@ -27,23 +27,26 @@ sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes
 
 # B6 cells
 sce.B6 <- sce.all[,grepl("B6", colData(sce.all)$Sample)]
+sce.B6 <- sce.B6[,!(as.character(colData(sce.B6)$AnnotatedClusters) %in% 
+c("PTM 1", "PTM 2", "tMg", "ECM", "Outliers"))]
 sce.B6 <- normalize(sce.B6)
 
 # P10 cells
 sce.P10 <- sce.all[,grepl("P10", colData(sce.all)$Sample)]
+sce.P10 <- sce.P10[,!(as.character(colData(sce.P10)$AnnotatedClusters) %in% "Early Spermatocytes 1")]
 sce.P10 <- normalize(sce.P10)
 ```
 
 # Spermatogenesis marker genes
 
 ```{r spermatogenesis}
-sperm.markers <- marker.detection(sce.B6, colData(sce.B6)$Clusters)
+sperm.markers <- marker.detection(sce.B6, as.character(colData(sce.B6)$AnnotatedClusters))
 write.xlsx(sperm.markers, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.xlsx")
 ```
 
 # Somatic cells marker genes
 
 ```{r spermatogenesis}
-somatic.markers <- marker.detection(sce.P10, colData(sce.P10)$Clusters)
+somatic.markers <- marker.detection(sce.P10, as.character(colData(sce.P10)$AnnotatedClusters))
 write.xlsx(somatic.markers, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_P10.xlsx")
 ```
