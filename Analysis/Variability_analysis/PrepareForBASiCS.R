@@ -7,10 +7,10 @@ library(ggplot2)
 sce <- readRDS("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 
 # Select conditions to analyse
-conds <- c("Early Spermatocytes 1", 
-           "Early Spermatocytes 2", "Mid Spermatocytes 1" , 
-           "Mid Spermatocytes 2", "Late Spermatocytes 1" ,
-           "Late Spermatocytes 2", "Meiosis", "S1", "S2",
+conds <- c("Early_Spermatocytes_1", 
+           "Early_Spermatocytes_2", "Mid_Spermatocytes_1" , 
+           "Mid_Spermatocytes_2", "Late_Spermatocytes_1" ,
+           "Late_Spermatocytes_2", "Meiosis", "S1", "S2",
            "S3", "S4", "S5", "S6", "S7", "S8", "S9",
            "S10", "S11", "S12", "S13",
            "S14")
@@ -117,24 +117,23 @@ P35 <- as.matrix(counts(sce.P35))
 
 # Rename samples
 colnames(B6_1) <- paste("B6.1", colData(sce.B6.1)$AnnotatedClusters,
-                        colData(sce.B6.1)$Barcode, sep = "_")
+                        colData(sce.B6.1)$Barcode, sep = "-")
 colnames(B6_2) <- paste("B6.2", colData(sce.B6.2)$AnnotatedClusters,
-                        colData(sce.B6.2)$Barcode, sep = "_")
+                        colData(sce.B6.2)$Barcode, sep = "-")
 
 colnames(Tc0_1) <- paste("Tc0.1", colData(sce.Tc0.1)$AnnotatedClusters,
-                        colData(sce.Tc0.1)$Barcode, sep = "_")
+                        colData(sce.Tc0.1)$Barcode, sep = "-")
 colnames(Tc0_2) <- paste("Tc0.2", colData(sce.Tc0.2)$AnnotatedClusters,
-                        colData(sce.Tc0.2)$Barcode, sep = "_")
-
+                        colData(sce.Tc0.2)$Barcode, sep = "-")
 colnames(Tc1_1) <- paste("Tc1.1", colData(sce.Tc1.1)$AnnotatedClusters,
-                        colData(sce.Tc1.1)$Barcode, sep = "_")
+                        colData(sce.Tc1.1)$Barcode, sep = "-")
 colnames(Tc1_2) <- paste("Tc1.2", colData(sce.Tc1.2)$AnnotatedClusters,
-                        colData(sce.Tc1.2)$Barcode, sep = "_")
+                        colData(sce.Tc1.2)$Barcode, sep = "-")
 
 colnames(P30) <- paste("Juvenile.1", colData(sce.P30)$AnnotatedClusters,
-                         colData(sce.P30)$Barcode, sep = "_")
+                         colData(sce.P30)$Barcode, sep = "-")
 colnames(P35) <- paste("Juvenile.2", colData(sce.P35)$AnnotatedClusters,
-                         colData(sce.P35)$Barcode, sep = "_")
+                         colData(sce.P35)$Barcode, sep = "-")
 
 
 # Merge datasets
