@@ -79,23 +79,23 @@ new.clusters[new.clusters == 3] <- "S4"
 new.clusters[new.clusters == 4] <- "S9"
 new.clusters[new.clusters == 5] <- "S8"
 new.clusters[new.clusters == 6] <- "S14"
-new.clusters[new.clusters == 7] <- "Mid Spermatocytes 2"
+new.clusters[new.clusters == 7] <- "Mid_Spermatocytes_2"
 new.clusters[new.clusters == 9] <- "ECM"
 new.clusters[new.clusters == 10] <- "tMg"
 new.clusters[new.clusters == 11] <- "Leydig"
 new.clusters[new.clusters == 12] <- "Sertoli"
 new.clusters[new.clusters == 13] <- "Meiosis"
-new.clusters[new.clusters == 14] <- "PTM 1"
+new.clusters[new.clusters == 14] <- "PTM_1"
 new.clusters[new.clusters == 15] <- "Outliers"
-new.clusters[new.clusters == 16] <- "Late Spermatocytes 2"
-new.clusters[new.clusters == 17] <- "Early Spermatocytes 2"
-new.clusters[new.clusters == 18] <- "Mid Spermatocytes 1"
-new.clusters[new.clusters == 19] <- "PTM 2"
+new.clusters[new.clusters == 16] <- "Late_Spermatocytes_2"
+new.clusters[new.clusters == 17] <- "Early_Spermatocytes_2"
+new.clusters[new.clusters == 18] <- "Mid_Spermatocytes_1"
+new.clusters[new.clusters == 19] <- "PTM_2"
 new.clusters[new.clusters == 20] <- "S5"
 new.clusters[new.clusters == 21] <- "S2"
 new.clusters[new.clusters == 22] <- "Spermatogonia"
-new.clusters[new.clusters == 23] <- "Late Spermatocytes 1"
-new.clusters[new.clusters == 24] <- "Early Spermatocytes 1"
+new.clusters[new.clusters == 23] <- "Late_Spermatocytes_1"
+new.clusters[new.clusters == 24] <- "Early_Spermatocytes_1"
 new.clusters[new.clusters == 25] <- "S7"
 new.clusters[new.clusters == 26] <- "S1"
 new.clusters[new.clusters == 27] <- "Outliers"
@@ -106,22 +106,22 @@ new.clusters[new.clusters == 31] <- "S13"
 new.clusters[new.clusters == 32] <- "S6"
 
 colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
-      levels = c("Spermatogonia", "Early Spermatocytes 1", 
-                   "Early Spermatocytes 2", "Mid Spermatocytes 1" , 
-                   "Mid Spermatocytes 2", "Late Spermatocytes 1" ,
-                   "Late Spermatocytes 2", "Meiosis", "S1", "S2",
+      levels = c("Spermatogonia", "Early_Spermatocytes_1", 
+                   "Early_Spermatocytes_2", "Mid_Spermatocytes_1" , 
+                   "Mid_Spermatocytes_2", "Late_Spermatocytes_1" ,
+                   "Late_Spermatocytes_2", "Meiosis", "S1", "S2",
                    "S3", "S4", "S5", "S6", "S7", "S8", "S9",
                    "S10", "S11", "S12", "S13",
-                   "S14", "Leydig", "Sertoli", "PTM 1", 
-                   "PTM 2", "tMg", "ECM", "Outliers"))
+                   "S14", "Leydig", "Sertoli", "PTM_1", 
+                   "PTM_2", "tMg", "ECM", "Outliers"))
 
 colour_vector <- c("Spermatogonia" = "#166D37", 
-                   "Early Spermatocytes 1" = "#EE6493", 
-                   "Early Spermatocytes 2" = "#D62361",
-                   "Mid Spermatocytes 1" = "#851A4F", 
-                   "Mid Spermatocytes 2" = "#58253A",
-                   "Late Spermatocytes 1" = "#421449",
-                   "Late Spermatocytes 2" = "#572972", 
+                   "Early_Spermatocytes_1" = "#EE6493", 
+                   "Early_Spermatocytes_2" = "#D62361",
+                   "Mid_Spermatocytes_1" = "#851A4F", 
+                   "Mid_Spermatocytes_2" = "#58253A",
+                   "Late_Spermatocytes_1" = "#421449",
+                   "Late_Spermatocytes_2" = "#572972", 
                    "Meiosis" = "#5F4E97",
                    "S1" = "#827BAF",
                    "S2" = "#AFB3DA",
@@ -139,8 +139,8 @@ colour_vector <- c("Spermatogonia" = "#166D37",
                    "S14" = "#BCBCC2",
                    "Leydig" = "#985D25",
                    "Sertoli" = "#643F18",
-                   "PTM 1" = "#C58C58", 
-                   "PTM 2" = "#FFDFB2",
+                   "PTM_1" = "#C58C58", 
+                   "PTM_2" = "#FFDFB2",
                    "tMg" = "#F36E20",
                    "ECM" = "#A58D81",
                    "Outliers" = "#067277")
