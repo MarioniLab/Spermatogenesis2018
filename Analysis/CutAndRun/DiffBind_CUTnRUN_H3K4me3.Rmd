@@ -1,0 +1,94 @@
+---
+title: "DiffBind_CUTnRUN_H3K4me3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DiffBind)
+setwd("/mnt/dolab/group_folders/Personal/Christina/ernst01/spermatogenesis/cut_and_run/DiffBind")
+# Read in Sample Sheet
+H3K4me3_all <- dba(sampleSheet = "DiffBind_CUTnRUN_H3K4me3_all.csv")
+
+H3K4me3_all
+
+```
+
+
+```{r}
+# Occupancy based heatmap, depending on peaks called in different datasets
+plot(H3K4me3_all)
+```
+
+
+```{r}
+# Take read counts into consideration using dba.count using the raw reads
+H3K4me3_counts <- dba.count(H3K4me3_all, score = DBA_SCORE_READS, bParallel = TRUE)
+
+plot(H3K4me3_counts)
+```
+P18 samples and P20 spermatid sample don't cluster well with other samples. These three samples had a large number of called peaks and very low FRiP (<0.2). Probably best to remove these samples. 
+
+```{r}
+# Read in samples from P20 to P30
+
+H3K4me3 <- dba(sampleSheet = "DiffBind_CUTnRUN_H3K4me3_P20-P30.csv")
+H3K4me3
+plot(H3K4me3)
+
+# Consensus peakset for different cell types - present in at least half of samples of the same cell type
+Consensus <- dba.peakset(H3K4me3, consensus = DBA_TISSUE, minOverlap = 0.5)
+Consensus <- dba(Consensus, mask=Consensus$masks$Consensus, minOverlap=1)
+# Plot overlap between these peaksets
+dba.plotVenn(Consensus, Consensus$masks$Consensus)
+
+# Extract consensus peaks
+Consensus_peaks <- dba.peakset(Consensus, bRetrieve = TRUE)
+
+
+# Count reads only across consensus peakset
+Consensus_counts <- dba.count(H3K4me3, peaks=Consensus_peaks, score = DBA_SCORE_TMM_READS_FULL)
+plot(Consensus_counts)
+```
+
+For differential binding between cell types, extract individual timepoints from dba object and compare between spermatocytes and spermatids from the same animal. Possibly also compare spermatocytes and spermatids separately between timepoints. 
+
+```{r}
+# Extract P22 samples
+P22 <- dba(H3K4me3, mask=H3K4me3$masks$P22)
+# Only keep peaks that are present in both replicates for each cell type
+P22_consensus <- dba.peakset(P22, consensus = DBA_TISSUE, minOverlap = 2)
+P22_consensus <- dba(P22_consensus, P22_consensus$masks$Consensus, minOverlap = 1)
+
+# Plot overlap between these peaksets
+dba.plotVenn(P22_consensus, P22_consensus$masks$Consensus)
+
+# Extract consensus peaks
+P22_consensus_peaks <- dba.peakset(P22_consensus, bRetrieve = TRUE)
+
+# Counts over consensus peaks for P22
+P22_consensus_counts <- dba.count(P22, peaks = P22_consensus_peaks, score = DBA_SCORE_RPKM)
+
+# Establish contrast between samples for differential binding analysis between cell types
+P22_contrast <- dba.contrast(P22_consensus_counts, categories = DBA_TISSUE, minMember =2)
+P22_dba <- dba.analyze(P22_contrast, method = DBA_DESEQ2)
+
+#Extract all reagions
+P22_db = dba.report(P22_dba, th=1)
+P22_DB = as.data.frame(P22_db)
+
+library(ggplot2)
+library(dplyr)
+
+P22_ggplot <- P22_DB
+# Minimum fold change of 2.5
+P22_ggplot <- mutate(P22_ggplot, Fold_change = Fold < -2.5 | Fold >2.5)
+# FDR <0.1
+P22_ggplot <- mutate(P22_ggplot, Significant = FDR <0.1 & Fold_change == "TRUE")
+
+#Pearson correlation
+cor.test(x = P22_ggplot[,8], y=P22_ggplot[,7], method = "pearson")
+lm_H3K4me3 <- lm(P22_ggplot[,8] ~ P22_ggplot[,7])
+
+ggplot(P22_ggplot, aes(x = Conc_spermatocytes, y = Conc_spermatids, colour= Significant)) + geom_point(size = 1.5, shape = 19) + ggtitle("H3K4me3 - Spermatocytes vs. Spermatids - P22") + labs(x = "Spermatocytes", y="Spermatids") + scale_colour_manual(values = c("gray28", "darkorchid4"))
+```
