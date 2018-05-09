@@ -139,9 +139,13 @@ colnames(P35) <- paste("Juvenile.2", colData(sce.P35)$AnnotatedClusters,
 
 # Merge datasets
 B6 <- cbind(B6_1, B6_2)
+B6 <- B6[rowMeans(B6) > 0.1,]
 Tc0 <- cbind(Tc0_1, Tc0_2)
+Tc0 <- Tc0[rowMeans(Tc0) > 0.1,]
 Tc1 <- cbind(Tc1_1, Tc1_2)
+Tc1 <- Tc1[rowMeans(Tc1) > 0.1,]
 Juvenile <- cbind(P30, P35)
+Juvenile <- Juvenile[rowMeans(Juvenile) > 0.1,]
 
 saveRDS(B6, "Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/All_B6.rds")
 saveRDS(Tc0, "Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/All_Tc0.rds")
