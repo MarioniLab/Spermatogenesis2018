@@ -41,6 +41,10 @@ sce.P10 <- normalize(sce.P10)
 
 ```{r spermatogenesis}
 sperm.markers <- marker.detection(sce.B6, as.character(colData(sce.B6)$AnnotatedClusters))
+
+# Save rds
+
+# Save xlsx
 write.xlsx(sperm.markers, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.xlsx")
 ```
 
