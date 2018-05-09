@@ -150,6 +150,8 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   cluster = as.factor(colData(sce.all)$Sample))) +
   geom_point(aes(tsne1, tsne2, colour = colData(sce.all)$AnnotatedClusters)) +
   scale_color_manual(values = colour_vector)
+
+metadata(sce.all)$color_vector <- colour_vector
 ```
 
 ```{r}

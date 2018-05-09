@@ -69,7 +69,7 @@ shinyServer(function(input, output, session) {
     
     ggplot(data = data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
                              tSNE2 = reducedDims(sce)$TSNE[,2],
-                             group = colData(sce)$Clusters,
+                             group = colData(sce)$AnnotatedClusters,
                              shown = factor(ifelse(grepl(paste(input$dataset,collapse="|"), 
                                                   colData(sce)$Sample),
                                                   "Included", "Excluded"), levels = c("Excluded", "Included")))) +
@@ -96,7 +96,7 @@ shinyServer(function(input, output, session) {
     
     ggplot(data.frame(value = Gene[grepl(paste(input$dataset,collapse="|"), 
                                          colData(sce)$Sample)],
-                      cluster = factor(sce$Clusters[grepl(paste(input$dataset,collapse="|"), 
+                      cluster = factor(sce$AnnotatedClusters[grepl(paste(input$dataset,collapse="|"), 
                                                          colData(sce)$Sample)],
                                      levels = names(color_vector)),
                       sample = factor(colData(sce)$Sample[grepl(paste(input$dataset,collapse="|"), 
