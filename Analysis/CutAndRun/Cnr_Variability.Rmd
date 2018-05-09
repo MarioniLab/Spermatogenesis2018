@@ -1,0 +1,53 @@
+---
+title: "CnR Variability"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Variability/CnR_Variability.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Read in the peaks
+
+```{r peaks, message=FALSE}
+library(rtracklayer)
+library(EnrichedHeatmap)
+library(GenomicFeatures)
+library(EnsDb.Mmusculus.v79)
+
+# Generate feature annotation
+prom <- promoters(genes(EnsDb.Mmusculus.v79),
+                  upstream = 1500, downstream = 500)
+prom <- prom[seqnames(prom) %in% c(as.character(1:19), "X", "Y", "MT"),]
+tss <- promoters(genes(EnsDb.Mmusculus.v79), 
+                 upstream = 0, downstream = 1)
+tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
+
+# H3K4me3 peaks
+files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Peaks/H3K4me3/BroadPeaks/", full.names = TRUE)
+
+# Bedgraph files
+bedgraph.files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", full.names = TRUE)
+
+# Read in genes that change in variability over pseudotime
+```
+
+# Example analysis
+
+```{r}
+cur_file <- import(files[32])
+cur_bedgraph <- import(bedgraph.files[32])
+
+# Test for enrichemnt heatmap
+mat1 = normalizeToMatrix(cur_bedgraph, tss, extend = 5000, mean_mode = "absolute", w = 50)
+
+EnrichedHeatmap(mat1, name = "H3K4me3_stem_cells")
+```
+
