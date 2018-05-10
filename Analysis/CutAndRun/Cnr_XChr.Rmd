@@ -1,0 +1,403 @@
+---
+title: "CnR Xchr in- and reactivation"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Variability/CnR_XChr.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r peaks, message=FALSE}
+library(rtracklayer)
+library(EnrichedHeatmap)
+library(GenomicFeatures)
+library(EnsDb.Mmusculus.v79)
+library(scater)
+library(plyr)
+library(reshape2)
+library(pheatmap)
+library(viridis)
+
+# Generate feature annotation
+prom <- promoters(genes(EnsDb.Mmusculus.v79),
+                  upstream = 1500, downstream = 500)
+prom <- prom[seqnames(prom) %in% c(as.character(1:19), "X", "Y", "MT"),]
+tss <- promoters(genes(EnsDb.Mmusculus.v79), 
+                 upstream = 0, downstream = 1)
+tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
+tss.X <- tss[seqnames(tss) == "X"]
+
+# Bedgraph files
+bedgraph.files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", full.names = TRUE)
+
+# Select few bedgraph files
+bedgraph.files.H3K4me3.spermatids.24 <- bedgraph.files[grepl("spermatids", bedgraph.files) &
+                                                      grepl("P24", bedgraph.files)]
+bedgraph.files.H3K4me3.spermatocytes.24 <- bedgraph.files[grepl("spermatocytes", bedgraph.files) &
+                                                      grepl("P24", bedgraph.files)]
+
+bedgraph.files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K9me3/", full.names = TRUE)
+
+# Select few bedgraph files
+bedgraph.files.H3K9me3.spermatids.24 <- bedgraph.files[grepl("spermatids", bedgraph.files) &
+                                                      grepl("P24", bedgraph.files)]
+bedgraph.files.H3K9me3.spermatocytes.24 <- bedgraph.files[grepl("spermatocytes", bedgraph.files) &
+                                                      grepl("P24", bedgraph.files)]
+
+# Read in sce data
+sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+
+# Select XChr genes
+genenames <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+sce.XChr <- sce[rowData(sce)$ID %in% tss.X@elementMetadata@listData$gene_id,
+                grepl("B6", colData(sce)$Sample)]
+sce.XChr <- normalize(sce.XChr)
+```
+
+# Remove blacklisted regions
+
+```{r blacklist}
+# Read in blacklist file
+blacklist <- import("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
+seqlevels(blacklist) <- sub("^chr", '', seqlevels(blacklist))
+
+# Remove blacklist regions from bedgraph file
+bedgraph.files.H3K4me3.spermatids.24 <- lapply(as.list(bedgraph.files.H3K4me3.spermatids.24),
+                                               function(n){
+                                                 cur_file <- import(n)
+                                                 cur_removed <- overlapsAny(cur_file, blacklist)
+                                                 cur_file <- cur_file[!cur_removed]
+                                                 cur_file <- cur_file[seqnames(cur_file) %in%
+                                                      c(as.character(1:19), "X", "Y", "MT"),]
+                                                 seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
+                                                 cur_file
+                                               })
+bedgraph.files.H3K4me3.spermatocytes.24 <- lapply(as.list(bedgraph.files.H3K4me3.spermatocytes.24),
+                                               function(n){
+                                                 cur_file <- import(n)
+                                                 cur_removed <- overlapsAny(cur_file, blacklist)
+                                                 cur_file <- cur_file[!cur_removed]
+                                                 cur_file <- cur_file[seqnames(cur_file) %in%
+                                                      c(as.character(1:19), "X", "Y", "MT"),]
+                                                 seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
+                                                 cur_file
+                                               })
+bedgraph.files.H3K9me3.spermatids.24 <- lapply(as.list(bedgraph.files.H3K9me3.spermatids.24),
+                                               function(n){
+                                                 cur_file <- import(n)
+                                                 cur_removed <- overlapsAny(cur_file, blacklist)
+                                                 cur_file <- cur_file[!cur_removed]
+                                                 cur_file <- cur_file[seqnames(cur_file) %in%
+                                                      c(as.character(1:19), "X", "Y", "MT"),]
+                                                 seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
+                                                 cur_file
+                                               })
+bedgraph.files.H3K9me3.spermatocytes.24 <- lapply(as.list(bedgraph.files.H3K9me3.spermatocytes.24),
+                                               function(n){
+                                                 cur_file <- import(n)
+                                                 cur_removed <- overlapsAny(cur_file, blacklist)
+                                                 cur_file <- cur_file[!cur_removed]
+                                                 cur_file <- cur_file[seqnames(cur_file) %in%
+                                                      c(as.character(1:19), "X", "Y", "MT"),]
+                                                 seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
+                                                 cur_file
+                                               })
+
+
+```
+
+# Build mean expression matrix
+
+```{r mean_expression}
+df <- as.data.frame(t(as.matrix(logcounts(sce.XChr))))
+df$groups <- colData(sce.XChr)$AnnotatedClusters
+df.melt <- melt(df, id.vars = "groups")
+
+# Collect mean expression for each gene in each group
+mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
+mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
+rownames(mat.for.heatmap) <- mat.for.heatmap$variable
+mat.for.heatmap$variable <- NULL
+mat.for.heatmap$Leydig <- NULL
+mat.for.heatmap$Sertoli <- NULL
+mat.for.heatmap$PTM_2 <- NULL
+mat.for.heatmap$Outliers <- NULL
+
+# Remove genes that are not expressed across all groups
+mat.for.heatmap <- mat.for.heatmap[rowSums(mat.for.heatmap) > 0,]
+
+# Order matrix based on mean expression in spermatids
+mat.for.heatmap <- mat.for.heatmap[order(rowMeans(mat.for.heatmap[,9:21]), decreasing = TRUE),]
+
+# Split matrix in 3 categories:
+# Inactivated and reactivated
+mat.1 <- mat.for.heatmap[mat.for.heatmap[,1] > rowMeans(mat.for.heatmap[,2:8]) &
+                           rowMeans(mat.for.heatmap[,2:8]) < rowMeans(mat.for.heatmap[,9:21]),]
+# Inactivated, not reactivated
+mat.2 <- mat.for.heatmap[mat.for.heatmap[,1] > rowMeans(mat.for.heatmap[,2:8]) &
+                           rowMeans(mat.for.heatmap[,2:8]) >= rowMeans(mat.for.heatmap[,9:21]),]
+# Not inactivated
+mat.3 <- mat.for.heatmap[mat.for.heatmap[,1] <= rowMeans(mat.for.heatmap[,2:8]),]
+```
+
+## Visualize heatmaps
+
+```{r}
+pheatmap(mat.1, cluster_cols = FALSE, cluster_rows = FALSE, show_rownames = FALSE,
+         show_colnames = FALSE,
+         color = viridis(100), annotation_col = data.frame(row.names = colnames(mat.1),
+                                                           Cell_type = colnames(mat.1)),
+         annotation_colors = list(Cell_type = metadata(sce.XChr)$color_vector),
+         border_color = NA)
+
+pheatmap(mat.2, cluster_cols = FALSE, cluster_rows = FALSE, show_rownames = FALSE,
+         show_colnames = FALSE,
+         color = viridis(100), annotation_col = data.frame(row.names = colnames(mat.1),
+                                                           Cell_type = colnames(mat.1)),
+         annotation_colors = list(Cell_type = metadata(sce.XChr)$color_vector), border_color = NA)
+
+pheatmap(mat.3, cluster_cols = FALSE, cluster_rows = FALSE, show_rownames = FALSE,
+         show_colnames = FALSE,
+         color = viridis(100), annotation_col = data.frame(row.names = colnames(mat.1),
+                                                           Cell_type = colnames(mat.1)),
+         annotation_colors = list(Cell_type = metadata(sce.XChr)$color_vector), border_color = NA)
+```
+
+# Plot corresponding Peak maps
+
+## H3K4me3
+
+```{r}
+# Spermatocytes rep 1
+
+# Collect all H3K4me3 signals at tss - only for X chromosome
+cur_bed <- bedgraph.files.H3K4me3.spermatocytes.24[[1]]
+cur_bed <- cur_bed[seqnames(cur_bed) == "X"]
+
+mat.tss.H3K4 = normalizeToMatrix(cur_bed, cur_tss, 
+                                 value_column = "score",
+                                 extend = 5000, mean_mode = "w0", w = 50, keep = c(0,0.99))
+
+# First condition
+pheatmap(mat.tss.H3K4[rownames(mat.1),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100))
+
+# Second condition
+pheatmap(mat.tss.H3K4[rownames(mat.2),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100), 
+         border_color = FALSE)
+
+# Third condition
+pheatmap(mat.tss.H3K4[rownames(mat.3),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100), 
+         border_color = FALSE)
+
+# Spermatocytes rep 2
+
+# Collect all H3K4me3 signals at tss - only for X chromosome
+cur_bed <- bedgraph.files.H3K4me3.spermatocytes.24[[2]]
+cur_bed <- cur_bed[seqnames(cur_bed) == "X"]
+
+mat.tss.H3K4 = normalizeToMatrix(cur_bed, cur_tss, 
+                                 value_column = "score",
+                                 extend = 5000, mean_mode = "w0", w = 50)
+
+# First condition
+pheatmap(mat.tss.H3K4[rownames(mat.1),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100))
+
+# Second condition
+pheatmap(mat.tss.H3K4[rownames(mat.2),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100), 
+         border_color = FALSE)
+
+# Third condition
+pheatmap(mat.tss.H3K4[rownames(mat.3),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100), 
+         border_color = FALSE)
+
+# Spermatids rep 1
+
+# Collect all H3K4me3 signals at tss - only for X chromosome
+cur_bed <- bedgraph.files.H3K4me3.spermatids.24[[1]]
+cur_bed <- cur_bed[seqnames(cur_bed) == "X"]
+
+mat.tss.H3K4 = normalizeToMatrix(cur_bed, cur_tss, 
+                                 value_column = "score",
+                                 extend = 5000, mean_mode = "w0", w = 50)
+
+# First condition
+pheatmap(mat.tss.H3K4[rownames(mat.1),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100))
+
+# Second condition
+pheatmap(mat.tss.H3K4[rownames(mat.2),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100), 
+         border_color = FALSE)
+
+# Third condition
+pheatmap(mat.tss.H3K4[rownames(mat.3),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100), 
+         border_color = FALSE)
+
+# Spermatids rep 2
+
+# Collect all H3K4me3 signals at tss - only for X chromosome
+cur_bed <- bedgraph.files.H3K4me3.spermatids.24[[2]]
+cur_bed <- cur_bed[seqnames(cur_bed) == "X"]
+
+mat.tss.H3K4 = normalizeToMatrix(cur_bed, cur_tss, 
+                                 value_column = "score",
+                                 extend = 5000, mean_mode = "w0", w = 50)
+
+# First condition
+pheatmap(mat.tss.H3K4[rownames(mat.1),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100))
+
+# Second condition
+pheatmap(mat.tss.H3K4[rownames(mat.2),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100), 
+         border_color = FALSE)
+
+# Third condition
+pheatmap(mat.tss.H3K4[rownames(mat.3),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "red", "black"))(100), 
+         border_color = FALSE)
+
+
+```
+
+## H3K9me3
+
+```{r}
+# Spermatocytes rep 1
+
+# Collect all H3K4me3 signals at tss - only for X chromosome
+cur_bed <- bedgraph.files.H3K9me3.spermatocytes.24[[1]]
+cur_bed <- cur_bed[seqnames(cur_bed) == "X"]
+
+mat.tss.H3K9 = normalizeToMatrix(cur_bed, cur_tss, 
+                                 value_column = "score",
+                                 extend = 5000, mean_mode = "w0", w = 50)
+
+# First condition
+pheatmap(mat.tss.H3K9[rownames(mat.1),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("red", "white", "blue"))(100))
+
+# Second condition
+pheatmap(mat.tss.H3K9[rownames(mat.2),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "blue", "black"))(100), 
+         border_color = FALSE)
+
+# Third condition
+pheatmap(mat.tss.H3K9[rownames(mat.3),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "blue", "black"))(100), 
+         border_color = FALSE)
+
+# Spermatocytes rep 2
+
+# Collect all H3K4me3 signals at tss - only for X chromosome
+cur_bed <- bedgraph.files.H3K9me3.spermatocytes.24[[2]]
+cur_bed <- cur_bed[seqnames(cur_bed) == "X"]
+
+mat.tss.H3K9 = normalizeToMatrix(cur_bed, cur_tss, 
+                                 value_column = "score",
+                                 extend = 5000, mean_mode = "w0", w = 50)
+
+# First condition
+pheatmap(mat.tss.H3K9[rownames(mat.1),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "blue", "black"))(100))
+
+# Second condition
+pheatmap(mat.tss.H3K9[rownames(mat.2),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "blue", "black"))(100), 
+         border_color = FALSE)
+
+# Third condition
+pheatmap(mat.tss.H3K9[rownames(mat.3),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "blue", "black"))(100), 
+         border_color = FALSE)
+
+# Spermatids rep 1
+
+# Collect all H3K4me3 signals at tss - only for X chromosome
+cur_bed <- bedgraph.files.H3K9me3.spermatids.24[[1]]
+cur_bed <- cur_bed[seqnames(cur_bed) == "X"]
+
+mat.tss.H3K9 = normalizeToMatrix(cur_bed, cur_tss, 
+                                 value_column = "score",
+                                 extend = 5000, mean_mode = "w0", w = 50)
+
+# First condition
+pheatmap(mat.tss.H3K9[rownames(mat.1),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "blue", "black"))(100))
+
+# Second condition
+pheatmap(mat.tss.H3K9[rownames(mat.2),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "blue", "black"))(100), 
+         border_color = FALSE)
+
+# Third condition
+pheatmap(mat.tss.H3K9[rownames(mat.3),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "blue", "black"))(100), 
+         border_color = FALSE)
+
+# Spermatids rep 2
+
+# Collect all H3K4me3 signals at tss - only for X chromosome
+cur_bed <- bedgraph.files.H3K9me3.spermatids.24[[2]]
+cur_bed <- cur_bed[seqnames(cur_bed) == "X"]
+
+mat.tss.H3K9 = normalizeToMatrix(cur_bed, cur_tss, 
+                                 value_column = "score",
+                                 extend = 5000, mean_mode = "w0", w = 50)
+
+# First condition
+pheatmap(mat.tss.H3K9[rownames(mat.1),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "blue", "black"))(100))
+
+# Second condition
+pheatmap(mat.tss.H3K9[rownames(mat.2),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "blue", "black"))(100), 
+         border_color = FALSE)
+
+# Third condition
+pheatmap(mat.tss.H3K9[rownames(mat.3),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("white", "blue", "black"))(100), 
+         border_color = FALSE)
+
+
+```
+
