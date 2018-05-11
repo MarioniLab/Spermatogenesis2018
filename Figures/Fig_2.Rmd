@@ -1,0 +1,83 @@
+---
+title: "Figure 2"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load data and libraries
+
+```{r data, message=FALSE}
+# Libraries
+library(scater)
+library(ggplot2)
+library(reshape2)
+library(plyr)
+
+# Single cell data
+sce.all <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+
+# Bulk data
+bulk <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/bulk_norm.rds")
+```
+
+# Ratios of cell types in each sample
+
+```{r ratios}
+# Calculate proprtions of cell types in each sample
+df <- data.frame(sample = sub("_.*", "", colData(sce.all)$Sample),
+                 group = colData(sce.all)$AnnotatedClusters,
+                 value = rep(1, ncol(sce.all)))
+
+proportions <- with(df, table(sample, group))/plyr::count(df = df, vars = "sample")$freq
+```
+
+# Visualize percentages for germ cells
+
+```{r, visualization}
+cur_df <- proportions[c("B6", "P15", "P20","P30", "P35"),1:22]
+cur_df.melt <- melt(cur_df)
+levels(cur_df.melt$sample) <- rev(c("B6", "P15", "P20", "P30", "P35"))
+levels(cur_df.melt$group) <- levels(colData(sce.all)$AnnotatedClusters)
+
+proportions.p <- ggplot(cur_df.melt) + geom_point(aes(group, rev(sample), size = value, fill = group), shape = 22) +
+  scale_fill_manual(values = metadata(sce.all)$color_vector) + 
+  theme(panel.background = element_blank(), axis.title = element_blank(),
+        axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12))
+```
+
+# Map bulk libraries to stages
+
+We perform a logistic regression between the cluster labels and the top 50
+marker genes for each group.
+
+```{r bulk mapping}
+# Load marker genes
+marker.genes <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.rds")
+cur_markers <- as.character(unlist(lapply(marker.genes, function(n){n$GeneName[1:50]})))
+cur_markers <- cur_markers[cur_markers %in% rownames(bulk)]
+
+# Train the forest
+labels <- factor(clusters.Tc0_young$OrderByPT, levels = c(1:22, "Outliers"))
+
+set.seed(1234)
+sam <- sample(1:ncol(Tc0_young), 2000)
+train.labels <- labels[sam] 
+train.data <- log10(Tc0_young[cur_markers,sam] + 1)
+test.labels <- labels[-sam] 
+test.data <- log10(Tc0_young[cur_markers,-sam] + 1)
+
+# Create training and testing datasets
+
+
+```
