@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Variability/CnR_XChr.html') })
+        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Variability/CnR_XChr.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -36,11 +36,11 @@ seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
 tss.X <- tss[seqnames(tss) == "X"]
 
 # Read in blacklist file
-blacklist <- import("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
+blacklist <- import("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
 seqlevels(blacklist) <- sub("^chr", '', seqlevels(blacklist))
 
 # Read in sce data
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 
 # Select XChr genes
 genenames <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
@@ -88,7 +88,7 @@ mat.3 <- mat.for.heatmap[mat.for.heatmap[,1] <= rowMeans(mat.for.heatmap[,2:8]),
 ## Visualize heatmaps
 
 ```{r}
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/GeneExpression.pdf",
+pdf("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/GeneExpression.pdf",
     width = 10, height = 15, onefile=FALSE)
 pheatmap(rbind(mat.1, mat.2, mat.3), cluster_cols = FALSE, 
          cluster_rows = FALSE, show_rownames = FALSE,
@@ -106,10 +106,10 @@ dev.off()
 ## H3K4me3
 
 ```{r}
-cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
+cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
                         full.names = TRUE)
 filenames <- sub(".bed.1-1000.bedgraph.gz$", ".pdf",
-                 list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/"))
+                 list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/"))
 
 for(i in 1:length(cur_files)){
   cur_file <- import(cur_files[i])
@@ -130,7 +130,7 @@ for(i in 1:length(cur_files)){
   
   # Flip the tss on minus strand
   # mat.tss[which(strand(tss.X) == "-"),] <- t(apply(mat.tss[which(strand(tss.X) == "-"),], 1, rev))
-  pdf(paste("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/H3K4me3/", 
+  pdf(paste("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/H3K4me3/", 
             filenames[i], sep = ""),
     width = 10, height = 15, onefile=FALSE)
   pheatmap(mat.tss[c(rownames(mat.1), rownames(mat.2), rownames(mat.3)),],
@@ -145,10 +145,10 @@ for(i in 1:length(cur_files)){
 ## H3K9me3
 
 ```{r}
-cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K9me3/", 
+cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K9me3/", 
                         full.names = TRUE)
 filenames <- sub(".bed.1-1000.bedgraph.gz$", ".pdf",
-                 list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K9me3/"))
+                 list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K9me3/"))
 
 for(i in 1:length(cur_files)){
   cur_file <- import(cur_files[i])
@@ -169,7 +169,7 @@ for(i in 1:length(cur_files)){
   
   # Flip the tss on minus strand
   # mat.tss[which(strand(tss.X) == "-"),] <- t(apply(mat.tss[which(strand(tss.X) == "-"),], 1, rev))
-  pdf(paste("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/H3K9me3/", 
+  pdf(paste("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/H3K9me3/", 
             filenames[i], sep = ""),
     width = 10, height = 15, onefile=FALSE)
   pheatmap(mat.tss[c(rownames(mat.1), rownames(mat.2), rownames(mat.3)),],
@@ -184,10 +184,10 @@ for(i in 1:length(cur_files)){
 ## H3K27ac
 
 ```{r}
-cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K27ac/", 
+cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K27ac/", 
                         full.names = TRUE)
 filenames <- sub(".bed.1-1000.bedgraph.gz$", ".pdf",
-                 list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K27ac/"))
+                 list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K27ac/"))
 
 for(i in 1:length(cur_files)){
   cur_file <- import(cur_files[i])
@@ -208,7 +208,7 @@ for(i in 1:length(cur_files)){
   
   # Flip the tss on minus strand
   # mat.tss[which(strand(tss.X) == "-"),] <- t(apply(mat.tss[which(strand(tss.X) == "-"),], 1, rev))
-  pdf(paste("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/H3K27ac/", 
+  pdf(paste("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/H3K27ac/", 
             filenames[i], sep = ""),
     width = 10, height = 15, onefile=FALSE)
   pheatmap(mat.tss[c(rownames(mat.1), rownames(mat.2), rownames(mat.3)),],
@@ -223,10 +223,10 @@ for(i in 1:length(cur_files)){
 ## H3.3
 
 ```{r}
-cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3.3/", 
+cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3.3/", 
                         full.names = TRUE)
 filenames <- sub(".bed.1-1000.bedgraph.gz$", ".pdf",
-                 list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3.3/"))
+                 list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3.3/"))
 
 for(i in 1:length(cur_files)){
   cur_file <- import(cur_files[i])
@@ -247,7 +247,7 @@ for(i in 1:length(cur_files)){
   
   # Flip the tss on minus strand
   # mat.tss[which(strand(tss.X) == "-"),] <- t(apply(mat.tss[which(strand(tss.X) == "-"),], 1, rev))
-  pdf(paste("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/H3.3/", 
+  pdf(paste("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/H3.3/", 
             filenames[i], sep = ""),
     width = 10, height = 15, onefile=FALSE)
   pheatmap(mat.tss[c(rownames(mat.1), rownames(mat.2), rownames(mat.3)),],
@@ -259,3 +259,88 @@ for(i in 1:length(cur_files)){
 }
 ```
 
+# Order genes based on their position on the X chromosome
+
+```{r positioning}
+genes.X <- genes(EnsDb.Mmusculus.v79)
+genes.X <- genes.X[seqnames(genes.X) == "X"]
+
+mat.ordered <- mat.for.heatmap[genes.X@elementMetadata$gene_id[genes.X@elementMetadata$gene_id %in% rownames(mat.for.heatmap)],]
+
+pdf("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/GeneExpression_orderedByPosition.pdf",
+    width = 10, height = 15, onefile=FALSE)
+pheatmap(mat.ordered, cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         show_colnames = FALSE,
+         color = viridis(100), 
+         annotation_col = data.frame(row.names = colnames(mat.ordered),
+                                     Cell_type = colnames(mat.ordered)),
+         annotation_colors = list(Cell_type = metadata(sce.XChr)$color_vector),
+         border_color = NA)
+dev.off()
+
+# Visualize H3K4me3 peaks in the same order
+cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
+                        full.names = TRUE)
+
+filenames <- sub(".bed.1-1000.bedgraph.gz$", ".pdf",
+                 list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/"))
+
+# Spermatocytes
+cur_file <- import(cur_files[11])
+  
+# Exclude blacklisted regions
+cur_removed <- overlapsAny(cur_file, blacklist)
+cur_file <- cur_file[!cur_removed]
+cur_file <- cur_file[seqnames(cur_file) %in%
+                       c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
+
+cur_bed <- cur_file[seqnames(cur_file) == "X"]
+mat.tss = normalizeToMatrix(cur_bed, tss.X, 
+                      value_column = "score",
+                      extend = 5000, mean_mode = "w0", 
+                      w = 50, keep = c(0,0.99))
+
+# Flip the tss on minus strand
+# mat.tss[which(strand(tss.X) == "-"),] <- t(apply(mat.tss[which(strand(tss.X) == "-"),], 1, rev))
+pdf(paste("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/OrderedByPosition_", 
+          filenames[11], sep = ""),
+  width = 10, height = 15, onefile=FALSE)
+pheatmap(mat.tss[rownames(mat.ordered),],
+         cluster_rows = FALSE, cluster_cols = FALSE, 
+         show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("gray90", "red", "black"))(100))
+dev.off()
+
+# Spermatids
+cur_file <- import(cur_files[12])
+  
+# Exclude blacklisted regions
+cur_removed <- overlapsAny(cur_file, blacklist)
+cur_file <- cur_file[!cur_removed]
+cur_file <- cur_file[seqnames(cur_file) %in%
+                       c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
+
+cur_bed <- cur_file[seqnames(cur_file) == "X"]
+mat.tss = normalizeToMatrix(cur_bed, tss.X, 
+                      value_column = "score",
+                      extend = 5000, mean_mode = "w0", 
+                      w = 50, keep = c(0,0.99))
+mat.tss <- mat.tss[rownames(mat.ordered),]
+
+# Flip the tss on minus strand
+# mat.tss[which(strand(tss.X) == "-"),] <- t(apply(mat.tss[which(strand(tss.X) == "-"),], 1, rev))
+pdf(paste("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Results/XChr/OrderedByPosition_", 
+          filenames[12], sep = ""),
+  width = 10, height = 15, onefile=FALSE)
+pheatmap(mat.tss[rownames(mat.ordered),],
+         cluster_rows = FALSE, cluster_cols = FALSE, 
+         show_rownames = FALSE, show_colnames = FALSE,
+         color = colorRampPalette(c("gray90", "red", "black"))(100))
+EnrichedHeatmap(mat.tss, col = c("gray90", "red", "black"), 
+                row_order = 1:nrow(mat.tss))
+dev.off()
+
+```
