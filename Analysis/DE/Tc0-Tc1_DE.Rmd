@@ -1,0 +1,401 @@
+---
+title: "Tc0 vs Tc1 differential expression analysis"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/DE/Tc0-Tc1_DE.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script berforms differential expression and GO term enrichment analysis 
+between juveline animals and adult animals.
+
+## Load data and libraries
+
+```{r}
+# Libraries
+library(scran)
+library(scater)
+library(openxlsx)
+library(DropletUtils)
+library(goseq)
+library(GO.db)
+library(org.Mm.eg.db)
+source("../../Functions/auxiliary.R")
+
+# Read in data
+sce.all <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+
+# Read in length of genes
+genelength <- read.table("../../Data/Genelength.txt", header = TRUE, sep = "\t")
+```
+
+# Perfom differential expression testing and GO enrichment 
+
+## Tc0 vs Tc1
+
+```{r}
+# Combine data for testing
+cur_sce <- sce.all[,grepl("Tc1", colData(sce.all)$Sample) | 
+                     grepl("Tc0", colData(sce.all)$Sample)]
+cur_sce <- cur_sce[Matrix::rowSums(logcounts(cur_sce)) > 0,]
+cur_sce <- normalize(cur_sce)
+
+# Read in empty droplets
+sce.Tc0.1.empty <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do15984_empty.rds")
+sce.Tc0.1.empty <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17622_empty.rds")
+sce.Tc1.1.empty <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do15983_empty.rds")
+sce.Tc1.1.empty <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17623_empty.rds")
+
+# Perform DE between ambient profiles
+sce.ambient <- cbind(sce.Tc0.1.empty, sce.Tc0.1.empty, sce.Tc1.1.empty, sce.Tc1.1.empty)
+sce.ambient <- sce.ambient[Matrix::rowSums(counts(sce.ambient)) > 0,]
+
+cur_test <- DE.ambient(sce.ambient = sce.ambient, 
+                       sample.names = c("Tc0","Tc1"), lfc = 2)
+
+# Remove the genes that are DE
+#cur_sce <- cur_sce[rowData(cur_sce)$ID %in% rownames(cur_test)[cur_test$FDR > 0.1],]
+
+#logcounts(cur_sce) <- NULL
+
+# Renomrmalize data
+#clusters <- quickCluster(cur_sce, method = "igraph", irlba.args = c("work" = 100))
+#cur_sce <- computeSumFactors(cur_sce, clusters=clusters)
+#cur_sce <- normalize(cur_sce, return_log = TRUE)
+
+# Perform differential expression analysis for cell groups 
+results.DE <- list()
+results.GO <- list()
+cur_groups <- c("Early_Spermatocytes_1", "Early_Spermatocytes_2", 
+                "Mid_Spermatocytes_1", "Mid_Spermatocytes_2", 
+                "Late_Spermatocytes_1", "Late_Spermatocytes_2", 
+                "Meiosis", "S1", "S2", "S3", "S4", "S5", "S6", "S7",
+                "S8", "S9", "S10", "S11", "S12", "S13", "S14")
+
+for(i in cur_groups){
+  sce.test <- cur_sce[,colData(cur_sce)$AnnotatedClusters == i]
+  sce.test <- sce.test[Matrix::rowMeans(logcounts(sce.test)) > 0.1,]
+  sce.test <- normalize(sce.test)
+  
+  cur_markers <- findMarkers(sce.test,
+                             clusters = ifelse(grepl("Tc0", colData(sce.test)$Sample), 
+                                                     "Tc0","Tc1"))
+  
+  markers.Tc1 <- cur_markers$Tc1[cur_markers$Tc1$FDR < 0.1 & 
+                                   cur_markers$Tc1$logFC.Tc0 > 0.4,]
+  markers.Tc1$Genename <- rowData(cur_sce)$Symbol[match(rownames(markers.Tc1),
+                                                                 rowData(cur_sce)$ID)]
+  markers.Tc0 <- cur_markers$Tc1[cur_markers$Tc0$FDR < 0.1 & 
+                                   cur_markers$Tc0$logFC.Tc1 > 0.4,]
+  markers.Tc0$Genename <- rowData(cur_sce)$Symbol[match(rownames(markers.Tc0),
+                                                                 rowData(cur_sce)$ID)]
+  results.DE[[paste("Group_", i, "_Tc1", sep = "")]] <- markers.Tc1
+  results.DE[[paste("Group_", i, "_Tc0", sep = "")]] <- markers.Tc0
+  
+  # GO analysis
+  # Tc1 genes
+  cur_genes <- as.integer(cur_markers$Tc1$FDR < 0.1 & 
+                                   cur_markers$Tc1$logFC.Tc0 > 0.4)
+  names(cur_genes) <- rownames(cur_markers$Tc1)
+  
+  if(sum(cur_genes) > 5){
+    pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
+    GO.wall=goseq(pwf,"mm10","ensGene")
+    enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
+  
+  # Add genenames to the GO categories
+    if(nrow(enriched.GO) > 0){
+      all_genes <- vector(length = nrow(enriched.GO))
+      for(j in 1:nrow(enriched.GO)){
+        allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
+        genes = unique(unlist(mget(allegs,org.Mm.egSYMBOL)))
+        genes = as.character(genes[genes %in% markers.Tc1$Genename])
+        all_genes[j] <- paste(genes, collapse = ", ")
+      }
+      enriched.GO$Genes <- all_genes
+    }
+  }
+  else {
+   enriched.GO <- NULL 
+  }
+  
+  results.GO[[paste("Group_", i, "_Tc1", sep = "")]] <- enriched.GO
+  
+  # Tc0 genes
+  cur_genes <- as.integer(cur_markers$Tc0$FDR < 0.1 & 
+                                   cur_markers$Tc0$logFC.Tc1 > 0.4)
+  names(cur_genes) <- rownames(cur_markers$Tc1)
+  
+  if(sum(cur_genes) > 5){
+    pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
+    GO.wall=goseq(pwf,"mm10","ensGene")
+    enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
+  
+  # Add genenames to the GO categories
+    if(nrow(enriched.GO) > 0){
+      all_genes <- vector(length = nrow(enriched.GO))
+      for(j in 1:nrow(enriched.GO)){
+        allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
+        genes = unique(unlist(mget(allegs,org.Mm.egSYMBOL)))
+        genes = as.character(genes[genes %in% markers.Tc0$Genename])
+        all_genes[j] <- paste(genes, collapse = ", ")
+      }
+      enriched.GO$Genes <- all_genes
+    }
+  }
+  
+  results.GO[[paste("Group_", i, "_Tc0", sep = "")]] <- enriched.GO
+}
+
+# Write out table
+write.xlsx(results.DE, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Tc1_Tc0_comparison/Tc1_Tc0_singleGenes.xlsx")
+
+write.xlsx(results.GO, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Tc1_Tc0_comparison/Tc1_Tc0_GO.xlsx")
+
+```
+
+## B6 vs Tc1
+
+```{r}
+# Combine data for testing
+cur_sce <- sce.all[,grepl("Tc1", colData(sce.all)$Sample) | 
+                     grepl("B6", colData(sce.all)$Sample)]
+cur_sce <- cur_sce[Matrix::rowSums(logcounts(cur_sce)) > 0,]
+cur_sce <- normalize(cur_sce)
+
+# Read in empty droplets
+sce.B6.1.empty <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17815_empty.rds")
+sce.B6.1.empty <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17816_empty.rds")
+
+# Perform DE between ambient profiles
+sce.ambient <- cbind(sce.B6.1.empty, sce.B6.1.empty, sce.Tc1.1.empty, sce.Tc1.1.empty)
+sce.ambient <- sce.ambient[Matrix::rowSums(counts(sce.ambient)) > 0,]
+
+cur_test <- DE.ambient(sce.ambient = sce.ambient, 
+                       sample.names = c("B6","Tc1"), lfc = 2)
+
+# Remove the genes that are DE
+#cur_sce <- cur_sce[rowData(cur_sce)$ID %in% rownames(cur_test)[cur_test$FDR > 0.1],]
+
+#logcounts(cur_sce) <- NULL
+
+# Renomrmalize data
+#clusters <- quickCluster(cur_sce, method = "igraph", irlba.args = c("work" = 100))
+#cur_sce <- computeSumFactors(cur_sce, clusters=clusters)
+#cur_sce <- normalize(cur_sce, return_log = TRUE)
+
+# Perform differential expression analysis for cell groups 
+results.DE <- list()
+results.GO <- list()
+cur_groups <- c("Early_Spermatocytes_1", "Early_Spermatocytes_2", 
+                "Mid_Spermatocytes_1", "Mid_Spermatocytes_2", 
+                "Late_Spermatocytes_1", "Late_Spermatocytes_2", 
+                "Meiosis", "S1", "S2", "S3", "S4", "S5", "S6", "S7",
+                "S8", "S9", "S10", "S11", "S12", "S13", "S14")
+
+for(i in cur_groups){
+  sce.test <- cur_sce[,colData(cur_sce)$AnnotatedClusters == i]
+  sce.test <- sce.test[Matrix::rowMeans(logcounts(sce.test)) > 0.1,]
+  sce.test <- normalize(sce.test)
+  
+  cur_markers <- findMarkers(sce.test,
+                             clusters = ifelse(grepl("B6", colData(sce.test)$Sample), 
+                                                     "B6","Tc1"))
+  
+  markers.Tc1 <- cur_markers$Tc1[cur_markers$Tc1$FDR < 0.1 & 
+                                   cur_markers$Tc1$logFC.B6 > 0.4,]
+  markers.Tc1$Genename <- rowData(cur_sce)$Symbol[match(rownames(markers.Tc1),
+                                                                 rowData(cur_sce)$ID)]
+  markers.B6 <- cur_markers$Tc1[cur_markers$B6$FDR < 0.1 & 
+                                   cur_markers$B6$logFC.Tc1 > 0.4,]
+  markers.B6$Genename <- rowData(cur_sce)$Symbol[match(rownames(markers.B6),
+                                                                 rowData(cur_sce)$ID)]
+  results.DE[[paste("Group_", i, "_Tc1", sep = "")]] <- markers.Tc1
+  results.DE[[paste("Group_", i, "_B6", sep = "")]] <- markers.B6
+  
+  # GO analysis
+  # Tc1 genes
+  cur_genes <- as.integer(cur_markers$Tc1$FDR < 0.1 & 
+                                   cur_markers$Tc1$logFC.B6 > 0.4)
+  names(cur_genes) <- rownames(cur_markers$Tc1)
+  
+  if(sum(cur_genes) > 5){
+    pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
+    GO.wall=goseq(pwf,"mm10","ensGene")
+    enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
+  
+  # Add genenames to the GO categories
+    if(nrow(enriched.GO) > 0){
+      all_genes <- vector(length = nrow(enriched.GO))
+      for(j in 1:nrow(enriched.GO)){
+        allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
+        genes = unique(unlist(mget(allegs,org.Mm.egSYMBOL)))
+        genes = as.character(genes[genes %in% markers.Tc1$Genename])
+        all_genes[j] <- paste(genes, collapse = ", ")
+      }
+      enriched.GO$Genes <- all_genes
+    }
+  }
+  else {
+   enriched.GO <- NULL 
+  }
+  
+  results.GO[[paste("Group_", i, "_Tc1", sep = "")]] <- enriched.GO
+  
+  # B6 genes
+  cur_genes <- as.integer(cur_markers$B6$FDR < 0.1 & 
+                                   cur_markers$B6$logFC.Tc1 > 0.4)
+  names(cur_genes) <- rownames(cur_markers$Tc1)
+  
+  if(sum(cur_genes) > 5){
+    pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
+    GO.wall=goseq(pwf,"mm10","ensGene")
+    enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
+  
+  # Add genenames to the GO categories
+    if(nrow(enriched.GO) > 0){
+      all_genes <- vector(length = nrow(enriched.GO))
+      for(j in 1:nrow(enriched.GO)){
+        allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
+        genes = unique(unlist(mget(allegs,org.Mm.egSYMBOL)))
+        genes = as.character(genes[genes %in% markers.B6$Genename])
+        all_genes[j] <- paste(genes, collapse = ", ")
+      }
+      enriched.GO$Genes <- all_genes
+    }
+  }
+  
+  results.GO[[paste("Group_", i, "_B6", sep = "")]] <- enriched.GO
+}
+
+# Write out table
+write.xlsx(results.DE, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Tc1_Tc0_comparison/Tc1_B6_singleGenes.xlsx")
+
+write.xlsx(results.GO, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Tc1_Tc0_comparison/Tc1_B6_GO.xlsx")
+
+```
+
+## B6 vs Tc0
+
+```{r}
+# Combine data for testing
+cur_sce <- sce.all[,grepl("Tc0", colData(sce.all)$Sample) | 
+                     grepl("B6", colData(sce.all)$Sample)]
+cur_sce <- cur_sce[Matrix::rowSums(logcounts(cur_sce)) > 0,]
+cur_sce <- normalize(cur_sce)
+
+# Perform DE between ambient profiles
+sce.ambient <- cbind(sce.B6.1.empty, sce.B6.1.empty, sce.Tc0.1.empty, sce.Tc0.1.empty)
+sce.ambient <- sce.ambient[Matrix::rowSums(counts(sce.ambient)) > 0,]
+
+cur_test <- DE.ambient(sce.ambient = sce.ambient, 
+                       sample.names = c("B6","Tc0"), lfc = 2)
+
+# Remove the genes that are DE
+#cur_sce <- cur_sce[rowData(cur_sce)$ID %in% rownames(cur_test)[cur_test$FDR > 0.1],]
+
+#logcounts(cur_sce) <- NULL
+
+# Renomrmalize data
+#clusters <- quickCluster(cur_sce, method = "igraph", irlba.args = c("work" = 100))
+#cur_sce <- computeSumFactors(cur_sce, clusters=clusters)
+#cur_sce <- normalize(cur_sce, return_log = TRUE)
+
+# Perform differential expression analysis for cell groups 
+results.DE <- list()
+results.GO <- list()
+cur_groups <- c("Early_Spermatocytes_1", "Early_Spermatocytes_2", 
+                "Mid_Spermatocytes_1", "Mid_Spermatocytes_2", 
+                "Late_Spermatocytes_1", "Late_Spermatocytes_2", 
+                "Meiosis", "S1", "S2", "S3", "S4", "S5", "S6", "S7",
+                "S8", "S9", "S10", "S11", "S12", "S13", "S14")
+
+for(i in cur_groups){
+  sce.test <- cur_sce[,colData(cur_sce)$AnnotatedClusters == i]
+  sce.test <- sce.test[Matrix::rowMeans(logcounts(sce.test)) > 0.1,]
+  sce.test <- normalize(sce.test)
+  
+  cur_markers <- findMarkers(sce.test,
+                             clusters = ifelse(grepl("B6", colData(sce.test)$Sample), 
+                                                     "B6","Tc0"))
+  
+  markers.Tc0 <- cur_markers$Tc0[cur_markers$Tc0$FDR < 0.1 & 
+                                   cur_markers$Tc0$logFC.B6 > 0.4,]
+  markers.Tc0$Genename <- rowData(cur_sce)$Symbol[match(rownames(markers.Tc0),
+                                                                 rowData(cur_sce)$ID)]
+  markers.B6 <- cur_markers$Tc0[cur_markers$B6$FDR < 0.1 & 
+                                   cur_markers$B6$logFC.Tc0 > 0.4,]
+  markers.B6$Genename <- rowData(cur_sce)$Symbol[match(rownames(markers.B6),
+                                                                 rowData(cur_sce)$ID)]
+  results.DE[[paste("Group_", i, "_Tc0", sep = "")]] <- markers.Tc0
+  results.DE[[paste("Group_", i, "_B6", sep = "")]] <- markers.B6
+  
+  # GO analysis
+  # Tc0 genes
+  cur_genes <- as.integer(cur_markers$Tc0$FDR < 0.1 & 
+                                   cur_markers$Tc0$logFC.B6 > 0.4)
+  names(cur_genes) <- rownames(cur_markers$Tc0)
+  
+  if(sum(cur_genes) > 5){
+    pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
+    GO.wall=goseq(pwf,"mm10","ensGene")
+    enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
+  
+  # Add genenames to the GO categories
+    if(nrow(enriched.GO) > 0){
+      all_genes <- vector(length = nrow(enriched.GO))
+      for(j in 1:nrow(enriched.GO)){
+        allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
+        genes = unique(unlist(mget(allegs,org.Mm.egSYMBOL)))
+        genes = as.character(genes[genes %in% markers.Tc0$Genename])
+        all_genes[j] <- paste(genes, collapse = ", ")
+      }
+      enriched.GO$Genes <- all_genes
+    }
+  }
+  else {
+   enriched.GO <- NULL 
+  }
+  
+  results.GO[[paste("Group_", i, "_Tc0", sep = "")]] <- enriched.GO
+  
+  # B6 genes
+  cur_genes <- as.integer(cur_markers$B6$FDR < 0.1 & 
+                                   cur_markers$B6$logFC.Tc0 > 0.4)
+  names(cur_genes) <- rownames(cur_markers$Tc0)
+  
+  if(sum(cur_genes) > 5){
+    pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
+    GO.wall=goseq(pwf,"mm10","ensGene")
+    enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
+  
+  # Add genenames to the GO categories
+    if(nrow(enriched.GO) > 0){
+      all_genes <- vector(length = nrow(enriched.GO))
+      for(j in 1:nrow(enriched.GO)){
+        allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
+        genes = unique(unlist(mget(allegs,org.Mm.egSYMBOL)))
+        genes = as.character(genes[genes %in% markers.B6$Genename])
+        all_genes[j] <- paste(genes, collapse = ", ")
+      }
+      enriched.GO$Genes <- all_genes
+    }
+  }
+  
+  results.GO[[paste("Group_", i, "_B6", sep = "")]] <- enriched.GO
+}
+
+# Write out table
+write.xlsx(results.DE, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Tc1_Tc0_comparison/B6_Tc0_singleGenes.xlsx")
+
+write.xlsx(results.GO, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Tc1_Tc0_comparison/B6_Tc0_GO.xlsx")
+
+```
