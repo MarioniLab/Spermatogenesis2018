@@ -22,12 +22,21 @@ library(scater)
 library(ggplot2)
 library(reshape2)
 library(plyr)
+library(nnet)
+library(randomForest)
+library(openxlsx)
+library(cowplot)
 
 # Single cell data
-sce.all <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 
 # Bulk data
-bulk <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/bulk_norm.rds")
+bulk <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+
+# Meta info
+meta <- as.data.frame(read.xlsx("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Metadata.xlsx", sheet = 2))
+meta <- meta[!is.na(meta$DO.number),]
+rownames(meta) <- meta$DO.number
 ```
 
 # Ratios of cell types in each sample
@@ -59,25 +68,63 @@ proportions.p <- ggplot(cur_df.melt) + geom_point(aes(group, rev(sample), size =
 # Map bulk libraries to stages
 
 We perform a logistic regression between the cluster labels and the top 50
-marker genes for each group.
+marker genes for each group. The training is performed on adult B6 samples
 
 ```{r bulk mapping}
 # Load marker genes
-marker.genes <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.rds")
-cur_markers <- as.character(unlist(lapply(marker.genes, function(n){n$GeneName[1:50]})))
+marker.genes <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.rds")
+cur_markers <- as.character(unlist(lapply(marker.genes, function(n){rownames(n)[1:50]})))
 cur_markers <- cur_markers[cur_markers %in% rownames(bulk)]
 
-# Train the forest
-labels <- factor(clusters.Tc0_young$OrderByPT, levels = c(1:22, "Outliers"))
-
-set.seed(1234)
-sam <- sample(1:ncol(Tc0_young), 2000)
-train.labels <- labels[sam] 
-train.data <- log10(Tc0_young[cur_markers,sam] + 1)
-test.labels <- labels[-sam] 
-test.data <- log10(Tc0_young[cur_markers,-sam] + 1)
+# Train the classifier on adult B6 - remove small groups and outliers
+sce.B6 <- sce.all[,grepl("B6", colData(sce.all)$Sample)]
+sce.B6 <- normalize(sce.B6)
+labels <- factor(colData(sce.B6)$AnnotatedClusters,
+                    levels = levels(colData(sce.B6)$AnnotatedClusters)[
+                      levels(colData(sce.B6)$AnnotatedClusters) %in%
+                        unique(colData(sce.B6)$AnnotatedClusters)])
 
 # Create training and testing datasets
+set.seed(1234)
+sam <- sample(1:ncol(sce.B6), 2000)
+#train.data <- data.frame(t(as.matrix(logcounts(sce.B6)[cur_markers,sam])))
+#train.data$labels <- labels[sam] 
+#test.data <- data.frame(t(as.matrix(logcounts(sce.B6)[cur_markers,-sam])))
+#test.data$labels <- labels[-sam] 
 
+train.data <- as.matrix(logcounts(sce.B6)[cur_markers,sam])
+train.labels <- labels[sam] 
+test.data <- as.matrix(logcounts(sce.B6)[cur_markers,-sam])
+test.labels <- labels[-sam] 
 
+# logistic regression
+#model <- multinom(labels ~ ., data = train.data, MaxNWts = 40000, maxit = 1000)
+
+# Random forrest
+Tree <- randomForest(x = t(as.matrix(train.data)), y = train.labels, 
+                     xtest = t(as.matrix(test.data)), 
+                     ytest = test.labels, keep.forest = TRUE)
+
+pred.bulk <- predict(object = Tree, newdata = t(log(bulk[cur_markers,] + 1)), type="prob")
+
+# Collect day info on libraries
+df <- data.frame(library = rownames(pred.bulk),
+                 day = meta$`Age.(days)`[order(rownames(meta))])
+
+pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2_bulkmapping_heatmap.pdf", 
+    onefile = FALSE)
+pheatmap(pred.bulk[order(df$day),], cluster_cols = FALSE, cluster_rows = FALSE,
+         col = colorRampPalette(c("white", "red", "black"))(100),
+         annotation_row = data.frame(row.names = rownames(pred.bulk),
+                    sample = factor(df$day, levels = unique(df$day)[order(unique(df$day))])),
+         labels_row = df$day[order(df$day)])
+dev.off()
+
+```
+
+# Save final figure
+
+```{r final}
+final <- plot_grid(proportions.p)
+ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2.pdf", final)
 ```
