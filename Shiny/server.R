@@ -17,6 +17,9 @@ shinyServer(function(input, output, session) {
   updateSelectizeInput(session, 'gene', 
                        choices = c(rowData(sce)$Symbol, unique(mouse.genes$Chromosome.scaffold.name)), 
                        server = TRUE)
+  updateSelectInput(session, 'group', 
+                       choices = levels(colData(sce)$AnnotatedClusters), 
+                       selected = levels(colData(sce)$AnnotatedClusters))
   
   #### Visualize gene expression on tSNE
   createPlot.tsne <- eventReactive(input$goButton, {
@@ -36,8 +39,10 @@ shinyServer(function(input, output, session) {
     ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
                       tSNE2 = reducedDims(sce)$TSNE[,2],
                       Gene = Gene,
-                      shown = factor(ifelse(grepl(paste(input$dataset,collapse="|"), 
-                                          colData(sce)$Sample),
+                      shown = factor(ifelse(grepl(paste(input$dataset, collapse="|"), 
+                                          colData(sce)$Sample) & 
+                                            grepl(paste(input$group, collapse="|"), 
+                                                         colData(sce)$AnnotatedClusters),
                                           "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = Gene, alpha = shown)) + theme_minimal() + 
       scale_color_viridis() + scale_alpha_manual(values = to.show) + 
@@ -53,9 +58,11 @@ shinyServer(function(input, output, session) {
     ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
                       tSNE2 = reducedDims(sce)$TSNE[,2],
                       sample = colData(sce)$Sample,
-                      shown = factor(ifelse(grepl(paste(input$dataset,collapse="|"), 
-                                           colData(sce)$Sample),
-                                     "Included", "Excluded"), levels = c("Excluded", "Included")))) +
+                      shown = factor(ifelse(grepl(paste(input$dataset, collapse="|"), 
+                                                  colData(sce)$Sample) & 
+                                              grepl(paste(input$group, collapse="|"), 
+                                                    colData(sce)$AnnotatedClusters),
+                                            "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = sample, alpha = shown)) + theme_minimal() + 
       scale_color_manual(values = cur_color_vector) + scale_alpha_manual(values = to.show) + 
       guides(alpha=FALSE)
@@ -70,9 +77,11 @@ shinyServer(function(input, output, session) {
     ggplot(data = data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
                              tSNE2 = reducedDims(sce)$TSNE[,2],
                              group = colData(sce)$AnnotatedClusters,
-                             shown = factor(ifelse(grepl(paste(input$dataset,collapse="|"), 
-                                                  colData(sce)$Sample),
-                                                  "Included", "Excluded"), levels = c("Excluded", "Included")))) +
+                             shown = factor(ifelse(grepl(paste(input$dataset, collapse="|"), 
+                                                         colData(sce)$Sample) & 
+                                                     grepl(paste(input$group, collapse="|"), 
+                                                           colData(sce)$AnnotatedClusters),
+                                                   "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = group, alpha = shown)) +
       scale_color_manual(values = color_vector) + theme_minimal() + 
       scale_alpha_manual(values = to.show) + 
@@ -95,12 +104,18 @@ shinyServer(function(input, output, session) {
     }
     
     ggplot(data.frame(value = Gene[grepl(paste(input$dataset,collapse="|"), 
-                                         colData(sce)$Sample)],
+                                         colData(sce)$Sample) & 
+                                     grepl(paste(input$group,collapse="|"), 
+                                           colData(sce)$AnnotatedClusters)],
                       cluster = factor(sce$AnnotatedClusters[grepl(paste(input$dataset,collapse="|"), 
-                                                         colData(sce)$Sample)],
+                                                         colData(sce)$Sample) & 
+                                                           grepl(paste(input$group,collapse="|"), 
+                                                                 colData(sce)$AnnotatedClusters)],
                                      levels = names(color_vector)),
                       sample = factor(colData(sce)$Sample[grepl(paste(input$dataset,collapse="|"), 
-                                                         colData(sce)$Sample)]))) +
+                                                         colData(sce)$Sample) & 
+                                                           grepl(paste(input$group,collapse="|"), 
+                                                                 colData(sce)$AnnotatedClusters)]))) +
       geom_boxplot(aes(x = cluster, y = value, fill = cluster, 
                        group = interaction(cluster, sample))) + 
       scale_fill_manual(values = color_vector) + 
