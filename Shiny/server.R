@@ -41,8 +41,7 @@ shinyServer(function(input, output, session) {
                       Gene = Gene,
                       shown = factor(ifelse(grepl(paste(input$dataset, collapse="|"), 
                                           colData(sce)$Sample) & 
-                                            grepl(paste(input$group, collapse="|"), 
-                                                         colData(sce)$AnnotatedClusters),
+                                            colData(sce)$AnnotatedClusters %in% input$group,
                                           "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = Gene, alpha = shown)) + theme_minimal() + 
       scale_color_viridis() + scale_alpha_manual(values = to.show) + 
@@ -60,8 +59,7 @@ shinyServer(function(input, output, session) {
                       sample = colData(sce)$Sample,
                       shown = factor(ifelse(grepl(paste(input$dataset, collapse="|"), 
                                                   colData(sce)$Sample) & 
-                                              grepl(paste(input$group, collapse="|"), 
-                                                    colData(sce)$AnnotatedClusters),
+                                              colData(sce)$AnnotatedClusters %in% input$group,
                                             "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = sample, alpha = shown)) + theme_minimal() + 
       scale_color_manual(values = cur_color_vector) + scale_alpha_manual(values = to.show) + 
@@ -79,8 +77,7 @@ shinyServer(function(input, output, session) {
                              group = colData(sce)$AnnotatedClusters,
                              shown = factor(ifelse(grepl(paste(input$dataset, collapse="|"), 
                                                          colData(sce)$Sample) & 
-                                                     grepl(paste(input$group, collapse="|"), 
-                                                           colData(sce)$AnnotatedClusters),
+                                                     colData(sce)$AnnotatedClusters %in% input$group,
                                                    "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = group, alpha = shown)) +
       scale_color_manual(values = color_vector) + theme_minimal() + 
@@ -105,17 +102,14 @@ shinyServer(function(input, output, session) {
     
     ggplot(data.frame(value = Gene[grepl(paste(input$dataset,collapse="|"), 
                                          colData(sce)$Sample) & 
-                                     grepl(paste(input$group,collapse="|"), 
-                                           colData(sce)$AnnotatedClusters)],
+                                     colData(sce)$AnnotatedClusters %in% input$group],
                       cluster = factor(sce$AnnotatedClusters[grepl(paste(input$dataset,collapse="|"), 
                                                          colData(sce)$Sample) & 
-                                                           grepl(paste(input$group,collapse="|"), 
-                                                                 colData(sce)$AnnotatedClusters)],
+                                            colData(sce)$AnnotatedClusters %in% input$group],
                                      levels = names(color_vector)),
                       sample = factor(colData(sce)$Sample[grepl(paste(input$dataset,collapse="|"), 
                                                          colData(sce)$Sample) & 
-                                                           grepl(paste(input$group,collapse="|"), 
-                                                                 colData(sce)$AnnotatedClusters)]))) +
+                                          colData(sce)$AnnotatedClusters %in% input$group]))) +
       geom_boxplot(aes(x = cluster, y = value, fill = cluster, 
                        group = interaction(cluster, sample))) + 
       scale_fill_manual(values = color_vector) + 
