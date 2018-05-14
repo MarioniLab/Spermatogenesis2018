@@ -23,72 +23,201 @@ I ran the BASiCS model on each cell population individually using the replicates
 library(BASiCS)
 library(coda)
 library(pheatmap)
+library(openxlsx)
+library(cowplot)
+library(ggplot2)
+library(rtracklayer)
+library(EnrichedHeatmap)
+library(GenomicFeatures)
+library(EnsDb.Mmusculus.v79)
+library(scater)
+library(plyr)
+library(reshape2)
+library(pheatmap)
+library(viridis)
+source("../../Functions/auxiliary.R")
+
+# Read in sce
+sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- sce[,grepl("B6", colData(sce)$Sample) &
+             colData(sce)$AnnotatedClusters %in% 
+             c("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")]
+sce <- normalize(sce)
+
+# Generate feature annotation
+prom <- promoters(genes(EnsDb.Mmusculus.v79),
+                  upstream = 1500, downstream = 500)
+prom <- prom[seqnames(prom) %in% c(as.character(1:19), "X", "Y", "MT"),]
+tss <- promoters(genes(EnsDb.Mmusculus.v79), 
+                 upstream = 0, downstream = 1)
+tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
+
+# Read in blacklist file
+blacklist <- import("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
+seqlevels(blacklist) <- sub("^chr", '', seqlevels(blacklist))
+
+# Read in gene names
 genenames <- read.table("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/Mus_human_chr21/genes.tsv", sep = "\t", stringsAsFactors = FALSE)
 rownames(genenames) <- genenames[,1]
-fits <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_B6.rds")
-fits <- fits[,!is.na(genenames[colnames(fits), 2])]
+
+# Read in post-hoc distribution of slopes based on epsilons
+fits.epsilon <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_epsilon_B6.rds")
+fits.mu <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_mu_B6.rds")
+
+# Remove coloumns containins NAs
+select <- !is.na(colSums(fits.epsilon)) & !is.na(colSums(fits.mu))
+fits.epsilon <- fits.epsilon[,select]
+fits.mu <- fits.mu[,select]
 
 # Visualize some trace plots for the MCMCs
-plot(mcmc(fits[,1]))
-plot(mcmc(fits[,10]))
-plot(mcmc(fits[,100]))
-plot(mcmc(fits[,1000]))
+plot(mcmc(fits.epsilon[,1]))
+plot(mcmc(fits.epsilon[,10]))
+plot(mcmc(fits.epsilon[,100]))
+plot(mcmc(fits.epsilon[,1000]))
 ```
 
 The trace plots show convergence for the slope - we can use this for posterior tail propability testing.
 
+# Testing for fits on epsilons
+
 ```{r}
 # Estimate the EFDR
-TestSlope <- BASiCS:::HiddenThresholdSearchTestDE(ChainLFC = fits, Epsilon = 0,
-                                                  ProbThreshold = NULL, GenesSelect = NULL,
-                                                  EFDR = 0.1, Task = "Slope testing")
+TestSlope.eps <- BASiCS:::HiddenThresholdSearchTestDE(ChainLFC = fits.epsilon, 
+                                        Epsilon = 0,
+                                        ProbThreshold = NULL, GenesSelect = NULL,
+                                        EFDR = 0.1, Task = "Slope testing")
 
-OptThreshold <- TestSlope$OptThreshold[1]
+OptThreshold.eps <- TestSlope.eps$OptThreshold[1]
 
-slope <- colMedians(fits)
+slope.eps <- colMedians(fits.epsilon)
+```
+
+# Testing for fits on mus
+
+```{r}
+# Estimate the EFDR
+TestSlope.mu <- BASiCS:::HiddenThresholdSearchTestDE(ChainLFC = fits.mu, 
+                                        Epsilon = 0,
+                                        ProbThreshold = NULL, GenesSelect = NULL,
+                                        EFDR = 0.1, Task = "Slope testing")
+
+OptThreshold.mus <- TestSlope.mu$OptThreshold[1]
+
+slope.mu <- colMedians(fits.mu)
 
 # Build output dataframe
-df.out <- data.frame(row.names = colnames(fits),
-                     Genenames = genenames[colnames(fits),2],
-                     Slope = slope,
-                     Probability = TestSlope$Prob,
-                     Result = ifelse(TestSlope$Prob > OptThreshold & slope > 0, "UpWithPT",
-                                     ifelse(TestSlope$Prob > OptThreshold & slope < 0, "DownWithPT", "NoDiff")))
+df.out <- data.frame(row.names = colnames(fits.mu),
+                     Genenames = genenames[colnames(fits.mu),2],
+                     Slope.mu = slope.mu,
+                     Probability.mu = TestSlope.mu$Prob,
+                     Result.mu = ifelse(TestSlope.mu$Prob > OptThreshold & 
+                                       slope.mu > 0, "Mean expression Up With PT",
+                                     ifelse(TestSlope.mu$Prob > OptThreshold & 
+                                              slope.mu < 0, "Mean expression Down With PT", "NoDiff")),
+                     Slope.epsilon = slope.eps,
+                     Probability.epsilon = TestSlope.eps$Prob,
+                     Result.epsilon = ifelse(TestSlope.eps$Prob > OptThreshold & 
+                                       slope.eps > 0, "Variability Up With PT",
+                                     ifelse(TestSlope.eps$Prob > OptThreshold & 
+                                              slope.eps < 0, "Variability Down With PT", "NoDiff")))
+
+# Order genes based on their increase in variability over PT
+df.out <- df.out[order(df.out$Slope.epsilon, decreasing = TRUE),]
+write.xlsx(df.out, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/VariabilityOverPT.xlsx")
 ```
 
-Now we can order the genes based on slope for increasing and decreasing variability over pseudotime.
+# Classification of genes into 8 groups
+
+- Increase in variability, no change in mean expression
+- Decrease in variability, no change in mean expression
+- Increase in variability, increase in mean expression
+- Decrease in variability, increase in mean expression
+- Increase in variability, decrease in mean expression
+- Decrease in variability, decrease in mean expression
+- No change in variability, increase in mean expression
+- No change in variability, decrease in mean expression
+- No change in variability, no change in mean expression
+
 
 ```{r}
-# Genes that increase variability with pseudotime
-head(df.out[order(df.out$Slope, decreasing = TRUE),], n = 100)
-# Genes that decrease variability with pseudotime
-head(df.out[order(df.out$Slope, decreasing = FALSE),], n = 100)
+df.out$regulation <- paste(df.out$Result.mu, df.out$Result.epsilon, sep = " and ")
 
-write.csv(df.out[order(df.out$Slope, decreasing = TRUE),], "Results/VariabilityOverPT.csv")
+ggplot(df.out) + geom_point(aes(Slope.mu, Slope.epsilon, colour = regulation)) +
+  scale_color_manual(values = c("#fddbc7", "#d7301f", "#7f0000", "#d1e5f0", "#0570b0", "#081d58", "#f7fcfd", "#f4a582", "#92c5de")) + 
+  xlab("Slope, Mean expression vs PT") + ylab("Slope, Variability vs PT")
 ```
 
-It's interesting to plot the slope versus mean expression.
+# Order cells along the principle curve
 
 ```{r}
-norm <- readRDS("../data/10X_data/Tc0_young_norm.rds")
-clusters <- read.csv("Results/Clusters_Tc0_young.csv", stringsAsFactors = FALSE)
+# Compute HVG
+HVgenes <- HVG(sce)
 
-norm <- norm[genenames[colnames(fits), 2],
-             clusters$OrderByPT != 1 & clusters$OrderByPT != 2]
+# Compute PCA
+pca <- prcomp(t(logcounts(sce)[HVgenes,]))
 
-plot(log10(rowMeans(as.matrix(norm))), df.out$Slope, pch = 16,
-     xlab = "Mean expression", ylab = "Slope",
-     col = ifelse(df.out$Result == "UpWithPT", "dark red",
-                  ifelse(df.out$Result == "DownWithPT", "dark blue",
-                  "grey")))
-
-df.out[log10(rowMeans(as.matrix(norm))) < 1 &
-         df.out$Slope > 2.5,]
+# Pseudo rank
+prank <- PT(rd = pca$x[,1:2], clusters = colData(sce)$AnnotatedClusters,
+            col_vector = metadata(sce)$color_vector)
 ```
 
-# Variability on X chromosome
+# Visualize example genes per category
 
 ```{r}
-chrX <- read.table("../data/chrX.txt", sep = "\t", stringsAsFactors = FALSE, header = TRUE)
-df.out[rownames(df.out) %in% chrX$Gene.stable.ID,]
+# Increase in mean expression, decrease in variability
+# Prm1
+Prm1.Z <- (logcounts(sce)[rowData(sce)$Symbol == "Prm1"] -
+             mean(logcounts(sce)[rowData(sce)$Symbol == "Prm1"]))/
+  sd(logcounts(sce)[rowData(sce)$Symbol == "Prm1"])
+
+ggplot(data.frame(PT = prank[,"lambda"],
+                  gene = Prm1.Z,
+                  cell_type = colData(sce)$AnnotatedClusters)) + 
+  geom_point(aes(PT, gene, colour = cell_type)) + 
+  xlab("Pseudotime") + ylab("Prm1, z-score") +
+  geom_abline(slope = 0, intercept = 0, colour = "dark red") + 
+  scale_color_manual(values = metadata(sce)$color_vector)
+
 ```
+
+# Cut and Run peaks for these genes
+
+```{r CnR}
+cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
+                        full.names = TRUE)
+
+# H3K4me3 spermatids day 24
+cur_file <- import(cur_files[12])
+
+# Exclude blacklisted regions
+cur_removed <- overlapsAny(cur_file, blacklist)
+cur_file <- cur_file[!cur_removed]
+cur_file <- cur_file[seqnames(cur_file) %in%
+                         c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
+
+
+# Loop through gene sets
+for(i in unique(df.out$regulation)){
+  cur_genes <- rownames(df.out)[df.out$regulation == i]
+  cur_tss <- tss[tss@elementMetadata$gene_id %in% cur_genes]
+  
+  cur_mat = normalizeToMatrix(cur_file, cur_tss, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+
+  EnrichedHeatmap(cur_mat, col = c("white", "red", "black"))
+}
+
+
+
+mat.tss = normalizeToMatrix(cur_bed, tss.X, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+```
+
+
+
