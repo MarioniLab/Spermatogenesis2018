@@ -39,15 +39,45 @@ bedgraph.files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spe
 # Read in genes that change in variability over pseudotime
 ```
 
-# Example analysis
+# Cut and Run peaks for these genes that were detected in the variability analysis
 
-```{r}
-cur_file <- import(files[32])
-cur_bedgraph <- import(bedgraph.files[32])
+```{r CnR}
+cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
+                        full.names = TRUE)
 
-# Test for enrichemnt heatmap
-mat1 = normalizeToMatrix(cur_bedgraph, tss, extend = 5000, mean_mode = "absolute", w = 50)
+# H3K4me3 spermatids day 24
+cur_file <- import(cur_files[12])
 
-EnrichedHeatmap(mat1, name = "H3K4me3_stem_cells")
+# Exclude blacklisted regions
+cur_removed <- overlapsAny(cur_file, blacklist)
+cur_file <- cur_file[!cur_removed]
+cur_file <- cur_file[seqnames(cur_file) %in%
+                         c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
+
+
+# Loop through gene sets
+for(i in unique(df.out$regulation)){
+  cur_genes <- rownames(df.out)[df.out$regulation == i]
+  cur_tss <- tss[tss@elementMetadata$gene_id %in% cur_genes]
+  
+  cur_mat = normalizeToMatrix(cur_file, cur_tss, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+
+  EnrichedHeatmap(cur_mat, col = c("white", "red", "black"))
+}
+
+
+
+mat.tss = normalizeToMatrix(cur_bed, tss.X, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
 ```
+
+
+
+
 
