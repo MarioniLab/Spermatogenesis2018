@@ -9,6 +9,7 @@ library(dynamicTreeCut)
 library(slingshot)
 library(dbscan)
 library(edgeR)
+library(destiny)
 
 #### Split Single cell experiment
 split.sce <- function(sce, groups, colData.name = "SubCluster"){
@@ -133,15 +134,41 @@ PT <- function(rd, clusters, col_vector,
            pch = 16, type = "p")
       lines(cur_lin, lwd = 3)
       
-      mat.out <- matrix(data = NA, ncol = ncol(cur_rd) + 1, nrow = length(clusters))
+      mat.out <- matrix(data = NA, ncol = ncol(cur_rd) + 2, nrow = length(clusters))
       rownames(mat.out) <- names(clusters)
-      colnames(mat.out) <- c(colnames(cur_rd), "rank")
+      colnames(mat.out) <- c(colnames(cur_rd), "rank", "lambda")
       
       mat.out[,1:ncol(cur_rd)] <- cur_lin$s
       mat.out[,"rank"] <- order(cur_lin$tag)
+      mat.out[,"lambda"] <- cur_lin$lambda
       
       mat.out
     }
+}
+
+#### Compute pseudotime with destiny
+diffusionPT <- function(sce, HVG, clusters, col_vector,
+               exclude = NULL){
+  if(!is.null(exclude)){
+    dm <- DiffusionMap(t(as.matrix(logcounts(sce)[HVG,!exclude])), k = 20)
+    
+    plot(dm, col = col_vector[clusters[!exclude]], 
+         pch = 16, type = "p")
+    
+    dpt <- DPT(dm = dm)
+    
+    dpt$DPT1
+  }
+  else{
+    dm <- DiffusionMap(t(as.matrix(logcounts(sce)[HVG,])), k = 20)
+    
+    plot(dm, col = col_vector[clusters], 
+         pch = 16, type = "p")
+    
+    dpt <- DPT(dm = dm)
+    
+    dpt$DPT1
+  }
 }
 
 #### Batch correction
