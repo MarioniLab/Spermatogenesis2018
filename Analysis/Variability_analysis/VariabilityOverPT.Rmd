@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Variability/VariabilityOverPT.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Variability/VariabilityOverPT.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -18,7 +18,7 @@ I ran the BASiCS model on each cell population individually using the replicates
 
 # Variability over pseudotime
 
-```{r}
+```{r, message=FALSE}
 # Load libraries and data
 library(BASiCS)
 library(coda)
@@ -38,7 +38,7 @@ library(viridis)
 source("../../Functions/auxiliary.R")
 
 # Read in sce
-sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 sce <- sce[,grepl("B6", colData(sce)$Sample) &
              colData(sce)$AnnotatedClusters %in% 
              c("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")]
@@ -54,20 +54,20 @@ tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
 seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
 
 # Read in blacklist file
-blacklist <- import("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
+blacklist <- import("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
 seqlevels(blacklist) <- sub("^chr", '', seqlevels(blacklist))
 
 # Read in gene names
-genenames <- read.table("/Users/eling01/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/Mus_human_chr21/genes.tsv", sep = "\t", stringsAsFactors = FALSE)
+genenames <- read.table("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/Mus_human_chr21/genes.tsv", sep = "\t", stringsAsFactors = FALSE)
 rownames(genenames) <- genenames[,1]
 
 # Read in post-hoc distribution of slopes based on epsilons
-fits.epsilon <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_epsilon_B6.rds")
-fits.mu <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_mu_B6.rds")
+fits.epsilon <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_epsilon_B6.rds")
+fits.mu <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_mu_B6.rds")
 
 # Read in medians of epsilons and mus
-mus <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/mus_B6.rds")
-epsilons <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/epsilons_B6.rds")
+mus <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/mus_B6.rds")
+epsilons <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/epsilons_B6.rds")
 
 # Remove coloumns containins NAs
 select <- !is.na(colSums(fits.epsilon)) & !is.na(colSums(fits.mu))
@@ -133,7 +133,7 @@ df.out <- df.out[order(df.out$Slope.epsilon, decreasing = TRUE),]
 df.out$regulation <- paste(df.out$Result.mu, 
                            df.out$Result.epsilon, sep = "_and_")
 
-write.xlsx(df.out, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/VariabilityOverPT.xlsx")
+write.xlsx(df.out, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/VariabilityOverPT.xlsx")
 ```
 
 ### Classification of genes into 8 groups
@@ -222,7 +222,7 @@ pheatmap(cur_eps.ranked[sam,], cluster_rows = FALSE, cluster_cols = FALSE,
 ## Visualize peaks for these genes
 
 ```{r peaks}
-cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
+cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
                         full.names = TRUE)
 
 # H3K4me3 spermatids day 24
@@ -266,6 +266,113 @@ cur_mat.lowVar = normalizeToMatrix(cur_file, cur_tss,
                         w = 50, keep = c(0,0.99))
 
 EnrichedHeatmap(cur_mat.lowVar, col = c("white", "red", "black"))
+
+
+```
+
+# Plot mean expression vs variability
+
+```{r}
+cur_mus <- mus[,paste("S", 1:14, sep = "")]
+cur_mus <- cur_mus[rownames(cur_eps),]
+
+ggplot(data.frame(mus = log(rowMeans(cur_mus)),
+                  eps = rowMeans(cur_eps, na.rm = TRUE))) + 
+  geom_point(aes(mus, eps))
+
+highVar.lowMean <- rownames(cur_mus)[log(rowMeans(cur_mus)) < -1 &
+                                         rowMeans(cur_eps, na.rm = TRUE) > 0.5]
+
+highVar.highMean <- rownames(cur_mus)[log(rowMeans(cur_mus)) > 1 &
+                                         rowMeans(cur_eps, na.rm = TRUE) > 0.5]
+
+lowVar.highMean <- rownames(cur_mus)[log(rowMeans(cur_mus)) > 1 &
+                                         rowMeans(cur_eps, na.rm = TRUE) < 0]
+
+lowVar.lowMean <- rownames(cur_mus)[log(rowMeans(cur_mus)) < -1 &
+                                         rowMeans(cur_eps, na.rm = TRUE) < 0]
+```
+
+## Visualie Peaks for these categories
+
+```{r}
+cur_genes <- highVar.lowMean
+cur_tss <- tss[tss@elementMetadata$gene_id %in% cur_genes]
+
+cur_mat = normalizeToMatrix(cur_file, cur_tss, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+
+median(rowMeans(cur_mat))
+
+EnrichedHeatmap(cur_mat, col = c("white", "red", "black"))
+
+cur_genes <- highVar.highMean
+cur_tss <- tss[tss@elementMetadata$gene_id %in% cur_genes]
+
+cur_mat = normalizeToMatrix(cur_file, cur_tss, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+
+median(rowMeans(cur_mat))
+
+EnrichedHeatmap(cur_mat, col = c("white", "red", "black"))
+
+cur_genes <- lowVar.lowMean
+cur_tss <- tss[tss@elementMetadata$gene_id %in% cur_genes]
+
+cur_mat = normalizeToMatrix(cur_file, cur_tss, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+
+median(rowMeans(cur_mat))
+
+EnrichedHeatmap(cur_mat, col = c("white", "red", "black"))
+
+cur_genes <- lowVar.highMean
+cur_tss <- tss[tss@elementMetadata$gene_id %in% cur_genes]
+
+cur_mat = normalizeToMatrix(cur_file, cur_tss, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+
+median(rowMeans(cur_mat))
+
+EnrichedHeatmap(cur_mat, col = c("white", "red", "black"))
+```
+
+# Clustering of variability profiles
+
+```{r}
+# Cluster genes based on variability profiles
+cur_eps <- cur_eps[!is.na(rowMeans(cur_eps)),]
+clusters <- kmeans(cur_eps, centers = 20)
+
+# Form average profiles of clusters
+mat <- matrix(data = NA, nrow = 20, ncol = ncol(cur_eps))
+colnames(mat) <- colnames(cur_eps)
+
+for(i in 1:20){
+  mat[i,] <- colMeans(cur_eps[clusters$cluster == i,])
+  plot(mat[i,])
+}
+
+# Visualize peaks
+for(i in 1:20){
+  cur_genes <- rownames(cur_eps)[clusters$cluster == i]
+  cur_tss <- tss[tss@elementMetadata$gene_id %in% cur_genes]
+
+  cur_mat = normalizeToMatrix(cur_file, cur_tss, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+
+  print(EnrichedHeatmap(cur_mat, col = c("white", "red", "black")))
+}
 
 
 ```
