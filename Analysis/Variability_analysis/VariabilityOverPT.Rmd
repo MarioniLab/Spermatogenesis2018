@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Variability/VariabilityOverPT.html') })
+        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Variability/VariabilityOverPT.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -38,7 +38,7 @@ library(viridis)
 source("../../Functions/auxiliary.R")
 
 # Read in sce
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 sce <- sce[,grepl("B6", colData(sce)$Sample) &
              colData(sce)$AnnotatedClusters %in% 
              c("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")]
@@ -54,16 +54,20 @@ tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
 seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
 
 # Read in blacklist file
-blacklist <- import("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
+blacklist <- import("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
 seqlevels(blacklist) <- sub("^chr", '', seqlevels(blacklist))
 
 # Read in gene names
-genenames <- read.table("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/Mus_human_chr21/genes.tsv", sep = "\t", stringsAsFactors = FALSE)
+genenames <- read.table("/Users/eling01/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/Mus_human_chr21/genes.tsv", sep = "\t", stringsAsFactors = FALSE)
 rownames(genenames) <- genenames[,1]
 
 # Read in post-hoc distribution of slopes based on epsilons
-fits.epsilon <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_epsilon_B6.rds")
-fits.mu <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_mu_B6.rds")
+fits.epsilon <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_epsilon_B6.rds")
+fits.mu <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_mu_B6.rds")
+
+# Read in medians of epsilons and mus
+mus <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/mus_B6.rds")
+epsilons <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/epsilons_B6.rds")
 
 # Remove coloumns containins NAs
 select <- !is.na(colSums(fits.epsilon)) & !is.na(colSums(fits.mu))
@@ -79,7 +83,9 @@ plot(mcmc(fits.epsilon[,1000]))
 
 The trace plots show convergence for the slope - we can use this for posterior tail propability testing.
 
-# Testing for fits on epsilons
+## Testing increases of decreases over PT
+
+### Testing for fits on epsilons
 
 ```{r}
 # Estimate the EFDR
@@ -93,7 +99,7 @@ OptThreshold.eps <- TestSlope.eps$OptThreshold[1]
 slope.eps <- colMedians(fits.epsilon)
 ```
 
-# Testing for fits on mus
+### Testing for fits on mus
 
 ```{r}
 # Estimate the EFDR
@@ -127,10 +133,10 @@ df.out <- df.out[order(df.out$Slope.epsilon, decreasing = TRUE),]
 df.out$regulation <- paste(df.out$Result.mu, 
                            df.out$Result.epsilon, sep = "_and_")
 
-write.xlsx(df.out, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/VariabilityOverPT.xlsx")
+write.xlsx(df.out, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/VariabilityOverPT.xlsx")
 ```
 
-# Classification of genes into 8 groups
+### Classification of genes into 8 groups
 
 - Increase in variability, no change in mean expression
 - Decrease in variability, no change in mean expression
@@ -149,7 +155,7 @@ ggplot(df.out) + geom_point(aes(Slope.mu, Slope.epsilon, colour = regulation)) +
   xlab("Slope, Mean expression vs PT") + ylab("Slope, Variability vs PT")
 ```
 
-# Order cells along the principle curve
+### Order cells along the principle curve
 
 ```{r}
 # Compute HVG
@@ -167,7 +173,7 @@ prank <- PT(rd = pca$x[,1:2], clusters = colData(sce)$AnnotatedClusters,
 #            col_vector = metadata(sce)$color_vector)
 ```
 
-# Visualize example genes per category
+### Visualize example genes per category
 
 ```{r}
 # Increase in mean expression, no change in variability
@@ -187,5 +193,79 @@ Up_NoDiff <- ggplot(data.frame(PT = prank[,"lambda"],
   geom_abline(slope = 0, intercept = 0, colour = "dark red") + 
   scale_color_manual(values = metadata(sce)$color_vector) + 
   guides(color = FALSE)
+
+```
+
+# Rank genes by mean variability
+
+```{r ranking}
+# Rank the genes based on the epsilons from S1-S14
+cur_eps <- epsilons[,paste("S", 1:14, sep = "")]
+cur_eps <- cur_eps[!(sum(t(apply(cur_eps, 1, is.na))) == ncol(cur_eps)),]
+
+cur_eps.ranked <- cur_eps[order(rowMeans(cur_eps, na.rm = TRUE), decreasing = TRUE),]
+```
+
+## Visualize 100 sample genes
+
+```{r sample}
+set.seed(123456)
+sam <- sample(1:nrow(cur_eps.ranked), 100)
+sam <- sam[order(sam)]
+
+pheatmap(cur_eps.ranked[sam,], cluster_rows = FALSE, cluster_cols = FALSE, 
+         color = colorRampPalette(c("dark blue", "white", "dark red"))(100), 
+         labels_row = rowData(sce)$Symbol[match(rownames(cur_eps.ranked)[sam], rowData(sce)$ID)],
+         breaks = seq(-7,7, length.out = 100))
+```
+
+## Visualize peaks for these genes
+
+```{r peaks}
+cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
+                        full.names = TRUE)
+
+# H3K4me3 spermatids day 24
+cur_file <- import(cur_files[12])
+
+# Exclude blacklisted regions
+cur_removed <- overlapsAny(cur_file, blacklist)
+cur_file <- cur_file[!cur_removed]
+cur_file <- cur_file[seqnames(cur_file) %in%
+                         c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
+
+
+cur_genes <- rownames(cur_eps.ranked)[sam]
+cur_tss <- tss[match(cur_genes, tss@elementMetadata$gene_id)]
+
+cur_mat = normalizeToMatrix(cur_file, cur_tss, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+
+EnrichedHeatmap(cur_mat, col = c("white", "red", "black"), row_order = 1:length(cur_genes))
+
+# Visualize top 100 and bottom 100 genes
+cur_genes <- rownames(cur_eps.ranked)[1:100]
+cur_tss <- tss[match(cur_genes, tss@elementMetadata$gene_id)]
+
+cur_mat.highVar = normalizeToMatrix(cur_file, cur_tss, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+
+EnrichedHeatmap(cur_mat.highVar, col = c("white", "red", "black"))
+
+cur_genes <- tail(rownames(cur_eps.ranked), 100)
+cur_tss <- tss[tss@elementMetadata$gene_id %in% cur_genes]
+
+cur_mat.lowVar = normalizeToMatrix(cur_file, cur_tss, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+
+EnrichedHeatmap(cur_mat.lowVar, col = c("white", "red", "black"))
+
 
 ```
