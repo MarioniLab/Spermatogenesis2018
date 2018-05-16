@@ -31,9 +31,6 @@ library(cowplot)
 library(openxlsx)
 
 # Generate feature annotation
-prom <- promoters(genes(EnsDb.Mmusculus.v79),
-                  upstream = 1500, downstream = 500)
-prom <- prom[seqnames(prom) %in% c(as.character(1:19), "X", "Y", "MT"),]
 tss <- promoters(genes(EnsDb.Mmusculus.v79), 
                  upstream = 0, downstream = 1)
 tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
@@ -52,11 +49,14 @@ sce <- normalize(sce)
 
 # Select XChr genes
 genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
-sce.XChr <- sce[rowData(sce)$ID %in% tss.X@elementMetadata@listData$gene_id,]
+sce.XChr <- sce[rowData(sce)$ID %in% 
+                  genenames[genenames$Chromosome.scaffold.name == "X",1],]
 sce.XChr <- normalize(sce.XChr)
 
 # Bulk data
 bulk <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+# Use genes that are also detected in scRNAseq data
+bulk <- bulk[rownames(bulk) %in% rowData(sce)$ID,]
 
 # Meta info
 meta <- as.data.frame(read.xlsx("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Metadata.xlsx", sheet = 2))
@@ -67,6 +67,8 @@ rownames(meta) <- meta$DO.number
 # Visualize X inactivation and reactivation
 
 ## Visualize X inactivation and reactivation
+
+This is done with single cells
 
 ```{r in-reactivation}
 # Remove lowly expressed genes
@@ -111,6 +113,37 @@ ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/
        x.inactivation, width = 12, height = 7)
 ```
 
+## Visualize in bulk data
+
+```{r bulk}
+# Select X chromosome genes
+bulk.X <- bulk[intersect(rowData(sce.XChr)$ID, rownames(bulk)),]
+bulk.X <- bulk.X[rowMeans(bulk.X) > 10,]
+
+# Collect day info on libraries
+df <- data.frame(library = colnames(bulk.X),
+                 day = meta$`Age.(days)`[order(rownames(meta))])
+
+# Order genes based on their logFC between spermatocytes (< P20)
+# and spermatids (> P20)
+bulk.X <- bulk.X[order(log(rowMeans(bulk.X[,df$day < 20])/
+                   rowMeans(bulk.X[,df$day > 20])), decreasing = TRUE),]
+
+# Order based on where gene expression reaches 10 counts for the first time
+bulk.X <- bulk.X[order(apply(bulk.X, 1, function(n){
+  which(n > 10)[1]
+}), decreasing = FALSE),]
+
+pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/BulkExpression.pdf",
+    width = 10, height = 15, onefile=FALSE)
+pheatmap(log10(bulk.X[,order(df$day)] + 1), cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", df$day[order(df$day)], sep = ""))
+dev.off()
+```
+
 ## Visualize different groups of genes
 
 ```{r genesets}
@@ -125,22 +158,8 @@ mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = su
 rownames(mat.for.heatmap) <- mat.for.heatmap$variable
 mat.for.heatmap <- mat.for.heatmap[,-1]
 
-# Remove genes that are not expressed across all groups
-mat.for.heatmap <- mat.for.heatmap[rowMeans(mat.for.heatmap) > 0.1,]
-
-# Order genes based on mean expression
-mat.for.heatmap <- mat.for.heatmap[order(rowMeans(mat.for.heatmap), decreasing = TRUE),]
-
-# Split matrix in 3 categories:
-# Inactivated and reactivated
-mat.1 <- mat.for.heatmap[mat.for.heatmap[,1] > rowMeans(mat.for.heatmap[,2:8]) &
-                           rowMeans(mat.for.heatmap[,2:8]) < rowMeans(mat.for.heatmap[,9:21]),]
-
-# Inactivated, not reactivated
-mat.2 <- mat.for.heatmap[mat.for.heatmap[,1] > rowMeans(mat.for.heatmap[,2:8]) &
-                           rowMeans(mat.for.heatmap[,2:8]) >= rowMeans(mat.for.heatmap[,9:21]),]
-# Not inactivated
-mat.3 <- mat.for.heatmap[mat.for.heatmap[,1] <= rowMeans(mat.for.heatmap[,2:8]),]
+# Match genes with bulk libraries
+mat.for.heatmap <- mat.for.heatmap[rownames(bulk.X),]
 ```
 
 ## Save different heatmaps
@@ -148,14 +167,14 @@ mat.3 <- mat.for.heatmap[mat.for.heatmap[,1] <= rowMeans(mat.for.heatmap[,2:8]),
 ```{r}
 pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/GeneExpression.pdf",
     width = 10, height = 15, onefile=FALSE)
-pheatmap(rbind(mat.1, mat.2, mat.3), cluster_cols = FALSE, 
+pheatmap(mat.for.heatmap, cluster_cols = FALSE, 
          cluster_rows = FALSE, show_rownames = FALSE,
          show_colnames = FALSE,
          color = viridis(100), 
-         annotation_col = data.frame(row.names = colnames(mat.1),
-                                     Cell_type = colnames(mat.1)),
+         annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
+                                     Cell_type = colnames(mat.for.heatmap)),
          annotation_colors = list(Cell_type = metadata(sce.XChr)$color_vector),
-         border_color = NA, gaps_row = c(nrow(mat.1), nrow(mat.1)+nrow(mat.2)))
+         border_color = NA)
 dev.off()
 ```
 
@@ -177,8 +196,10 @@ cur_files <- cur_files[sapply(filenames,
 filenames <- as.character(sub(".bed.1-1000.bedgraph.gz$", ".pdf",
                  sapply(cur_files, function(n){unlist(strsplit(n, "/"))[11]})))
 
-cur_genes <- rownames(rbind(mat.1, mat.2, mat.3))
-cur_tss <- tss[match(cur_genes, tss@elementMetadata$gene_id)]
+cur_genes <- rownames(mat.for.heatmap)
+cur_tss <- tss[match(cur_genes, tss@elementMetadata$gene_id)[
+  !is.na(match(cur_genes, tss@elementMetadata$gene_id))
+]]
 
 for(i in 1:length(cur_files)){
   cur_file <- import(cur_files[i])
@@ -199,10 +220,9 @@ for(i in 1:length(cur_files)){
   
   pdf(paste("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/", 
           filenames[i], sep = ""), width = 10, height = 15, onefile=FALSE)
-  print(EnrichedHeatmap(cur_mat[cur_genes,], col = c("white", "red", "black"), 
-                  split = c(rep(1, nrow(mat.1)), rep(2, nrow(mat.2)), rep(3, nrow(mat.3))),
+  print(EnrichedHeatmap(cur_mat, col = c("white", "red", "black"),
                   top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = 2:4))),
-                  row_order = 1:length(cur_genes)))
+                  row_order = 1:nrow(cur_mat)))
   dev.off()
 }
 ```
@@ -243,31 +263,6 @@ for(i in 1:length(cur_files)){
                   top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = 2:4)))))
   dev.off()
 }
-```
-
-# Visualize these genes in bulk data
-
-```{r bulk}
-# Collect day info on libraries
-df <- data.frame(library = colnames(bulk),
-                 day = meta$`Age.(days)`[order(rownames(meta))])
-
-# Generate heatmap for display
-for.heatmap <- matrix(0, ncol = ncol(bulk), nrow = length(cur_genes))
-rownames(for.heatmap) <- cur_genes
-colnames(for.heatmap) <- colnames(bulk)
-for.heatmap[!is.na(match(cur_genes, rownames(bulk))),] <- 
-  bulk[match(cur_genes, rownames(bulk))[!is.na(match(cur_genes, rownames(bulk)))],]
-
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/BulkExpression.pdf",
-    width = 10, height = 15, onefile=FALSE)
-pheatmap(log10(for.heatmap[,order(df$day)] + 1), cluster_cols = FALSE, 
-         cluster_rows = FALSE, show_rownames = FALSE,
-         color = viridis(100),
-         border_color = NA, 
-         gaps_row = c(nrow(mat.1), nrow(mat.1)+nrow(mat.2)),
-         labels_col = paste("P", df$day[order(df$day)], sep = ""))
-dev.off()
 ```
 
 # Save final figure
