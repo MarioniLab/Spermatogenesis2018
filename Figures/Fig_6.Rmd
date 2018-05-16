@@ -95,5 +95,5 @@ Aurkc <- ggplot(df) + geom_boxplot(aes(group, gene, fill = sample)) +
 
 ```{r final}
 final <- plot_grid(proportions.p, Aurkc, ncol = 1, nrow = 2)
-ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.pdf", final, width = 8, height = 8)
+ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.pdf", final, width = 8, height = 8)
 ```
