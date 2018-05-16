@@ -93,7 +93,7 @@ df <- data.frame(ratios = c(ratio.X.A, ratio.9.A),
                  groups = factor(c(as.character(colData(sce)$AnnotatedClusters), 
                             as.character(colData(sce)$AnnotatedClusters)), 
                             levels = levels(colData(sce)$AnnotatedClusters)),
-                 chr = c(rep("X", length(ratio.X.A)), rep("16", length(ratio.9.A))))
+                 chr = c(rep("X", length(ratio.X.A)), rep("9", length(ratio.9.A))))
 
 # visualize in form of boxplots
 x.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) + 
@@ -101,6 +101,8 @@ x.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) +
     theme(panel.background = element_blank(), axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12))
+ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Xdynamics.pdf", 
+       x.inactivation, width = 12, height = 7)
 ```
 
 ## Visualize different groups of genes
