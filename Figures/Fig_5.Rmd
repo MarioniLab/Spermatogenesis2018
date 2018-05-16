@@ -72,13 +72,12 @@ This is done with single cells
 
 ```{r in-reactivation}
 # Remove lowly expressed genes
-genes <- rowData(sce)$ID[apply(logcounts(sce)[,colData(sce)$AnnotatedClusters == "Spermatogonia"], 1, 
-                               function(n){length(which(n > 0))}) > 
-                           0.3*sum(colData(sce)$Cluster == "Spermatogonia") &
-                           apply(logcounts(sce)[,colData(sce)$AnnotatedClusters %in% 
-                                                  paste("S", 1:14, sep = "")], 1,
-                                 function(n){length(which(n > 0))}) > 
-                           0.3*sum(colData(sce)$AnnotatedClusters %in% c("Spermatogonia", paste("S", 1:14, sep = "")))]
+genes <- rowData(sce)$ID[
+  apply(logcounts(sce)[,colData(sce)$AnnotatedClusters %in% 
+          c("Spermatogonia", paste("S", 1:14, sep = ""))], 1,
+              function(n){length(which(n > 0))}) >
+    0.3*sum(colData(sce)$AnnotatedClusters %in% 
+              c("Spermatogonia", paste("S", 1:14, sep = "")))]
 
 # Collect genes for some chromosomes
 genes.X <- genes[genes %in% genenames[genenames[,3] == "X",1]]
@@ -94,7 +93,7 @@ ratio.X.A[is.nan(ratio.X.A)] <- 0
 
 ratio.9.A <- colMeans(as.matrix(logcounts(sce)[genes.9,]))/
   colMeans(as.matrix(logcounts(sce)[genes.A,]))
-ratio.9.A[is.nan(ratio.16.A)] <- 0
+ratio.9.A[is.nan(ratio.9.A)] <- 0
 
 # Build mean ratio matrix
 df <- data.frame(ratios = c(ratio.X.A, ratio.9.A),
