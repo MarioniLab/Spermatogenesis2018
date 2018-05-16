@@ -1,0 +1,99 @@
+---
+title: "Figure 6"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load data and libraries
+
+```{r data, message=FALSE}
+# Libraries
+library(scater)
+library(ggplot2)
+library(reshape2)
+library(plyr)
+library(openxlsx)
+library(cowplot)
+library(viridis)
+library(pheatmap)
+library(goseq)
+library(GO.db)
+library(org.Mm.eg.db)
+source("../Functions/auxiliary.R")
+
+# Single cell data
+sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+
+# Select Tc1, Tc0 and B6
+sce <- sce[,grepl("B6|Tc0|Tc1", colData(sce)$Sample)]
+sce <- normalise(sce)
+
+# Read in length of genes
+genelength <- read.table("../Data/Genelength.txt", header = TRUE, sep = "\t")
+```
+
+# Ratios of cell types in each sample
+
+```{r ratios}
+# Calculate proprtions of cell types in each sample
+df <- data.frame(sample = sub("_.*", "", colData(sce)$Sample),
+                 group = colData(sce)$AnnotatedClusters,
+                 value = rep(1, ncol(sce)))
+
+proportions <- with(df, table(sample, group))/plyr::count(df = df, vars = "sample")$freq
+```
+
+## Visualize percentages for germ cells
+
+```{r, visualization}
+cur_df <- proportions[c("B6", "Tc0", "Tc1"),1:22]
+cur_df.melt <- melt(cur_df)
+levels(cur_df.melt$sample) <- rev(c("B6", "Tc0", "Tc1"))
+levels(cur_df.melt$group) <- levels(colData(sce)$AnnotatedClusters)
+
+proportions.p <- ggplot(cur_df.melt) + geom_point(aes(group, rev(sample), size = value, fill = group), shape = 22) +
+  scale_fill_manual(values = metadata(sce)$color_vector) + 
+  theme(panel.background = element_blank(), axis.title = element_blank(),
+        axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12))
+```
+
+# Display Genes that are differentially expressed between Tc0 and Tc1
+
+```{r genes}
+cur_gene <- "Aurkc"
+cur_groups <- c("Early_Spermatocytes_1", "Early_Spermatocytes_2",
+                "Mid_Spermatocytes_1", "Mid_Spermatocytes_2",
+                "Late_Spermatocytes_1", "Late_Spermatocytes_2", "Meiosis")
+
+df <- data.frame(sample = sub("_.*", "", colData(sce)$Sample)[colData(sce)$AnnotatedClusters %in% cur_groups],
+                 group = colData(sce)$AnnotatedClusters[colData(sce)$AnnotatedClusters %in% cur_groups],
+                 gene = logcounts(sce)[rowData(sce)$ID[rowData(sce)$Symbol == cur_gene],
+                                       colData(sce)$AnnotatedClusters %in% cur_groups])
+
+Aurkc <- ggplot(df) + geom_boxplot(aes(group, gene, fill = sample)) + 
+  ylab(paste(cur_gene, "Expression")) +
+  theme(panel.background = element_blank(), axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12)) + scale_fill_manual(values = c("gray25", "snow4", "sienna3"))
+  
+```
+
+# Variability and mean expression of Chr21, X and 16 over the differentiation process
+
+# Save final figure
+
+```{r final}
+final <- plot_grid(proportions.p, Aurkc, ncol = 1, nrow = 2)
+ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.pdf", final, width = 8, height = 8)
+```
