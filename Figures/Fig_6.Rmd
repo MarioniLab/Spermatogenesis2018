@@ -29,10 +29,11 @@ library(pheatmap)
 library(goseq)
 library(GO.db)
 library(org.Mm.eg.db)
+library(ggsci)
 source("../Functions/auxiliary.R")
 
 # Single cell data
-sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 
 # Select Tc1, Tc0 and B6
 sce <- sce[,grepl("B6|Tc0|Tc1", colData(sce)$Sample)]
@@ -40,6 +41,9 @@ sce <- normalise(sce)
 
 # Read in length of genes
 genelength <- read.table("../Data/Genelength.txt", header = TRUE, sep = "\t")
+
+# Read in genenames
+genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 ```
 
 # Ratios of cell types in each sample
@@ -94,50 +98,126 @@ Aurkc <- ggplot(df) + geom_boxplot(aes(group, gene, fill = sample)) +
 ## Expression
 
 ```{r Chr21 inactivation and reactivation}
-cur_sce <- 
+cur_sce <- sce[,grepl("Tc1", colData(sce)$Sample) & 
+                 !(colData(sce)$AnnotatedClusters %in% 
+                     c("Leydig", "Sertoli", "Outliers", "Endothelial_cells"))]
+cur_sce <- normalize(cur_sce)
+
 # Remove lowly expressed genes
-genes <- rowData(sce)$ID[apply(logcounts(sce)[,colData(sce)$AnnotatedClusters == "Spermatogonia"], 1, 
-                               function(n){length(which(n > 0))}) > 
-                           0.3*sum(colData(sce)$Cluster == "Spermatogonia") &
-                           apply(logcounts(sce)[,colData(sce)$AnnotatedClusters %in% 
-                                                  paste("S", 1:14, sep = "")], 1,
-                                 function(n){length(which(n > 0))}) > 
-                           0.3*sum(colData(sce)$AnnotatedClusters %in% c("Spermatogonia", paste("S", 1:14, sep = "")))]
+genes <- rowData(cur_sce)$ID[
+  apply(logcounts(cur_sce)[,colData(cur_sce)$AnnotatedClusters %in% 
+          c("Spermatogonia", paste("S", 1:14, sep = ""))], 1,
+              function(n){length(which(n > 0))}) >
+    0.3*sum(colData(cur_sce)$AnnotatedClusters %in% 
+              c("Spermatogonia", paste("S", 1:14, sep = "")))]
 
 # Collect genes for some chromosomes
 genes.X <- genes[genes %in% genenames[genenames[,3] == "X",1]]
 genes.9 <- genes[genes %in% genenames[genenames[,3] == "9",1]]
+genes.21 <- genes[grepl("ENSG", genes)]
 genes.A <- genes[genes %in% genenames[genenames[,3] != "X" & 
                                         genenames[,3] != "Y" &
                                         genenames[,3] != "MT",1]]
 
 # Calculate X:A ratio and 16:X ratio
-ratio.X.A <- colMeans(as.matrix(logcounts(sce)[genes.X,]))/
-  colMeans(as.matrix(logcounts(sce)[genes.A,]))
+ratio.X.A <- colMeans(as.matrix(logcounts(cur_sce)[genes.X,]))/
+  colMeans(as.matrix(logcounts(cur_sce)[genes.A,]))
 ratio.X.A[is.nan(ratio.X.A)] <- 0
 
-ratio.9.A <- colMeans(as.matrix(logcounts(sce)[genes.9,]))/
-  colMeans(as.matrix(logcounts(sce)[genes.A,]))
-ratio.9.A[is.nan(ratio.16.A)] <- 0
+ratio.21.A <- colMeans(as.matrix(logcounts(cur_sce)[genes.21,]))/
+  colMeans(as.matrix(logcounts(cur_sce)[genes.A,]))
+ratio.21.A[is.nan(ratio.21.A)] <- 0
+
+ratio.9.A <- colMeans(as.matrix(logcounts(cur_sce)[genes.9,]))/
+  colMeans(as.matrix(logcounts(cur_sce)[genes.A,]))
+ratio.9.A[is.nan(ratio.9.A)] <- 0
 
 # Build mean ratio matrix
-df <- data.frame(ratios = c(ratio.X.A, ratio.9.A),
-                 groups = factor(c(as.character(colData(sce)$AnnotatedClusters), 
-                            as.character(colData(sce)$AnnotatedClusters)), 
-                            levels = levels(colData(sce)$AnnotatedClusters)),
-                 chr = c(rep("X", length(ratio.X.A)), rep("16", length(ratio.9.A))))
+df <- data.frame(ratios = c(ratio.X.A, ratio.9.A, ratio.21.A),
+                 groups = factor(c(as.character(colData(cur_sce)$AnnotatedClusters), 
+                            as.character(colData(cur_sce)$AnnotatedClusters),
+                            as.character(colData(cur_sce)$AnnotatedClusters)), 
+                            levels = levels(colData(cur_sce)$AnnotatedClusters)),
+                 chr = c(rep("X", length(ratio.X.A)), 
+                         rep("9", length(ratio.9.A)),
+                         rep("21", length(ratio.21.A))))
 
 # visualize in form of boxplots
-x.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) + 
+x.21.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) + 
   scale_fill_jama() + ylab("Chr:Autosome ratio") + 
     theme(panel.background = element_blank(), axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12))
+ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/21dynamics.pdf", 
+       x.21.inactivation, width = 12, height = 7)
 ```
+
+# Variability for X, 9 and 21
+
+```{r}
+# Read in variability measures
+epsilons <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/epsilons_Tc1.rds")
+
+# Order variability measures
+epsilons <- epsilons[,levels(colData(cur_sce)$AnnotatedClusters)[
+  levels(colData(cur_sce)$AnnotatedClusters) %in% colnames(epsilons)
+]]
+
+# Plot variability measures for the 3 chromossomes
+df.21 <- melt(epsilons[genes.21,])
+df.X <- melt(epsilons[genes.X,])
+df.9 <- melt(epsilons[genes.9,])
+
+df <- rbind(df.21, df.X, df.9)
+df$chr <- c(rep("21", nrow(df.21)), rep("X", nrow(df.X)), rep("9", nrow(df.9)))
+
+x.21.variability <- ggplot(df) + geom_boxplot(aes(Var2, value, fill = chr)) + 
+  scale_fill_jama() + ylab("Variabilty") + 
+    theme(panel.background = element_blank(), axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12))
+ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/21variability.pdf", 
+       x.21.inactivation, width = 12, height = 7)
+```
+
+# Visualize heatmap of Chr21
+
+```{r}
+# Build mean expression matrix
+df <- as.data.frame(t(as.matrix(logcounts(cur_sce)[
+  grepl("ENSG", rownames(cur_sce)),])))
+df$groups <- colData(cur_sce)$AnnotatedClusters
+df.melt <- melt(df, id.vars = "groups")
+
+# Collect mean expression for each gene in each group
+mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
+mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
+rownames(mat.for.heatmap) <- mat.for.heatmap$variable
+mat.for.heatmap <- mat.for.heatmap[,-1]
+mat.for.heatmap <- mat.for.heatmap[genes.21,]
+
+# Order genes based on mean expression
+mat.for.heatmap <- mat.for.heatmap[order(rowMeans(mat.for.heatmap), 
+                                         decreasing = TRUE),]
+
+pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Chr21_GeneExpression.pdf", onefile=FALSE)
+pheatmap(mat.for.heatmap, cluster_cols = FALSE, 
+         cluster_rows = FALSE,
+         show_colnames = FALSE,
+         color = viridis(100), 
+         annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
+                                     Cell_type = colnames(mat.for.heatmap)),
+         annotation_colors = list(Cell_type = metadata(cur_sce)$color_vector),
+         border_color = NA, 
+         labels_row = rowData(cur_sce)$Symbol[match(rownames(mat.for.heatmap), 
+                                                    rowData(cur_sce)$ID)])
+dev.off()
+```
+
 
 # Save final figure
 
 ```{r final}
 final <- plot_grid(proportions.p, Aurkc, ncol = 1, nrow = 2)
-ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.pdf", final, width = 8, height = 8)
+ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.pdf", final, width = 8, height = 8)
 ```
