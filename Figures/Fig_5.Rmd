@@ -153,6 +153,8 @@ dev.off()
 
 # Visualize peaks for these genes
 
+## H3K4me3
+
 ```{r peaks}
 cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
                         full.names = TRUE)
@@ -189,11 +191,56 @@ for(i in 1:length(cur_files)){
   
   pdf(paste("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/", 
           filenames[i], sep = ""), width = 10, height = 15, onefile=FALSE)
-  EnrichedHeatmap(cur_mat, col = c("white", "red", "black"), 
+  print(EnrichedHeatmap(cur_mat[cur_genes,], col = c("white", "red", "black"), 
                   split = c(rep(1, nrow(mat.1)), rep(2, nrow(mat.2)), rep(3, nrow(mat.3))),
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = 2:4))))
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = 2:4))),
+                  row_order = 1:length(cur_genes)))
   dev.off()
 }
+```
+
+## H3K27ac
+
+```{r peaks}
+cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K27ac/", 
+                        full.names = TRUE)
+
+filenames <- as.character(sub(".bed.1-1000.bedgraph.gz$", ".pdf",
+                 sapply(cur_files, function(n){unlist(strsplit(n, "/"))[11]})))
+
+cur_genes <- rownames(rbind(mat.1, mat.2, mat.3))
+cur_tss <- tss[match(cur_genes, tss@elementMetadata$gene_id)]
+
+for(i in 1:length(cur_files)){
+  cur_file <- import(cur_files[i])
+  
+  # Exclude blacklisted regions
+  cur_removed <- overlapsAny(cur_file, blacklist)
+  cur_file <- cur_file[!cur_removed]
+  cur_file <- cur_file[seqnames(cur_file) %in%
+                         c(as.character(1:19), "X", "Y", "MT"),]
+  seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
+
+  cur_bed <- cur_file[seqnames(cur_file) == "X"]
+
+  cur_mat = normalizeToMatrix(cur_bed, cur_tss, 
+                        value_column = "score",
+                        extend = 5000, mean_mode = "w0", 
+                        w = 50, keep = c(0,0.99))
+  
+  pdf(paste("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/", 
+          filenames[i], sep = ""), width = 10, height = 15, onefile=FALSE)
+  print(EnrichedHeatmap(cur_mat, col = c("white", "green", "black"), 
+                  split = c(rep(1, nrow(mat.1)), rep(2, nrow(mat.2)), rep(3, nrow(mat.3))),
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = 2:4)))))
+  dev.off()
+}
+```
+
+# Visualize these genes in bulk data
+
+```{r bulk}
+
 ```
 
 # Save final figure
