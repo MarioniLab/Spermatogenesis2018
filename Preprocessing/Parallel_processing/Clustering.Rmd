@@ -90,7 +90,7 @@ new.clusters[new.clusters == 15] <- "Outliers"
 new.clusters[new.clusters == 16] <- "Late_Spermatocytes_2"
 new.clusters[new.clusters == 17] <- "Early_Spermatocytes_2"
 new.clusters[new.clusters == 18] <- "Mid_Spermatocytes_1"
-new.clusters[new.clusters == 19] <- "PTM_2"
+new.clusters[new.clusters == 19] <- "Endothelial_cells"
 new.clusters[new.clusters == 20] <- "S5"
 new.clusters[new.clusters == 21] <- "S2"
 new.clusters[new.clusters == 22] <- "Spermatogonia"
@@ -113,7 +113,7 @@ colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
                    "S3", "S4", "S5", "S6", "S7", "S8", "S9",
                    "S10", "S11", "S12", "S13",
                    "S14", "Leydig", "Sertoli", "PTM_1", 
-                   "PTM_2", "tMg", "ECM", "Outliers"))
+                   "Endothelial_cells", "tMg", "ECM", "Outliers"))
 
 colour_vector <- c("Spermatogonia" = "#166D37", 
                    "Early_Spermatocytes_1" = "#EE6493", 
@@ -140,7 +140,7 @@ colour_vector <- c("Spermatogonia" = "#166D37",
                    "Leydig" = "#985D25",
                    "Sertoli" = "#643F18",
                    "PTM_1" = "#C58C58", 
-                   "PTM_2" = "#FFDFB2",
+                   "Endothelial_cells" = "#FFDFB2",
                    "tMg" = "#F36E20",
                    "ECM" = "#A58D81",
                    "Outliers" = "#067277")
