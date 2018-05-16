@@ -28,6 +28,7 @@ library(pheatmap)
 library(viridis)
 library(ggsci)
 library(cowplot)
+library(openxlsx)
 
 # Generate feature annotation
 prom <- promoters(genes(EnsDb.Mmusculus.v79),
@@ -39,11 +40,11 @@ tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
 seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
 tss.X <- tss[seqnames(tss) == "X"]
 
-blacklist <- import("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
+blacklist <- import("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
 seqlevels(blacklist) <- sub("^chr", '', seqlevels(blacklist))
 
 # Read in sce data
-sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 sce <- sce[,grepl("B6", colData(sce)$Sample) & 
              !(colData(sce)$AnnotatedClusters %in% c("variable", "Leydig", "Sertoli",
                                           "Endothelial_cells", "Outliers"))]
@@ -55,7 +56,12 @@ sce.XChr <- sce[rowData(sce)$ID %in% tss.X@elementMetadata@listData$gene_id,]
 sce.XChr <- normalize(sce.XChr)
 
 # Bulk data
-bulk <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+bulk <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+
+# Meta info
+meta <- as.data.frame(read.xlsx("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Metadata.xlsx", sheet = 2))
+meta <- meta[!is.na(meta$DO.number),]
+rownames(meta) <- meta$DO.number
 ```
 
 # Visualize X inactivation and reactivation
@@ -101,7 +107,7 @@ x.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) +
     theme(panel.background = element_blank(), axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12))
-ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Xdynamics.pdf", 
+ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Xdynamics.pdf", 
        x.inactivation, width = 12, height = 7)
 ```
 
@@ -140,7 +146,7 @@ mat.3 <- mat.for.heatmap[mat.for.heatmap[,1] <= rowMeans(mat.for.heatmap[,2:8]),
 ## Save different heatmaps
 
 ```{r}
-pdf("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/GeneExpression.pdf",
+pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/GeneExpression.pdf",
     width = 10, height = 15, onefile=FALSE)
 pheatmap(rbind(mat.1, mat.2, mat.3), cluster_cols = FALSE, 
          cluster_rows = FALSE, show_rownames = FALSE,
@@ -158,9 +164,9 @@ dev.off()
 ## H3K4me3
 
 ```{r peaks}
-cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
+cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
                         full.names = TRUE)
-filenames <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
+filenames <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
                         full.names = FALSE)
 
 cur_files <- cur_files[sapply(filenames, 
@@ -191,7 +197,7 @@ for(i in 1:length(cur_files)){
                         extend = 5000, mean_mode = "w0", 
                         w = 50, keep = c(0,0.99))
   
-  pdf(paste("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/", 
+  pdf(paste("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/", 
           filenames[i], sep = ""), width = 10, height = 15, onefile=FALSE)
   print(EnrichedHeatmap(cur_mat[cur_genes,], col = c("white", "red", "black"), 
                   split = c(rep(1, nrow(mat.1)), rep(2, nrow(mat.2)), rep(3, nrow(mat.3))),
@@ -204,7 +210,7 @@ for(i in 1:length(cur_files)){
 ## H3K27ac
 
 ```{r peaks}
-cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K27ac/", 
+cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K27ac/", 
                         full.names = TRUE)
 
 filenames <- as.character(sub(".bed.1-1000.bedgraph.gz$", ".pdf",
@@ -230,7 +236,7 @@ for(i in 1:length(cur_files)){
                         extend = 5000, mean_mode = "w0", 
                         w = 50, keep = c(0,0.99))
   
-  pdf(paste("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/", 
+  pdf(paste("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/", 
           filenames[i], sep = ""), width = 10, height = 15, onefile=FALSE)
   print(EnrichedHeatmap(cur_mat, col = c("white", "green", "black"), 
                   split = c(rep(1, nrow(mat.1)), rep(2, nrow(mat.2)), rep(3, nrow(mat.3))),
@@ -242,12 +248,31 @@ for(i in 1:length(cur_files)){
 # Visualize these genes in bulk data
 
 ```{r bulk}
+# Collect day info on libraries
+df <- data.frame(library = colnames(bulk),
+                 day = meta$`Age.(days)`[order(rownames(meta))])
 
+# Generate heatmap for display
+for.heatmap <- matrix(0, ncol = ncol(bulk), nrow = length(cur_genes))
+rownames(for.heatmap) <- cur_genes
+colnames(for.heatmap) <- colnames(bulk)
+for.heatmap[!is.na(match(cur_genes, rownames(bulk))),] <- 
+  bulk[match(cur_genes, rownames(bulk))[!is.na(match(cur_genes, rownames(bulk)))],]
+
+pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/BulkExpression.pdf",
+    width = 10, height = 15, onefile=FALSE)
+pheatmap(log10(for.heatmap[,order(df$day)] + 1), cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = viridis(100),
+         border_color = NA, 
+         gaps_row = c(nrow(mat.1), nrow(mat.1)+nrow(mat.2)),
+         labels_col = paste("P", df$day[order(df$day)], sep = ""))
+dev.off()
 ```
 
 # Save final figure
 
 ```{r final}
 final <- plot_grid(proportions.p, Aurkc, ncol = 1, nrow = 2)
-ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.pdf", final, width = 8, height = 8)
+ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.pdf", final, width = 8, height = 8)
 ```
