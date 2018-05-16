@@ -27,6 +27,7 @@ library(DropletUtils)
 library(scater)
 library(viridis)
 library(RColorBrewer)
+source("../../Functions/auxiliary.R")
 
 # Read in data - Single cell experiment object per batch
 # P10
@@ -214,4 +215,34 @@ sce.all <- sce.all[,-which(colData(sce.all)$Barcode %in% colData(sce.all)$Barcod
 sce.all <- sce.all[Matrix::rowSums(counts(sce.all)) > 0,]
 
 saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
+
+# Normalization
+
+```{r normalization}
+clusters <- quickCluster(sce.all, method = "igraph", irlba.args = c("work" = 100), 
+                         max.size = 2000)
+
+sce.all <- computeSumFactors(sce.all, clusters=clusters)
+sce.all <- sce.all[,sizeFactors(sce.all) > 0]
+
+sce.all <- normalize(sce.all, return_log = TRUE)
+
+saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+```
+
+# Batch correction
+
+```{r}
+# Split datasets into batches
+sce.single <- split.sce(sce = sce.all, groups = unique(colData(sce.all)$Sample), 
+                        colData.name = "Sample")
+
+# Batch correction
+corrected <- batch.correction(sce.single)
+
+# Save batch corrected matrix in sce object
+metadata(sce.all)$corrected <- corrected
+```
+
