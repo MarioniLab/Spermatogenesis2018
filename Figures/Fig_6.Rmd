@@ -1,13 +1,13 @@
 ---
 title: "Figure 6"
-author: "Nils Eling"
+author: "eling01 Eling"
 date: "`r Sys.Date()`"
 output: 
   html_document:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.html') })
+        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -33,7 +33,7 @@ library(ggsci)
 source("../Functions/auxiliary.R")
 
 # Single cell data
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 
 # Select Tc1, Tc0 and B6
 sce <- sce[,grepl("B6|Tc0|Tc1", colData(sce)$Sample)]
@@ -148,7 +148,7 @@ x.21.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) 
     theme(panel.background = element_blank(), axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12))
-ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/21dynamics.pdf", 
+ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/21dynamics.pdf", 
        x.21.inactivation, width = 12, height = 7)
 ```
 
@@ -156,7 +156,7 @@ ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/
 
 ```{r}
 # Read in variability measures
-epsilons <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/epsilons_Tc1.rds")
+epsilons <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/epsilons_Tc1.rds")
 
 # Order variability measures
 epsilons <- epsilons[,levels(colData(cur_sce)$AnnotatedClusters)[
@@ -176,8 +176,8 @@ x.21.variability <- ggplot(df) + geom_boxplot(aes(Var2, value, fill = chr)) +
     theme(panel.background = element_blank(), axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12))
-ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/21variability.pdf", 
-       x.21.inactivation, width = 12, height = 7)
+ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/21variability.pdf", 
+       x.21.variability, width = 12, height = 7)
 ```
 
 # Visualize heatmap of Chr21
@@ -200,7 +200,8 @@ mat.for.heatmap <- mat.for.heatmap[genes.21,]
 mat.for.heatmap <- mat.for.heatmap[order(rowMeans(mat.for.heatmap), 
                                          decreasing = TRUE),]
 
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Chr21_GeneExpression.pdf", onefile=FALSE)
+pdf("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Chr21_GeneExpression.pdf", onefile=FALSE,
+    width = 12)
 pheatmap(mat.for.heatmap, cluster_cols = FALSE, 
          cluster_rows = FALSE,
          show_colnames = FALSE,
@@ -219,5 +220,5 @@ dev.off()
 
 ```{r final}
 final <- plot_grid(proportions.p, Aurkc, ncol = 1, nrow = 2)
-ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.pdf", final, width = 8, height = 8)
+ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.pdf", final, width = 8, height = 8)
 ```
