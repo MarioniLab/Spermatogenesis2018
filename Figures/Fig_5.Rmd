@@ -257,9 +257,10 @@ for(i in 1:length(cur_files)){
   
   pdf(paste("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/", 
           filenames[i], sep = ""), width = 10, height = 15, onefile=FALSE)
-  print(EnrichedHeatmap(cur_mat, col = c("white", "green", "black"), 
+  print(EnrichedHeatmap(cur_mat[cur_genes,], col = c("white", "red", "black"), 
                   split = c(rep(1, nrow(mat.1)), rep(2, nrow(mat.2)), rep(3, nrow(mat.3))),
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = 2:4)))))
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = 2:4))),
+                  row_order = 1:length(cur_genes)))
   dev.off()
 }
 ```

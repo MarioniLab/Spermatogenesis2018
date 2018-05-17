@@ -209,7 +209,7 @@ plot(Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total
 sce.all <- sce.all[,Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts < 0.1]
 
 # Remove duplicated barcodes
-sce.all <- sce.all[,-which(colData(sce.all)$Barcode %in% colData(sce.all)$Barcode[which(duplicated(colData(sce.all)$Barcode))])]
+#sce.all <- sce.all[,-which(colData(sce.all)$Barcode %in% colData(sce.all)$Barcode[which(duplicated(colData(sce.all)$Barcode))])]
 
 # Remove genes that are not expressed
 sce.all <- sce.all[Matrix::rowSums(counts(sce.all)) > 0,]
