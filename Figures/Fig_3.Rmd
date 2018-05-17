@@ -32,14 +32,10 @@ library(org.Mm.eg.db)
 source("../Functions/auxiliary.R")
 
 # Single cell data
-sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 
 # Select spermatogonia and spermatocytes
-sce <- sce[,grepl("B6", colData(sce)$Sample) &
-             colData(sce)$AnnotatedClusters %in% c("Spermatogonia", "Early_Spermatocytes_1",
-                                                   "Early_Spermatocytes_2", "Mid_Spermatocytes_1",
-                                                   "Mid_Spermatocytes_2", "Late_Spermatocytes_1",
-                                                   "Late_Spermatocytes_2",  "Meiosis")]
+sce <- sce[,grepl("B6", colData(sce)$Sample)]
 sce <- normalize(sce)
 
 # Read in length of genes
@@ -65,7 +61,7 @@ rots.PC1 <- data.frame(row.names = rownames(pca.spermatogonia$rotation),
                                                       rowData(sce.spermatogonia)$ID)])
 rots.PC1 <- rots.PC1[order(rots.PC1$rotations, decreasing = TRUE),]
 
-write.xlsx(rots.PC1, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/SpermatogoniaPCARotations.xlsx")
+write.xlsx(rots.PC1, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/SpermatogoniaPCARotations.xlsx")
 
 # Visualize marker genes
 
@@ -227,17 +223,37 @@ null.dist <- correlateNull(ncells = ncol(sce.spermatocytes), iters = 100000)
 cors <- correlatePairs(cur_mat, null.dist=null.dist, pairings = list(c("number.genes"), rownames(cur_mat)))
 cors$genename <- rowData(sce.spermatocytes)$Symbol[match(cors$gene2, rowData(sce.spermatocytes)$ID)]
 
-write.xlsx(cors, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/CorrelationNumberGenesExpressed_Spermatoytes.xlsx")
+
+# Perform DE analysis between spermatocytes and spermatids
+sce.for.testing <- sce[match(rowData(sce.spermatocytes)$ID, 
+                             rowData(sce)$ID),
+                       !(colData(sce)$AnnotatedClusters %in% 
+                            c("PTM_1", "Endothelial_cells", "Outliers",
+                              "Leydig", "Sertoli"))]
+sce.for.testing <- normalize(sce.for.testing)
+DE <- findMarkers(sce.for.testing, 
+    clusters = ifelse(colData(sce.for.testing)$AnnotatedClusters %in% 
+                            c("Early_Spermatocytes_1", "Early_Spermatocytes_2",
+                              "Mid_Spermatocytes_1", "Mid_Spermatocytes_2",
+                              "Late_Spermatocytes_1", "Late_Spermatocytes_2",
+                              "Meiosis"), "Spermatocytes", "Spermatids"))
+
+cors$FDR.DE <- DE$Spermatocytes$FDR[match(cors$gene2, 
+                                          rownames(DE$Spermatocytes))]
+cors$logFC.Spermatids <- DE$Spermatocytes$logFC.Spermatids[match(cors$gene2, 
+                                          rownames(DE$Spermatocytes))]
+
+write.xlsx(cors, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/CorrelationNumberGenesExpressed_Spermatoytes.xlsx")
 
 # Split gene list into correlated and not correlated with number of genes expressed
-pos.cor <- cors[cors$FDR < 0.1 & cors$rho > 0.3,]
-neg.cor <- cors[cors$FDR < 0.1 & cors$rho < -0.3,]
-no.cor <- cors[!(cors$gene2 %in% pos.cor$gene2) & !(cors$gene2 %in% neg.cor$gene2), ]
+# Focus on the genes that are spermatocytes specific
+pos.cor <- cors[cors$FDR < 0.1 & cors$rho > 0.3 & cors$logFC.Spermatids > 1,]
+neg.cor <- cors[cors$FDR < 0.1 & cors$rho < -0.3 &cors$logFC.Spermatids > 1,]
 
-# Visualize top 20 genes in heatmap\
+# Visualize top 20 genes in heatmap
 for.heatmap <- logcounts(sce.spermatocytes)[pos.cor$gene2[1:20],order(prank[,"rank"])]
 colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
-pdf("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3_PosCorrelationHeatmap.pdf", onefile = FALSE)
+pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_PosCorrelationHeatmap.pdf", onefile = FALSE)
 pheatmap(for.heatmap, show_colnames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE, color = viridis(100), 
          labels_row = pos.cor$genename[1:20], 
@@ -248,24 +264,9 @@ pheatmap(for.heatmap, show_colnames = FALSE,
                                      Rho = pos.cor$rho[1:20]))
 dev.off()
 
-set.seed(1234)
-sam <- sample(1:nrow(no.cor), 20)
-for.heatmap <- logcounts(sce.spermatocytes)[no.cor$gene2[sam],order(prank[,"rank"])]
-colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
-pdf("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3_NoCorrelationHeatmap.pdf", onefile = FALSE)
-pheatmap(for.heatmap, show_colnames = FALSE,
-         cluster_rows = FALSE, cluster_cols = FALSE, color = viridis(100), 
-         labels_row = no.cor$genename[sam], 
-         annotation_col = data.frame(row.names = colnames(for.heatmap),
-                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])]),
-         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector),
-         annotation_row = data.frame(row.names = rownames(for.heatmap),
-                                     Rho = no.cor$rho[sam]))
-dev.off()
-
 for.heatmap <- logcounts(sce.spermatocytes)[neg.cor$gene2[1:20],order(prank[,"rank"])]
 colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
-pdf("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3_NegCorrelationHeatmap.pdf", onefile = FALSE)
+pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_NegCorrelationHeatmap.pdf", onefile = FALSE)
 pheatmap(for.heatmap, show_colnames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE, color = viridis(100), 
          labels_row = neg.cor$genename[1:20], 
@@ -280,9 +281,28 @@ dev.off()
 
 # GO analysis of genes that correlate with number of genes expressed
 
+Using DAVID
+
+```{r}
+# Write out background
+write.table(as.data.frame(cors$gene2), "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/background.txt", 
+            quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+# Write out positively correlated genes
+write.table(as.data.frame(pos.cor$gene2), "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/PosCorGenes.txt", 
+            quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+# Write out negatively correlated genes
+write.table(as.data.frame(neg.cor$gene2), "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/NegCorGenes.txt", 
+            quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+
+Using goseq
+
 ```{r GO}
 # GO analysis
-cur_genes <- as.integer(cors$FDR < 0.1 & cors$rho > 0.3)
+cur_genes <- as.integer(cors$FDR < 0.1 & cors$rho > 0.3 & 
+                          cors$logFC.Spermatids > 1)
 names(cur_genes) <- cors$gene2
   
 pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
@@ -299,9 +319,10 @@ for(j in 1:nrow(enriched.GO)){
 }
 enriched.GO$Genes <- all_genes
   
-write.xlsx(enriched.GO, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/PosCorrelationNumberGenesExpressed_Spermatoytes_GO.xlsx")
+write.xlsx(enriched.GO, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/PosCorrelationNumberGenesExpressed_Spermatoytes_GO.xlsx")
 
-cur_genes <- as.integer(cors$FDR < 0.1 & cors$rho < -0.3)
+cur_genes <- as.integer(cors$FDR < 0.1 & cors$rho < -0.3 & 
+                          cors$logFC.Spermatids > 1)
 names(cur_genes) <- cors$gene2
   
 pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
@@ -318,7 +339,7 @@ for(j in 1:nrow(enriched.GO)){
 }
 enriched.GO$Genes <- all_genes
   
-write.xlsx(enriched.GO, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/NegCorrelationNumberGenesExpressed_Spermatoytes_GO.xlsx")
+write.xlsx(enriched.GO, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/NegCorrelationNumberGenesExpressed_Spermatoytes_GO.xlsx")
 ```
 
 # Cut and Run analysis for these genes
@@ -335,10 +356,10 @@ tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
 seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
 
 # Read in blacklist file
-blacklist <- import("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
+blacklist <- import("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
 seqlevels(blacklist) <- sub("^chr", '', seqlevels(blacklist))
 
-cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
+cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
                         full.names = TRUE)
 
 # H3K4me3 spermatocytes day 24
@@ -379,5 +400,5 @@ EnrichedHeatmap(cur_mat, col = c("white", "red", "black"))
 
 ```{r final}
 final <- plot_grid(spermatogonia.p, spermatocytes.p, ncol = 1, nrow = 2, rel_heights = c(1,3))
-ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3.pdf", final, width = 8, height = 10)
+ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3.pdf", final, width = 8, height = 10)
 ```
