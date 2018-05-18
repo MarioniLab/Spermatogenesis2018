@@ -215,7 +215,6 @@ sce.all <- sce.all[,Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData
 sce.all <- sce.all[Matrix::rowSums(counts(sce.all)) > 0,]
 
 saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
-sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
 
 # Normalization
@@ -244,5 +243,86 @@ corrected <- batch.correction(sce.single)
 
 # Save batch corrected matrix in sce object
 metadata(sce.all)$corrected <- corrected
+
+saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+```
+
+# Mark the cells that were labeled before
+
+```{r}
+sce.old <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+
+annotatedclust <- rep("NewCell", ncol(sce.all))
+m <- match(colData(sce.old)$Barcode, colData(sce.all)$Barcode)
+annotatedclust[m[!is.na(m)]] <- as.character(colData(sce.old)$AnnotatedClusters)[!is.na(m)]
+
+colData(sce.all)$AnnotatedClusters <- factor(annotatedclust,
+      levels = c(levels(colData(sce.old)$AnnotatedClusters), "NewCell"))
+
+col_vector <- metadata(sce.old)$color_vector
+col_vector <- c(col_vector, "NewCell" = "black")
+
+metadata(sce.all)$color_vector <- col_vector
+
+rm(sce.old)
+saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+```
+
+# Compute tSNE
+
+```{r}
+set.seed(111)
+tsne <- Rtsne(t(metadata(sce.all)$corrected), perplexity = 60)
+reducedDims(sce.all)$TSNE <- tsne$Y
+
+saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+```
+
+# Visualize results
+
+```{r}
+df1 <- data.frame(tsne1 =reducedDims(sce.all)$TSNE[
+                      colData(sce.all)$AnnotatedClusters != "NewCell",1],
+                  tsne2 = reducedDims(sce.all)$TSNE[
+                    colData(sce.all)$AnnotatedClusters != "NewCell",2],
+                  batch = colData(sce.all)$AnnotatedClusters[
+                    colData(sce.all)$AnnotatedClusters != "NewCell"
+                  ],
+                  Dazl = logcounts(sce.all)[rowData(sce.all)$Symbol == "Dazl",
+                  colData(sce.all)$AnnotatedClusters != "NewCell"],
+                  Prm1 = logcounts(sce.all)[rowData(sce.all)$Symbol == "Prm1",
+                  colData(sce.all)$AnnotatedClusters != "NewCell"])
+df2 <- data.frame(tsne1 =reducedDims(sce.all)$TSNE[
+                      colData(sce.all)$AnnotatedClusters == "NewCell",1],
+                  tsne2 = reducedDims(sce.all)$TSNE[
+                    colData(sce.all)$AnnotatedClusters == "NewCell",2],
+                  batch = colData(sce.all)$AnnotatedClusters[
+                    colData(sce.all)$AnnotatedClusters == "NewCell"
+                  ],
+                  Dazl = logcounts(sce.all)[rowData(sce.all)$Symbol == "Dazl",
+                  colData(sce.all)$AnnotatedClusters == "NewCell"],
+                  Prm1 = logcounts(sce.all)[rowData(sce.all)$Symbol == "Prm1",
+                  colData(sce.all)$AnnotatedClusters == "NewCell"])
+  
+emptyDrops <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = batch)) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = batch)) +
+  scale_color_manual(values = metadata(sce.all)$color_vector)
+ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/emptyDrops.pdf", emptyDrops, 
+       width = 12, height = 8)
+
+emptyDrops.Dazl <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = Dazl)) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = Dazl)) +
+  scale_color_viridis()
+ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/emptyDrops_Dazl.pdf", emptyDrops.Dazl,
+       width = 12, height = 8)
+
+emptyDrops.Prm1 <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = Prm1)) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = Prm1)) +
+  scale_color_viridis()
+ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/emptyDrops_Prm1.pdf", emptyDrops.Prm1,
+       width = 12, height = 8)
 ```
 
