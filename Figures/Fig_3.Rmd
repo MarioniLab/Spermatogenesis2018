@@ -1,13 +1,13 @@
 ---
 title: "Figure 3"
-author: "Nils Eling"
+author: "eling01 Eling"
 date: "`r Sys.Date()`"
 output: 
   html_document:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3.html') })
+        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -29,10 +29,11 @@ library(pheatmap)
 library(goseq)
 library(GO.db)
 library(org.Mm.eg.db)
+library(RColorBrewer)
 source("../Functions/auxiliary.R")
 
 # Single cell data
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 
 # Select spermatogonia and spermatocytes
 sce <- sce[,grepl("B6", colData(sce)$Sample)]
@@ -61,7 +62,7 @@ rots.PC1 <- data.frame(row.names = rownames(pca.spermatogonia$rotation),
                                                       rowData(sce.spermatogonia)$ID)])
 rots.PC1 <- rots.PC1[order(rots.PC1$rotations, decreasing = TRUE),]
 
-write.xlsx(rots.PC1, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/SpermatogoniaPCARotations.xlsx")
+write.xlsx(rots.PC1, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/SpermatogoniaPCARotations.xlsx")
 
 # Visualize marker genes
 
@@ -243,7 +244,7 @@ cors$FDR.DE <- DE$Spermatocytes$FDR[match(cors$gene2,
 cors$logFC.Spermatids <- DE$Spermatocytes$logFC.Spermatids[match(cors$gene2, 
                                           rownames(DE$Spermatocytes))]
 
-write.xlsx(cors, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/CorrelationNumberGenesExpressed_Spermatoytes.xlsx")
+write.xlsx(cors, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/CorrelationNumberGenesExpressed_Spermatoytes.xlsx")
 
 # Split gene list into correlated and not correlated with number of genes expressed
 # Focus on the genes that are spermatocytes specific
@@ -253,7 +254,7 @@ neg.cor <- cors[cors$FDR < 0.1 & cors$rho < -0.3 &cors$logFC.Spermatids > 1,]
 # Visualize top 20 genes in heatmap
 for.heatmap <- logcounts(sce.spermatocytes)[pos.cor$gene2[1:20],order(prank[,"rank"])]
 colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_PosCorrelationHeatmap.pdf", onefile = FALSE)
+pdf("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_PosCorrelationHeatmap.pdf", onefile = FALSE)
 pheatmap(for.heatmap, show_colnames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE, color = viridis(100), 
          labels_row = pos.cor$genename[1:20], 
@@ -266,7 +267,7 @@ dev.off()
 
 for.heatmap <- logcounts(sce.spermatocytes)[neg.cor$gene2[1:20],order(prank[,"rank"])]
 colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_NegCorrelationHeatmap.pdf", onefile = FALSE)
+pdf("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_NegCorrelationHeatmap.pdf", onefile = FALSE)
 pheatmap(for.heatmap, show_colnames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE, color = viridis(100), 
          labels_row = neg.cor$genename[1:20], 
@@ -285,15 +286,15 @@ Using DAVID
 
 ```{r}
 # Write out background
-write.table(as.data.frame(cors$gene2), "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/background.txt", 
+write.table(as.data.frame(cors$gene2), "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/background.txt", 
             quote = FALSE, row.names = FALSE, col.names = FALSE)
 
 # Write out positively correlated genes
-write.table(as.data.frame(pos.cor$gene2), "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/PosCorGenes.txt", 
+write.table(as.data.frame(pos.cor$gene2), "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/PosCorGenes.txt", 
             quote = FALSE, row.names = FALSE, col.names = FALSE)
 
 # Write out negatively correlated genes
-write.table(as.data.frame(neg.cor$gene2), "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/NegCorGenes.txt", 
+write.table(as.data.frame(neg.cor$gene2), "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/NegCorGenes.txt", 
             quote = FALSE, row.names = FALSE, col.names = FALSE)
 ```
 
@@ -319,7 +320,7 @@ for(j in 1:nrow(enriched.GO)){
 }
 enriched.GO$Genes <- all_genes
   
-write.xlsx(enriched.GO, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/PosCorrelationNumberGenesExpressed_Spermatoytes_GO.xlsx")
+write.xlsx(enriched.GO, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/PosCorrelationNumberGenesExpressed_Spermatoytes_GO.xlsx")
 
 cur_genes <- as.integer(cors$FDR < 0.1 & cors$rho < -0.3 & 
                           cors$logFC.Spermatids > 1)
@@ -339,7 +340,105 @@ for(j in 1:nrow(enriched.GO)){
 }
 enriched.GO$Genes <- all_genes
   
-write.xlsx(enriched.GO, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/NegCorrelationNumberGenesExpressed_Spermatoytes_GO.xlsx")
+write.xlsx(enriched.GO, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/NegCorrelationNumberGenesExpressed_Spermatoytes_GO.xlsx")
+```
+
+# Visualize GO categories
+
+```{r GO-visualization}
+# meiotic DNA double-strand break formation
+cur_GO <- "GO:0042138"
+cur_genes <- get(cur_GO, org.Mm.egGO2ALLEGS)
+cur_genes <- unlist(mget(cur_genes,org.Mm.egENSEMBL))
+
+cur_genes.expr <- logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID %in% cur_genes,]
+
+cur_df <- melt(as.matrix(cur_genes.expr))
+cur_df$PT <- rep(PT, each = nrow(cur_genes.expr)) 
+cur_df$genename <- rowData(sce.spermatocytes)$Symbol[match(cur_df$Var1, rowData(sce.spermatocytes)$ID)]
+
+p.meiotic <- ggplot(cur_df) + 
+  ylab("Gene expression") +
+  geom_smooth(aes(x = PT, y = value)) +
+  geom_point(aes(x = PT, y = value, colour = genename)) + 
+  scale_color_manual(values = c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2")), 
+                     name = "meiotic DNA double-strand break formation")
+
+# synaptonemal complex assembly
+cur_GO <- "GO:0007130"
+cur_genes <- get(cur_GO, org.Mm.egGO2ALLEGS)
+cur_genes <- unlist(mget(cur_genes,org.Mm.egENSEMBL))
+
+cur_genes.expr <- logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID %in% cur_genes,]
+
+cur_df <- melt(as.matrix(cur_genes.expr))
+cur_df$PT <- rep(PT, each = nrow(cur_genes.expr)) 
+cur_df$genename <- rowData(sce.spermatocytes)$Symbol[match(cur_df$Var1, rowData(sce.spermatocytes)$ID)]
+
+p.synapto <- ggplot(cur_df) + 
+  ylab("Gene expression") +
+  geom_smooth(aes(x = PT, y = value)) +
+  geom_point(aes(x = PT, y = value, colour = genename)) + 
+  scale_color_manual(values = c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2")), 
+                     name = "synaptonemal complex assembly")
+
+# meiotic chromosome segregation
+cur_GO <- "GO:0045132"
+cur_genes <- get(cur_GO, org.Mm.egGO2ALLEGS)
+cur_genes <- unlist(mget(cur_genes,org.Mm.egENSEMBL))
+
+cur_genes.expr <- logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID %in% cur_genes,]
+
+cur_df <- melt(as.matrix(cur_genes.expr))
+cur_df$PT <- rep(PT, each = nrow(cur_genes.expr)) 
+cur_df$genename <- rowData(sce.spermatocytes)$Symbol[match(cur_df$Var1, rowData(sce.spermatocytes)$ID)]
+
+p.chrSeg <- ggplot(cur_df) + 
+  ylab("Gene expression") +
+  geom_smooth(aes(x = PT, y = value)) +
+  geom_point(aes(x = PT, y = value, color = genename)) + 
+  scale_color_discrete(name = "meiotic chromosome segregation")
+
+# resolution of meiotic recombination intermediates
+cur_GO <- "GO:0000712"
+cur_genes <- get(cur_GO, org.Mm.egGO2ALLEGS)
+cur_genes <- unlist(mget(cur_genes,org.Mm.egENSEMBL))
+
+cur_genes.expr <- logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID %in% cur_genes,]
+
+cur_df <- melt(as.matrix(cur_genes.expr))
+cur_df$PT <- rep(PT, each = nrow(cur_genes.expr)) 
+cur_df$genename <- rowData(sce.spermatocytes)$Symbol[match(cur_df$Var1, rowData(sce.spermatocytes)$ID)]
+
+p.recom <- ggplot(cur_df) + 
+  ylab("Gene expression") +
+  geom_smooth(aes(x = PT, y = value)) +
+  geom_point(aes(x = PT, y = value, colour = genename)) + 
+  scale_color_manual(values = c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2")), 
+                     name = "resolution of meiotic recombination intermediates")
+
+# male meiotic nuclear division
+cur_GO <- "GO:0007140"
+cur_genes <- get(cur_GO, org.Mm.egGO2ALLEGS)
+cur_genes <- unlist(mget(cur_genes,org.Mm.egENSEMBL))
+
+cur_genes.expr <- logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID %in% cur_genes,]
+
+cur_df <- melt(as.matrix(cur_genes.expr))
+cur_df$PT <- rep(PT, each = nrow(cur_genes.expr)) 
+cur_df$genename <- rowData(sce.spermatocytes)$Symbol[match(cur_df$Var1, rowData(sce.spermatocytes)$ID)]
+
+p.div <- ggplot(cur_df) + 
+  ylab("Gene expression") +
+  geom_smooth(aes(x = PT, y = value)) +
+  geom_point(aes(x = PT, y = value, colour = genename)) + 
+  scale_color_manual(values = c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(12, "Set3")), 
+                     name = "male meiotic nuclear division")
+
+final <- plot_grid(p.meiotic, p.synapto, p.chrSeg,
+                   p.recom, p.div, ncol = 3, nrow = 2)
+ggsave("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/GO_terms.pdf",
+       width = 20, height = 10)
 ```
 
 # Cut and Run analysis for these genes
@@ -356,10 +455,10 @@ tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
 seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
 
 # Read in blacklist file
-blacklist <- import("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
+blacklist <- import("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
 seqlevels(blacklist) <- sub("^chr", '', seqlevels(blacklist))
 
-cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
+cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
                         full.names = TRUE)
 
 # H3K4me3 spermatocytes day 24
@@ -400,5 +499,5 @@ EnrichedHeatmap(cur_mat, col = c("white", "red", "black"))
 
 ```{r final}
 final <- plot_grid(spermatogonia.p, spermatocytes.p, ncol = 1, nrow = 2, rel_heights = c(1,3))
-ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3.pdf", final, width = 8, height = 10)
+ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3.pdf", final, width = 8, height = 10)
 ```
