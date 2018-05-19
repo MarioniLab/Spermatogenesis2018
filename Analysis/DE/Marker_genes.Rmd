@@ -53,5 +53,10 @@ write.xlsx(sperm.markers, "/Users/nils/Dropbox (Cambridge University)/SST_sperma
 
 ```{r spermatogenesis}
 somatic.markers <- marker.detection(sce.P10, as.character(colData(sce.P10)$AnnotatedClusters))
+
+# Save rds
+saveRDS(somatic.markers, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_P10.rds")
+
+# Save xlsx
 write.xlsx(somatic.markers, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_P10.xlsx")
 ```
