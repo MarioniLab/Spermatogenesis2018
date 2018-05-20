@@ -80,12 +80,12 @@ new.clusters[new.clusters == 4] <- "S9"
 new.clusters[new.clusters == 5] <- "S8"
 new.clusters[new.clusters == 6] <- "S14"
 new.clusters[new.clusters == 7] <- "Mid_Spermatocytes_2"
-new.clusters[new.clusters == 9] <- "ECM"
+new.clusters[new.clusters == 9] <- "Immature_Leydig"
 new.clusters[new.clusters == 10] <- "tMg"
 new.clusters[new.clusters == 11] <- "Leydig"
 new.clusters[new.clusters == 12] <- "Sertoli"
 new.clusters[new.clusters == 13] <- "Meiosis"
-new.clusters[new.clusters == 14] <- "PTM_1"
+new.clusters[new.clusters == 14] <- "PTM"
 new.clusters[new.clusters == 15] <- "Outliers"
 new.clusters[new.clusters == 16] <- "Late_Spermatocytes_2"
 new.clusters[new.clusters == 17] <- "Early_Spermatocytes_2"
@@ -112,8 +112,8 @@ colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
                    "Late_Spermatocytes_2", "Meiosis", "S1", "S2",
                    "S3", "S4", "S5", "S6", "S7", "S8", "S9",
                    "S10", "S11", "S12", "S13",
-                   "S14", "Leydig", "Sertoli", "PTM_1", 
-                   "Endothelial_cells", "tMg", "ECM", "Outliers"))
+                   "S14", "Sertoli", "Leydig", "Immature_Leydig", "PTM", 
+                   "Endothelial_cells", "tMg",  "Outliers"))
 
 colour_vector <- c("Spermatogonia" = "#166D37", 
                    "Early_Spermatocytes_1" = "#EE6493", 
@@ -137,12 +137,12 @@ colour_vector <- c("Spermatogonia" = "#166D37",
                    "S12" = "#71719A",
                    "S13" = "#8A8A9B",
                    "S14" = "#BCBCC2",
-                   "Leydig" = "#985D25",
                    "Sertoli" = "#643F18",
-                   "PTM_1" = "#C58C58", 
+                   "Leydig" = "#985D25",
+                   "Immature_Leydig" = "#A58D81",
+                   "PTM" = "#C58C58", 
                    "Endothelial_cells" = "#FFDFB2",
                    "tMg" = "#F36E20",
-                   "ECM" = "#A58D81",
                    "Outliers" = "#067277")
 
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],

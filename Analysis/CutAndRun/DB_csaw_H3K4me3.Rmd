@@ -40,7 +40,7 @@ We also use the ENCODE hg38 blacklist to ignore reads in problematic regions.
 ```{r}
 library(csaw)
 library(rtracklayer)
-black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/hg38-human/hg38.blacklist.bed.gz")
+black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
 param <- readParam(dedup=TRUE, minq=10, discard=black, pe="both", max.frag=1000)
 param
 ```
@@ -201,6 +201,49 @@ out <- res$table
 out$FDR <- p.adjust(out$PValue, method = "BH")
 ```
 
+# Merge adjacent windows with a maximum width of 5kb
+
+```{r}
+merged <- mergeWindows(rowRanges(filtered), tol=1000L, max.width=5000L)
+summary(width(merged$region))
+
+merged$region
+
+tabcom <- combineTests(merged$id, res$table)
+head(tabcom)
+
+is.sig.region <- tabcom$FDR <= 0.05
+table(tabcom$direction[is.sig.region])
+
+mcols(merged$region) <- tabcom
+regions_df <- as.data.frame(merged$region)
+write.csv(regions_df, "clusters_5kb_H3K4me3.csv", row.names=F)
+write.table(regions_df, file="regions_max2500_H3K4me3.bed", quote=F, sep="\t", row.names=F, col.names=F)
+
+```
+
+
+#Cluster windows into regions
+
+Use promoter annotation to find overlap
+
+```{r}
+library(GenomicRanges)
+library(EnsDb.Mmusculus.v79)
+prom <- promoters(genes(EnsDb.Mmusculus.v79),
+                  upstream = 5000, downstream = 5000)
+olap <- findOverlaps(prom, rowRanges(filtered))
+
+tabprom <- combineOverlaps(olap, res$table)
+head(tabprom[!is.na(tabprom$PValue),])
+is.sig.prom <- prom$FDR <= 0.05
+table(prom$direction[is.sig.prom])
+
+mcols(prom) <- tabprom
+
+prom_df <- as.data.frame(prom[!is.na(prom$PValue),])
+write.table(prom_df, file="promoter_regions_5kb_up_down_H3K4me3.bed", quote=F, sep="\t", row.names=F, col.names=F)
+```
 # Saving the results
 
 Saving the window coordinates as well as the various results.
