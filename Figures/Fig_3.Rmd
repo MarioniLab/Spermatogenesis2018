@@ -424,60 +424,6 @@ pheatmap(for.heatmap, show_colnames = FALSE,
 dev.off()
 ```
 
-# Cut and Run analysis for these genes
-
-```{r}
-library(rtracklayer)
-library(EnrichedHeatmap)
-library(GenomicFeatures)
-library(EnsDb.Mmusculus.v79)
-
-tss <- promoters(genes(EnsDb.Mmusculus.v79), 
-                 upstream = 0, downstream = 1)
-tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
-seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
-
-# Read in blacklist file
-blacklist <- import("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
-seqlevels(blacklist) <- sub("^chr", '', seqlevels(blacklist))
-
-cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
-                        full.names = TRUE)
-
-# H3K4me3 spermatocytes day 24
-cur_file <- import(cur_files[11])
-
-# Exclude blacklisted regions
-cur_removed <- overlapsAny(cur_file, blacklist)
-cur_file <- cur_file[!cur_removed]
-cur_file <- cur_file[seqnames(cur_file) %in%
-                         c(as.character(1:19), "X", "Y", "MT"),]
-seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
-
-# Genes with high correlation to number of genes expressed
-cur_genes <- pos.cor$gene2
-cur_tss <- tss[tss@elementMetadata$gene_id %in% cur_genes]
-
-cur_mat = normalizeToMatrix(cur_file, cur_tss, 
-                        value_column = "score",
-                        extend = 5000, mean_mode = "w0", 
-                        w = 50, keep = c(0,0.99))
-
-EnrichedHeatmap(cur_mat, col = c("white", "red", "black"))
-
-# Genes with no correaltion to number genes expressed
-cur_genes <- no.cor$gene2
-cur_tss <- tss[tss@elementMetadata$gene_id %in% cur_genes]
-
-cur_mat = normalizeToMatrix(cur_file, cur_tss, 
-                        value_column = "score",
-                        extend = 5000, mean_mode = "w0", 
-                        w = 50, keep = c(0,0.99))
-
-EnrichedHeatmap(cur_mat, col = c("white", "red", "black"))
-
-```
-
 # Save final figure
 
 ```{r final}
