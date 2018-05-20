@@ -182,50 +182,56 @@ df2 <- data.frame(tsne1 =reducedDims(sce)$TSNE[
   
 # All samples
 emptyDrops <- ggplot() +
-  geom_point(data = df2, aes(tsne1, tsne2, colour = batch)) +
-  geom_point(data = df1, aes(tsne1, tsne2, colour = batch)) +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = batch), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = batch), size = 0.5) +
   scale_color_manual(values = metadata(sce)$color_vector) +
   guides(colour = FALSE)
 
 # Only P20
 emptyDrops.P20 <- ggplot() +
   geom_point(data = df2[grepl("P20", df2$sample),], 
-             aes(tsne1, tsne2, colour = batch)) +
+             aes(tsne1, tsne2, colour = batch), size = 0.5) +
   geom_point(data = df1[grepl("P20", df1$sample),], 
-             aes(tsne1, tsne2, colour = batch)) +
+             aes(tsne1, tsne2, colour = batch), size = 0.5) +
   scale_color_manual(values = metadata(sce)$color_vector) +
   guides(colour = FALSE)
 
 emptyDrops.Sycp1 <- ggplot() +
-  geom_point(data = df2, aes(tsne1, tsne2, colour = Sycp1)) +
-  geom_point(data = df1, aes(tsne1, tsne2, colour = Sycp1)) +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = Sycp1), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = Sycp1), size = 0.5) +
   scale_color_viridis()
 
 emptyDrops.H2afx <- ggplot() +
-  geom_point(data = df2, aes(tsne1, tsne2, colour = H2afx)) +
-  geom_point(data = df1, aes(tsne1, tsne2, colour = H2afx)) +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = H2afx), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = H2afx), size = 0.5) +
   scale_color_viridis()
 
 emptyDrops.Hormad1 <- ggplot() +
-  geom_point(data = df2, aes(tsne1, tsne2, colour = Hormad1)) +
-  geom_point(data = df1, aes(tsne1, tsne2, colour = Hormad1)) +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = Hormad1), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = Hormad1), size = 0.5) +
   scale_color_viridis()
 
 # Number of genes expressed
 emptyDrops.no.genes <- ggplot() +
-  geom_point(data = df2, aes(tsne1, tsne2, colour = no.genes)) +
-  geom_point(data = df1, aes(tsne1, tsne2, colour = no.genes)) +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = no.genes), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = no.genes), size = 0.5) +
   scale_color_gradientn(colours = inferno(100))
 ```
 
 # Save final figure
 
 ```{r save}
-final <- plot_grid(Nanos3, Stra8, Rhox13,
-                   emptyDrops, emptyDrops.P20, NULL,
-                   emptyDrops.Sycp1, emptyDrops.H2afx, emptyDrops.Hormad1,
-                   emptyDrops.no.genes, NULL, NULL, ncol = 3, nrow = 4)
+B <- plot_grid(Nanos3, Stra8, Rhox13, ncol = 3, nrow = 1, 
+               labels = c("B", NULL, NULL))
+C <- plot_grid(emptyDrops, emptyDrops.P20, NULL, ncol = 3, nrow = 1, 
+               labels = c("C", NULL, NULL))
+D <- plot_grid(emptyDrops.Sycp1, emptyDrops.H2afx, emptyDrops.Hormad1, ncol = 3, nrow = 1, 
+               labels = c("D", NULL, NULL))
+E <- plot_grid(emptyDrops.no.genes, NULL, NULL, ncol = 3, nrow = 1, 
+               labels = c("E", NULL, NULL))
+final <- plot_grid(B, C, D, E,
+                   ncol = 1, nrow = 4)
 
 ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Fig_S3.pdf",
-       width = 25, height = 25)
+       width = 15, height = 15)
 ```
