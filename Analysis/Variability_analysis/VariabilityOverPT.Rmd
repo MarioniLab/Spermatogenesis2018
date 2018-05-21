@@ -1,13 +1,13 @@
 ---
 title: "Variability over pseudotime"
-author: "Nils Eling"
+author: "eling01 Eling"
 date: "`r Sys.Date()`"
 output: 
   html_document:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Variability/VariabilityOverPT.html') })
+        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Variability/VariabilityOverPT.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -38,7 +38,7 @@ library(viridis)
 source("../../Functions/auxiliary.R")
 
 # Read in sce
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 sce <- sce[,grepl("B6", colData(sce)$Sample) &
              colData(sce)$AnnotatedClusters %in% 
              c("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")]
@@ -54,20 +54,20 @@ tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
 seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
 
 # Read in blacklist file
-blacklist <- import("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
+blacklist <- import("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
 seqlevels(blacklist) <- sub("^chr", '', seqlevels(blacklist))
 
 # Read in gene names
-genenames <- read.table("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/Mus_human_chr21/genes.tsv", sep = "\t", stringsAsFactors = FALSE)
+genenames <- read.table("/Users/eling01/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/Mus_human_chr21/genes.tsv", sep = "\t", stringsAsFactors = FALSE)
 rownames(genenames) <- genenames[,1]
 
 # Read in post-hoc distribution of slopes based on epsilons
-fits.epsilon <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_epsilon_B6.rds")
-fits.mu <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_mu_B6.rds")
+fits.epsilon <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_epsilon_B6.rds")
+fits.mu <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/fits_mu_B6.rds")
 
 # Read in medians of epsilons and mus
-mus <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/mus_B6.rds")
-epsilons <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/epsilons_B6.rds")
+mus <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/mus_B6.rds")
+epsilons <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Variability/data/epsilons_B6.rds")
 
 # Remove coloumns containins NAs
 select <- !is.na(colSums(fits.epsilon)) & !is.na(colSums(fits.mu))
@@ -133,7 +133,7 @@ df.out <- df.out[order(df.out$Slope.epsilon, decreasing = TRUE),]
 df.out$regulation <- paste(df.out$Result.mu, 
                            df.out$Result.epsilon, sep = "_and_")
 
-write.xlsx(df.out, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/VariabilityOverPT.xlsx")
+write.xlsx(df.out, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/VariabilityOverPT.xlsx")
 ```
 
 ### Classification of genes into 8 groups
@@ -151,7 +151,7 @@ write.xlsx(df.out, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes
 
 ```{r}
 ggplot(df.out) + geom_point(aes(Slope.mu, Slope.epsilon, colour = regulation)) +
-  scale_color_manual(values = c("#fddbc7", "#d7301f", "#7f0000", "#d1e5f0", "#0570b0", "#081d58", "#f7fcfd", "#f4a582", "#92c5de")) + 
+  scale_color_manual(values = c("#fddbc7", "#d7301f", "#7f0000", "#d1e5f0", "#0570b0", "#081d58", "#f7fcfd", "#f4a582", "#92c5de")) + xlim(c(-20, 20)) +
   xlab("Slope, Mean expression vs PT") + ylab("Slope, Variability vs PT")
 ```
 
@@ -180,16 +180,37 @@ prank <- PT(rd = pca$x[,1:2], clusters = colData(sce)$AnnotatedClusters,
 head(df.out[order(df.out$Slope.mu, decreasing = TRUE),], 50)
 
 # Gpx4
-cur.gene <- "Gpx4"
+cur.gene <- "Prm1"
 cur.Z <- (logcounts(sce)[rowData(sce)$Symbol == cur.gene,] -
              mean(logcounts(sce)[rowData(sce)$Symbol == cur.gene,]))/
   sd(logcounts(sce)[rowData(sce)$Symbol == cur.gene,])
 
-Up_NoDiff <- ggplot(data.frame(PT = prank[,"lambda"],
+cur_p <- ggplot(data.frame(PT = prank[,"lambda"],
                   gene = cur.Z,
                   cell_type = colData(sce)$AnnotatedClusters)) + 
   geom_point(aes(PT, gene, colour = cell_type)) + 
   xlab("Pseudotime") + ylab(paste(cur.gene, ", z-score", sep = "")) +
+  geom_abline(slope = 0, intercept = 0, colour = "dark red") + 
+  scale_color_manual(values = metadata(sce)$color_vector) + 
+  guides(color = FALSE)
+
+cur_p.box <- ggplot(data.frame(PT = prank[,"lambda"],
+                  gene = cur.Z,
+                  cell_type = colData(sce)$AnnotatedClusters)) + 
+  geom_boxplot(aes(cell_type, gene, colour = cell_type)) + 
+  xlab("Pseudotime") + ylab(paste(cur.gene, ", z-score", sep = "")) +
+  geom_abline(slope = 0, intercept = 0, colour 
+              
+              
+              = "dark red") + 
+  scale_color_manual(values = metadata(sce)$color_vector) + 
+  guides(color = FALSE)
+
+cur_p.var <- ggplot(data.frame(gene = epsilons[rowData(sce)$ID[rowData(sce)$Symbol == cur.gene],
+                                   c("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9")],
+                  cell_type = c("S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"))) + 
+  geom_point(aes(cell_type, gene, colour = cell_type), size = 5) + 
+  xlab("Pseudotime") + ylab(paste(cur.gene, ", Variability", sep = "")) +
   geom_abline(slope = 0, intercept = 0, colour = "dark red") + 
   scale_color_manual(values = metadata(sce)$color_vector) + 
   guides(color = FALSE)
@@ -222,7 +243,7 @@ pheatmap(cur_eps.ranked[sam,], cluster_rows = FALSE, cluster_cols = FALSE,
 ## Visualize peaks for these genes
 
 ```{r peaks}
-cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
+cur_files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
                         full.names = TRUE)
 
 # H3K4me3 spermatids day 24
