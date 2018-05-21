@@ -90,7 +90,33 @@ Aurkc <- ggplot(df) + geom_boxplot(aes(group, gene, fill = sample)) +
   theme(panel.background = element_blank(), axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12)) + scale_fill_manual(values = c("gray25", "snow4", "sienna3"))
-  
+
+# Calculate proportions of Aurkc expressing cells
+Aurkc.prop <- ddply(df, .(sample, group), summarize, prop=sum(gene > 0))$prop/plyr::count(df = df, vars = c("sample", "group"))$freq
+names(Aurkc.prop) <-  ddply(df, .(sample, group), summarize, prop=sum(gene > 0))$group
+Aurkc.prop
+
+# Boxplot of cells that express Aurkc
+cur_sce <- sce[,logcounts(sce)[rowData(sce)$Symbol == "Aurkc",] > 0]
+df <- data.frame(sample = sub("_.*", "", 
+                              colData(cur_sce)$Sample)[colData(cur_sce)$AnnotatedClusters %in% cur_groups],
+                 group = colData(cur_sce)$AnnotatedClusters[colData(cur_sce)$AnnotatedClusters %in% cur_groups],
+                 gene = logcounts(cur_sce)[rowData(cur_sce)$ID[rowData(cur_sce)$Symbol == cur_gene],
+                                       colData(cur_sce)$AnnotatedClusters %in% cur_groups])
+
+Aurkc.expr <- ggplot(df) + geom_boxplot(aes(group, gene, fill = sample)) + 
+  ylab(paste(cur_gene, "Expression")) +
+  theme(panel.background = element_blank(), axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12)) + scale_fill_manual(values = c("gray25", "snow4", "sienna3"))
+Aurkc.expr
+
+```
+
+# Validation using C1 scRNAseq data
+
+```{r C1}
+# Read in C1 data
 ```
 
 # Variability and mean expression of Chr21, X and 16 over the differentiation process
@@ -143,13 +169,13 @@ df <- data.frame(ratios = c(ratio.X.A, ratio.9.A, ratio.21.A),
                          rep("21", length(ratio.21.A))))
 
 # visualize in form of boxplots
-x.21.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) + 
+x.21.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr), outlier.colour = NA) + 
   scale_fill_jama() + ylab("Chr:Autosome ratio") + 
     theme(panel.background = element_blank(), axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12))
-ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/21dynamics.pdf", 
-       x.21.inactivation, width = 12, height = 7)
+ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/21dynamics.pdf", 
+       x.21.inactivation, width = 12, height = 4)
 ```
 
 # Variability for X, 9 and 21
@@ -171,13 +197,13 @@ df.9 <- melt(epsilons[genes.9,])
 df <- rbind(df.21, df.X, df.9)
 df$chr <- c(rep("21", nrow(df.21)), rep("X", nrow(df.X)), rep("9", nrow(df.9)))
 
-x.21.variability <- ggplot(df) + geom_boxplot(aes(Var2, value, fill = chr)) + 
+x.21.variability <- ggplot(df) + geom_boxplot(aes(Var2, value, fill = chr), outlier.colour = NA) + 
   scale_fill_jama() + ylab("Variabilty") + 
     theme(panel.background = element_blank(), axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12))
 ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/21variability.pdf", 
-       x.21.variability, width = 12, height = 7)
+       x.21.variability, width = 12, height = 4)
 ```
 
 # Visualize heatmap of Chr21
