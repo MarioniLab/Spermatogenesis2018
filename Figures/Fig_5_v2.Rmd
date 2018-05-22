@@ -1,0 +1,95 @@
+---
+title: "Figure 5"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load data and libraries
+
+```{r data, message=FALSE}
+library(rtracklayer)
+library(EnrichedHeatmap)
+library(GenomicFeatures)
+library(EnsDb.Mmusculus.v79)
+library(scater)
+library(plyr)
+library(reshape2)
+library(pheatmap)
+library(viridis)
+library(ggsci)
+library(cowplot)
+library(openxlsx)
+
+# Generate feature annotation
+tss <- promoters(genes(EnsDb.Mmusculus.v79), 
+                 upstream = 0, downstream = 1)
+tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
+tss.X <- tss[seqnames(tss) == "X"]
+
+black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
+
+# Read in sce data
+sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- sce[,grepl("B6", colData(sce)$Sample) & 
+             !(colData(sce)$AnnotatedClusters %in% c("variable", "Leydig", "Sertoli",
+                                          "Endothelial_cells", "Outliers"))]
+sce <- normalize(sce)
+
+# Select XChr genes
+genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+sce.XChr <- sce[rowData(sce)$ID %in% 
+                  genenames[genenames$Chromosome.scaffold.name == "X",1],]
+sce.XChr <- normalize(sce.XChr)
+
+# Bulk data
+bulk <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+# Use genes that are also detected in scRNAseq data
+#bulk <- bulk[rownames(bulk) %in% rowData(sce)$ID,]
+
+# Meta info
+meta <- as.data.frame(read.xlsx("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Metadata.xlsx", sheet = 2))
+meta <- meta[!is.na(meta$DO.number),]
+rownames(meta) <- meta$DO.number
+```
+
+# Overlap DB for H3K4me3 and H3K27ac
+
+```{r}
+# Load data
+H3K4me3 <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
+H3K27ac <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
+
+# Merge the windows
+merged.K27 <- mergeWindows(H3K27ac$windows, tol=1000L, max.width=5000L)
+tabcom.K27 <- combineTests(merged.K27$id, H3K27ac$DB)
+colnames(tabcom.K27) <- paste(colnames(tabcom.K27), "_K27", sep = "")
+
+merged.K4 <- mergeWindows(H3K4me3$windows, tol=1000L, max.width=5000L)
+tabcom.K4 <- combineTests(merged.K4$id, H3K4me3$DB)
+colnames(tabcom.K4) <- paste(colnames(tabcom.K4), "_K4", sep = "")
+
+# Find overlaps
+OLP <- findOverlaps(merged.K27$region, merged.K4$region, minoverlap = 500L)
+
+# Build the data.frame
+df <- cbind(tabcom.K27[OLP@from,], 
+            tabcom.K4[OLP@to,])
+```
+
+# Save final figure
+
+```{r final}
+final <- plot_grid(proportions.p, Aurkc, ncol = 1, nrow = 2)
+ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.pdf", final, width = 8, height = 8)
+```
