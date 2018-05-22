@@ -35,7 +35,7 @@ data.frame(BAM=bam.files, Batch=batch, Treatment=treatment)
 Setting up a `readParam` object for read counting.
 This is paired-end data, and we remove read pairs with insert sizes above 1 kbp.
 We remove duplicated read pairs or reads with quality scores below 10.
-We also use the ENCODE hg38 blacklist to ignore reads in problematic regions.
+We also use the ENCODE mm10 blacklist to ignore reads in problematic regions.
 
 ```{r, message=FALSE}
 library(csaw)
@@ -45,7 +45,7 @@ param <- readParam(dedup=TRUE, minq=10, discard=black, pe="both", max.frag=1000)
 param
 ```
 
-We then count reads into #_WIDTH_# bp windows. 
+We then count reads into 1000 bp windows. 
 No read extension is necessary as the paired reads fully define each fragment.
 The spacing is set to a quarter of the width to avoid redundant loading of highly overlapping windows.
 
@@ -84,7 +84,7 @@ filtered <- out[keep,]
 
 ## Computing TMM factors
 
-We normalize out efficiency biases, under the assumption that most histone marking does _not_ change upon lncRNA knockdown.
+We normalize out efficiency biases, under the assumption that most histone marking does _not_ change between spermatids and spermatocytes.
 
 ```{r}
 filtered <- normOffsets(filtered)
