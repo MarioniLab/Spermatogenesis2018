@@ -31,53 +31,81 @@ library(RColorBrewer)
 # Read in data - Single cell experiment object per batch
 # P10
 sce.do17821 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17821/filtered_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do17821)$Sample <- rep("P10_do17821", ncol(sce.do17821))
+colData(sce.do17821)$Sample <- rep("P10", ncol(sce.do17821))
+colData(sce.do17821)$Library <- rep("do17821", ncol(sce.do17821))
 
 # P15
-sce.do17828 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17828/filtered_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do17828)$Sample <- rep("P15_do17828", ncol(sce.do17828))
+sce.do18195 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18195/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do18195)$Sample <- rep("P15", ncol(sce.do18195))
+colData(sce.do18195)$Library <- rep("do18195", ncol(sce.do18195))
 
 # P20
 sce.do17824 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17824/filtered_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do17824)$Sample <- rep("P20_do17824", ncol(sce.do17824))
+colData(sce.do17824)$Sample <- rep("P20", ncol(sce.do17824))
+colData(sce.do17824)$Library <- rep("do17824", ncol(sce.do17824))
+
+# P25
+sce.do18196 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18196/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do18196)$Sample <- rep("P25", ncol(sce.do18196))
+colData(sce.do18196)$Library <- rep("do18196", ncol(sce.do18196))
 
 # P30
 sce.do17825 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17825/filtered_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do17825)$Sample <- rep("P30_do17825", ncol(sce.do17825))
+colData(sce.do17825)$Sample <- rep("P30", ncol(sce.do17825))
+colData(sce.do17825)$Library <- rep("do17825", ncol(sce.do17825))
 
 # P35
 sce.do17827 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17827/filtered_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do17827)$Sample <- rep("P35_do17827", ncol(sce.do17827))
+colData(sce.do17827)$Sample <- rep("P35", ncol(sce.do17827))
+colData(sce.do17827)$Library <- rep("do17827", ncol(sce.do17827))
 
 # B6
 sce.do17815 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17815/filtered_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do17815)$Sample <- rep("B6_do17815", ncol(sce.do17815))
+colData(sce.do17815)$Sample <- rep("B6", ncol(sce.do17815))
+colData(sce.do17815)$Library <- rep("do17815", ncol(sce.do17815))
 
 sce.do17816 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17816/filtered_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do17816)$Sample <- rep("B6_do17816", ncol(sce.do17816))
+colData(sce.do17816)$Sample <- rep("B6", ncol(sce.do17816))
+colData(sce.do17816)$Library <- rep("do17816", ncol(sce.do17816))
 
 # Tc0
 sce.do15984 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15984/Mus_human_chr21/")
-colData(sce.do15984)$Sample <- rep("Tc0_do15984", ncol(sce.do15984))
+colData(sce.do15984)$Sample <- rep("Tc0", ncol(sce.do15984))
+colData(sce.do15984)$Library <- rep("do15984", ncol(sce.do15984))
 
 sce.do17622 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17622/filtered_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do17622)$Sample <- rep("Tc0_do17622", ncol(sce.do17622))
+colData(sce.do17622)$Sample <- rep("Tc0", ncol(sce.do17622))
+colData(sce.do17622)$Library <- rep("do17622", ncol(sce.do17622))
+
+sce.do18199 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18199/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do18199)$Sample <- rep("Tc0", ncol(sce.do18199))
+colData(sce.do18199)$Library <- rep("do18199", ncol(sce.do18199))
 
 # Tc1
 sce.do15983 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/Mus_human_chr21/")
-colData(sce.do15983)$Sample <- rep("Tc1_do15983", ncol(sce.do15983))
+colData(sce.do15983)$Sample <- rep("Tc1", ncol(sce.do15983))
+colData(sce.do15983)$Library <- rep("do15983", ncol(sce.do15983))
 
 sce.do17623 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17623/filtered_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do17623)$Sample <- rep("Tc1_do17623", ncol(sce.do17623))
+colData(sce.do17623)$Sample <- rep("Tc1", ncol(sce.do17623))
+colData(sce.do17623)$Library <- rep("do17623", ncol(sce.do17623))
+
+sce.do18197 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18197/Mus_human_chr21/")
+colData(sce.do18197)$Sample <- rep("Tc1", ncol(sce.do18197))
+colData(sce.do18197)$Library <- rep("do18197", ncol(sce.do18197))
+
+sce.do18198 <- read10xCounts("/Users/nils/Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18198/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do18198)$Sample <- rep("Tc1", ncol(sce.do18198))
+colData(sce.do18198)$Library <- rep("do18198", ncol(sce.do18198))
 ```
 
 # Filtering 
 
 ```{r Other}
-# Merge reamining datasets
-sce.all <- cbind(sce.do17815, sce.do17816, sce.do15984, sce.do17622, 
-                  sce.do15983, sce.do17623, sce.do17821, sce.do17828, sce.do17824, 
-                 sce.do17825, sce.do17827)
+# Merge all datasets
+sce.all <- cbind(sce.do17815, sce.do17816, sce.do15984, sce.do17622, sce.do18199,
+                  sce.do15983, sce.do17623, sce.do18197, sce.do18198,  sce.do17821,
+                 sce.do18195, sce.do17824, sce.do18196, sce.do17825, sce.do17827)
 
 # Calculate QC metrics
 sce.all <- calculateQCMetrics(sce.all)
@@ -95,9 +123,6 @@ mt <- mt[mt$Chromosome.scaffold.name == "MT",]
 plot(Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts, 
      pch = 16, ylab = "% mitochondrial reads")
 sce.all <- sce.all[,Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData(sce.all)$total_counts < 0.1]
-
-# Remove duplicated barcodes
-#sce.all <- sce.all[,-which(colData(sce.all)$Barcode %in% colData(sce.all)$Barcode[which(duplicated(colData(sce.all)$Barcode))])]
 
 # Remove genes that are not expressed
 sce.all <- sce.all[Matrix::rowSums(counts(sce.all)) > 0,]
