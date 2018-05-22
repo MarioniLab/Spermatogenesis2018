@@ -87,7 +87,6 @@ rownames(cur_df) <- c(rownames(for.heatmap), "pseudorank")
 null.dist <- correlateNull(ncells = ncol(sce.spermatids), iters = 100000)
 cors <- correlatePairs(cur_df, null.dist=null.dist, 
                        pairings = list(c("pseudorank"), rownames(cur_df)))
-cors$genename <- rowData(sce.spermatocytes)$Symbol[match(cors$gene2, rowData(sce.spermatocytes)$ID)]
 
 # Order correlations
 cors <- cors[order(cors$rho, decreasing = TRUE),]
@@ -109,18 +108,70 @@ dev.off()
 ```{r}
 PT <-  prank[,"rank"]
 
-number.genes <- apply(logcounts(sce.spermatocytes), 2, function(n){length(which(n>0))})
+number.genes <- apply(logcounts(sce.spermatids), 2, function(n){length(which(n>0))})
 
 p.number.genes <- ggplot(
   data.frame(x = PT,
              y = number.genes,
-             group = colData(sce.spermatocytes)$AnnotatedClusters)) + 
+             group = colData(sce.spermatids)$AnnotatedClusters)) + 
   geom_point(aes(x, y , fill = group), shape = 21, size = 3) +
+  scale_x_reverse() + 
   geom_smooth(aes(x = x, y = y), colour = "black") + ylab("# genes expressed") +
-  scale_fill_manual(values = metadata(sce.spermatocytes)$color_vector) + 
+  scale_fill_manual(values = metadata(sce.spermatids)$color_vector) + 
   theme(legend.position = "none", panel.background = element_blank(), 
         panel.grid.major = element_line(colour="grey",size = rel(0.5)), 
         panel.grid.minor = element_blank(), axis.title.y = element_text(size = 15), 
         axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/NoGenes.pdf", 
+       p.number.genes, width = 12, height = 4)
+```
+
+# Correlate genes to number of genes expressed
+
+```{r}
+cur_mat <- rbind(logcounts(sce.spermatids), number.genes)
+cur_mat <- cur_mat[Matrix::rowMeans(cur_mat) > 0.1,]
+
+null.dist <- correlateNull(ncells = ncol(sce.spermatids), iters = 100000)
+cors <- correlatePairs(cur_mat, null.dist=null.dist, 
+                       pairings = list(c("number.genes"), rownames(cur_mat)))
+cors$genename <- rowData(sce.spermatids)$Symbol[match(cors$gene2, rowData(sce.spermatids)$ID)]
+
+# Visualize results
+# Calculate the Z score
+z.score <- t(apply(as.matrix(cur_mat)[rownames(cur_mat) != "number.genes",],
+                   1, function(n){(n-mean(n))/sd(n)}))
+cors <- cors[match(rownames(z.score), cors$gene2),]
+
+# Generate meta profiles 
+splits <- 10
+ran <- rev(seq(min(cors$rho) - 0.001, max(cors$rho) + 0.001, length.out = splits))
+mat <- matrix(data = NA, nrow = splits - 1, ncol = ncol(z.score))
+
+for(i in 1:(splits - 1)){
+  mat[i,] <- colMeans(z.score[cors$rho <= ran[i] & cors$rho > ran[i + 1],])
+}
+
+colnames(mat) <- colData(sce.spermatids)$Barcode
+
+pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_TranscriptionalShotdown.pdf", onefile = FALSE)
+pheatmap(mat[,order(PT, decreasing = TRUE)], breaks = seq(-2, 2, length.out = 100),
+         cluster_rows = FALSE, cluster_cols = FALSE, 
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_col = data.frame(row.names = colnames(mat)[order(PT, decreasing = TRUE)],
+                  cell_type = colData(sce.spermatids)$AnnotatedClusters[order(PT, decreasing = TRUE)]),
+         annotation_colors = list(cell_type = metadata(sce.spermatids)$color_vector), show_colnames = FALSE)
+dev.off()
+
+groups <- vector(length = nrow(z.score))
+
+for(i in 1:(splits - 1)){
+  groups[cors$rho <= ran[i] & cors$rho > ran[i + 1]] <- paste("Group", i)
+}
+
+cors$group <- groups
+cors <- cors[order(cors$rho, decreasing = FALSE),]
+write.xlsx(cors, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/CorrrelationNoGenes.xlsx")
 
 ```
