@@ -18,118 +18,34 @@ knitr::opts_chunk$set(echo = TRUE)
 library(RColorBrewer)
 suppressMessages(library(scran))
 suppressMessages(library(scater))
+library(openxlsx)
 ```
 
 ## Collecting meta information on single cells
 
 ```{r}
-input.SST3_7 <- read.table("data/raw_reads/SST4-7_all.txt", sep="\t", stringsAsFactors = FALSE)
-input.SST7 <- read.table("data/raw_reads/SST7-2_all.txt", sep="\t", stringsAsFactors = FALSE)
-input.SST8 <- read.table("data/raw_reads/SST8_all.txt", sep="\t", stringsAsFactors = FALSE)
-input.SST5_3 <- read.table("data/raw_reads/SST5-3_all.txt", sep="\t", stringsAsFactors = FALSE)
-input.SST3_7 <- cbind(input.SST3_7, input.SST7, input.SST8, input.SST5_3)
+# Raw counts
+raw.counts <- read.table("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/raw_reads/All_fastqs_raw.txt", sep = "\t")
 
-Decoding.SST3.1 <- read.table("data/decoding_files/SST3-1.txt", sep="\t") 
-Decoding.SST3.2 <- read.table("data/decoding_files/SST3-2.txt", sep="\t") 
-Decoding.SST4.1 <- read.table("data/decoding_files/SST4-1.txt", sep="\t") 
-Decoding.SST4.2 <- read.table("data/decoding_files/SST4-2.txt", sep="\t") 
-Decoding.SST5.1 <- read.table("data/decoding_files/SST5-1.txt", sep="\t") 
-Decoding.SST5.3 <- read.table("data/decoding_files/SST5-2.txt", sep="\t") 
-Decoding.SST6.1 <- read.table("data/decoding_files/SST6-1.txt", sep="\t") 
-Decoding.SST6.2 <- read.table("data/decoding_files/SST6-2.txt", sep="\t") 
-Decoding.SST7.1 <- read.table("data/decoding_files/SST7-1.txt", sep="\t") 
-Decoding.SST7.2 <- read.table("data/decoding_files/SST7-2.txt", sep="\t") 
-Decoding.SST8.1 <- read.table("data/decoding_files/SST8-1.txt", sep="\t") 
-Decoding.SST8.2 <- read.table("data/decoding_files/SST8-2.txt", sep="\t") 
-```
+# Metadata 
+meta <- read.xlsx("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/C1/sdrf.xlsx")
 
-The libraries are odered based on their position on the plate. Therefore, we order
-the decoding information based on the second column (Position of plate).
+# Build sce object
+sce <- SingleCellExperiment(assays = list(counts = as.matrix(raw.counts[!grepl("_", rownames(raw.counts)),])))
+isSpike(sce, "ERCC") <- which(grepl("ERCC-", rownames(counts(sce)))) 
 
-```{r}
-ordering <- order(Decoding.SST3.1[,2])
-```
+# Fill object with metddata
+colData(sce) <- DataFrame(data.frame(Library = colnames(raw.counts),
+                          Microscopy = meta$Description[match(colnames(raw.counts), meta$Source.Name)],
+                          Genotype = meta$`Characteristics[genotype]`[match(colnames(raw.counts), meta$Source.Name)],
+                          Cell_type = meta$`Characteristics[cell.type]`[match(colnames(raw.counts), meta$Source.Name)],
+                          Unmapped = as.numeric(raw.counts["N_unmapped",]),
+                          Multimapping = as.numeric(raw.counts["N_multimapping",]),
+                          NoFeature = as.numeric(raw.counts["N_noFeature",]),
+                          Ambiguous = as.numeric(raw.counts["N_ambiguous",])))
 
-I keep track on all features of each cell in one large dataframe. Info per cell are stored in the rows. The names of the cells are composed of the batch ID, the cell type and the position on the chip.
-
-```{r}
-Master.QC <- as.data.frame(matrix(data=NA,
-                                  nrow=ncol(input.SST3_7),
-                                  ncol=3))
-colnames(Master.QC) <- c("PositionOnChip", "PositionOnPlate", "Microscopy")
-rownames(Master.QC) <- c(paste("SST3_TC1_Spermatocyte", Decoding.SST3.1[ordering,1], sep="_"), 
-                         paste("SST3_TC1_Stem_cell", Decoding.SST3.1[ordering,1], sep="_"),
-                         paste("SST4_TC1_Spermatocyte", Decoding.SST3.1[ordering,1], sep="_"), 
-                         paste("SST4_TC1_Stem_cell", Decoding.SST3.1[ordering,1], sep="_"),
-                         paste("SST5_TC1_Spermatocyte", Decoding.SST3.1[ordering,1], sep="_"),
-                         paste("SST6_TC0_Spermatocyte", Decoding.SST3.1[ordering,1], sep="_"), 
-                         paste("SST6_TC0_Stem_cell", Decoding.SST3.1[ordering,1], sep="_"),
-                         paste("SST7_TC0_Spermatocyte", Decoding.SST3.1[ordering,1], sep="_"),
-                         paste("SST7_TC0_Stem_cell", Decoding.SST3.1[ordering,1], sep="_"),
-                         paste("SST8_TC1_Spermatids", Decoding.SST3.1[ordering,1], sep="_"),
-                         paste("SST8_TC0_Spermatids", Decoding.SST3.1[ordering,1], sep="_"),
-                         paste("SST5_TC1_Spermatids", Decoding.SST3.1[ordering,1], sep="_"))
-                         
-```
-
-Now, we fill the first three columns with the info: position on chip, position on plate and the visual observation.
-
-```{r}
-Master.QC[,1:3] <- rbind(Decoding.SST3.1[ordering,], 
-                         Decoding.SST3.2[ordering,], 
-                         Decoding.SST4.1[ordering,],
-                         Decoding.SST4.2[ordering,],
-                         Decoding.SST5.1[ordering,],
-                         Decoding.SST6.1[ordering,],
-                         Decoding.SST6.2[ordering,],
-                         Decoding.SST7.1[ordering,],
-                         Decoding.SST7.2[ordering,],
-                         Decoding.SST8.1[ordering,],
-                         Decoding.SST8.2[ordering,],
-                         Decoding.SST5.3[ordering,])
-```
-
-We will now collect other features of the cells for meta-analysis.
-
-```{r}
-Master.QC$Genomic <- NA
-Master.QC$ERCC <- NA
-Master.QC$NoFeature <- NA
-Master.QC$Ambigous <- NA
-Master.QC$LowQual <- NA
-Master.QC$NotAligned <- NA
-Master.QC$NotUnique <- NA
-Master.QC$TotalReads <- NA
-Master.QC$Mitochondrial <- NA
-Master.QC$MouseGenesDetected <- NA
-Master.QC$HumanGenesDetected <- NA
-Master.QC$Libraries <- c(colnames(input.SST3_7))
-
-# Read in mitochondrial genes
-mit_genes <- read.table("data/MT_genes.txt")
-
-Master.QC[,4:14] <- matrix(
-  data = as.numeric(c(colSums(input.SST3_7[grepl("ENS", rownames(input.SST3_7)),]),
-                      colSums(input.SST3_7[grepl("ERCC", rownames(input.SST3_7)),]), 
-                      input.SST3_7[nrow(input.SST3_7)-4,], 
-                      input.SST3_7[nrow(input.SST3_7)-3,], 
-                      input.SST3_7[nrow(input.SST3_7)-2,], 
-                      input.SST3_7[nrow(input.SST3_7)-1,], 
-                      input.SST3_7[nrow(input.SST3_7),], 
-                      colSums(input.SST3_7), 
-                      colSums(input.SST3_7[as.character(mit_genes[,1]),]),
-                      unlist(apply(input.SST3_7[grepl("ENSM", rownames(input.SST3_7)),], 2,
-                                   function(n){length(which(n > 0))})),
-                      unlist(apply(input.SST3_7[grepl("ENSG", rownames(input.SST3_7)),], 2,
-                                   function(n){length(which(n > 0))})))), 
-  ncol=11, nrow=ncol(input.SST3_7), byrow = FALSE
-  )
-
-# Add batch info to df
-chips <- sapply(rownames(Master.QC), 
-                function(n){paste(unlist(strsplit(n, "_"))[1:3], collapse = "_")})
-Master.QC$chips <- chips
-Master.QC$col= brewer.pal(n = 12, name = "Set3")[match(Master.QC$chips, unique(Master.QC$chips))]
+# Calculate QC metrics
+sce <- calculateQCMetrics(sce)
 ```
 
 # Visualization of features and filtering
