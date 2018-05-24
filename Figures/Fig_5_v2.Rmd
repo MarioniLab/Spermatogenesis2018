@@ -1,13 +1,13 @@
 ---
 title: "Figure 5"
-author: "Nils Eling"
+author: "eling01 Eling"
 date: "`r Sys.Date()`"
 output: 
   html_document:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.html') })
+        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -29,6 +29,7 @@ library(viridis)
 library(ggsci)
 library(cowplot)
 library(openxlsx)
+library(csaw)
 
 # Generate feature annotation
 tss <- promoters(genes(EnsDb.Mmusculus.v79), 
@@ -40,7 +41,7 @@ tss.X <- tss[seqnames(tss) == "X"]
 black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
 
 # Read in sce data
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 sce <- sce[,grepl("B6", colData(sce)$Sample) & 
              !(colData(sce)$AnnotatedClusters %in% c("variable", "Leydig", "Sertoli",
                                           "Endothelial_cells", "Outliers"))]
@@ -53,12 +54,12 @@ sce.XChr <- sce[rowData(sce)$ID %in%
 sce.XChr <- normalize(sce.XChr)
 
 # Bulk data
-bulk <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+bulk <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
 # Use genes that are also detected in scRNAseq data
 #bulk <- bulk[rownames(bulk) %in% rowData(sce)$ID,]
 
 # Meta info
-meta <- as.data.frame(read.xlsx("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Metadata.xlsx", sheet = 2))
+meta <- as.data.frame(read.xlsx("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Metadata.xlsx", sheet = 2))
 meta <- meta[!is.na(meta$DO.number),]
 rownames(meta) <- meta$DO.number
 ```
@@ -67,8 +68,8 @@ rownames(meta) <- meta$DO.number
 
 ```{r}
 # Load data
-H3K4me3 <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
-H3K27ac <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
+H3K4me3 <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
+H3K27ac <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
 
 # Merge the windows
 merged.K27 <- mergeWindows(H3K27ac$windows, tol=1000L, max.width=5000L)
@@ -85,11 +86,38 @@ OLP <- findOverlaps(merged.K27$region, merged.K4$region, minoverlap = 500L)
 # Build the data.frame
 df <- cbind(tabcom.K27[OLP@from,], 
             tabcom.K4[OLP@to,])
+
+# Windows with increase H3K4 and increase in H3K27ac
+K4up.K27up.X <- merged.K4$region[OLP@to[df$direction_K4 == "up" & df$FDR_K4 < 0.1 &
+                                        df$direction_K27 == "up" & df$FDR_K27 < 0.1]]
+K4up.K27up.X <- K4up.K27up.X[seqnames(K4up.K27up.X) == "X"]
+
+# Windows with increase H3K4 and decrease in H3K27ac
+K4up.K27down.X <- merged.K4$region[OLP@to[df$direction_K4 == "up" & df$FDR_K4 < 0.1 &
+                                        df$direction_K27 == "down" & df$FDR_K27 < 0.1]]
+K4up.K27down.X <- K4up.K27down.X[seqnames(K4up.K27down.X) == "X"]
+
+# Windows with increase H3K4 and no changes in H3K27ac
+K4up.K27no.X <- merged.K4$region[OLP@to[df$direction_K4 == "up" & df$FDR_K4 < 0.1 & df$FDR_K27 > 0.1]]
+K4up.K27no.X <- K4up.K27no.X[seqnames(K4up.K27no.X) == "X"]
+```
+
+# Overlay these regions with tss
+
+```{r}
+# Windows with increase H3K4 and increase in H3K27ac
+tss[overlapsAny(tss, K4up.K27up.X)]
+
+# Windows with increase H3K4 and decrease in H3K27ac
+tss[overlapsAny(tss, K4up.K27down.X)]
+
+# Windows with increase H3K4 and no changes in H3K27ac
+tss[overlapsAny(tss, K4up.K27no.X)]
 ```
 
 # Save final figure
 
 ```{r final}
 final <- plot_grid(proportions.p, Aurkc, ncol = 1, nrow = 2)
-ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.pdf", final, width = 8, height = 8)
+ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.pdf", final, width = 8, height = 8)
 ```
