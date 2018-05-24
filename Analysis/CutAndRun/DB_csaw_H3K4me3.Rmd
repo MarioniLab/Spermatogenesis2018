@@ -45,7 +45,7 @@ param <- readParam(dedup=TRUE, minq=10, discard=black, pe="both", max.frag=1000)
 param
 ```
 
-We then count reads into #_WIDTH_# bp windows. 
+We then count reads into 1000 bp windows. 
 No read extension is necessary as the paired reads fully define each fragment.
 The spacing is set to a quarter of the width to avoid redundant loading of highly overlapping windows.
 

@@ -1,13 +1,13 @@
 ---
 title: "Figure 5"
-author: "eling01 Eling"
+author: "nils Eling"
 date: "`r Sys.Date()`"
 output: 
   html_document:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5_v2.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -21,6 +21,7 @@ library(rtracklayer)
 library(EnrichedHeatmap)
 library(GenomicFeatures)
 library(EnsDb.Mmusculus.v79)
+library(TxDb.Mmusculus.UCSC.mm10.ensGene)
 library(scater)
 library(plyr)
 library(reshape2)
@@ -30,6 +31,7 @@ library(ggsci)
 library(cowplot)
 library(openxlsx)
 library(csaw)
+library(Gviz)
 
 # Generate feature annotation
 tss <- promoters(genes(EnsDb.Mmusculus.v79), 
@@ -38,10 +40,14 @@ tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
 seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
 tss.X <- tss[seqnames(tss) == "X"]
 
+# Make TXDB for mus musculus
+mmusculusEnsembl <- makeTxDbFromBiomart(dataset="mmusculus_gene_ensembl", 
+                                        filter = "")
+
 black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
 
 # Read in sce data
-sce <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
 sce <- sce[,grepl("B6", colData(sce)$Sample) & 
              !(colData(sce)$AnnotatedClusters %in% c("variable", "Leydig", "Sertoli",
                                           "Endothelial_cells", "Outliers"))]
@@ -54,12 +60,12 @@ sce.XChr <- sce[rowData(sce)$ID %in%
 sce.XChr <- normalize(sce.XChr)
 
 # Bulk data
-bulk <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+bulk <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
 # Use genes that are also detected in scRNAseq data
 #bulk <- bulk[rownames(bulk) %in% rowData(sce)$ID,]
 
 # Meta info
-meta <- as.data.frame(read.xlsx("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Metadata.xlsx", sheet = 2))
+meta <- as.data.frame(read.xlsx("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Metadata.xlsx", sheet = 2))
 meta <- meta[!is.na(meta$DO.number),]
 rownames(meta) <- meta$DO.number
 ```
@@ -68,56 +74,49 @@ rownames(meta) <- meta$DO.number
 
 ```{r}
 # Load data
-H3K4me3 <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
-H3K27ac <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
+H3K4me3 <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
+H3K27ac <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
 
 # Merge the windows
-merged.K27 <- mergeWindows(H3K27ac$windows, tol=1000L, max.width=5000L)
+merged.K27 <- mergeWindows(H3K27ac$windows, tol=100L, max.width=5000L)
+tabbest.K27 <- getBestTest(merged.K27$id, H3K27ac$DB)
 tabcom.K27 <- combineTests(merged.K27$id, H3K27ac$DB)
 colnames(tabcom.K27) <- paste(colnames(tabcom.K27), "_K27", sep = "")
+colnames(tabbest.K27) <- paste(colnames(tabbest.K27), "_K27", sep = "")
 
-merged.K4 <- mergeWindows(H3K4me3$windows, tol=1000L, max.width=5000L)
+merged.K4 <- mergeWindows(H3K4me3$windows, tol=100L, max.width=5000L)
+tabbest.K4 <- getBestTest(merged.K4$id, H3K4me3$DB)
 tabcom.K4 <- combineTests(merged.K4$id, H3K4me3$DB)
 colnames(tabcom.K4) <- paste(colnames(tabcom.K4), "_K4", sep = "")
+colnames(tabbest.K4) <- paste(colnames(tabbest.K4), "_K4", sep = "")
 
-# Find overlaps
-OLP <- findOverlaps(merged.K27$region, merged.K4$region, minoverlap = 500L)
+# Annotate the regions
+anno.ranges <- detailRanges(orgdb=EnsDb.Mmusculus.v79,
+ txdb=mmusculusEnsembl,name.field = c("SYMBOL"),
+ key.field = "GENEID")
+promoters <- anno.ranges[anno.ranges$exon==0L]
+promoters.X <- promoters[seqnames(promoters) == "X"]
 
-# Build the data.frame
-df <- cbind(tabcom.K27[OLP@from,], 
-            tabcom.K4[OLP@to,])
+# K4
+olap <- findOverlaps(promoters.X, H3K4me3$windows)
+tabprom <- combineOverlaps(olap, H3K4me3$DB)
+df.K4 <- data.frame(Gene=promoters.X$symbol, tabprom)[!is.na(tabprom$PValue),]
 
-# Windows with increase H3K4 and increase in H3K27ac
-K4up.K27up.X <- merged.K4$region[OLP@to[df$direction_K4 == "up" & df$FDR_K4 < 0.1 &
-                                        df$direction_K27 == "up" & df$FDR_K27 < 0.1]]
-K4up.K27up.X <- K4up.K27up.X[seqnames(K4up.K27up.X) == "X"]
-
-# Windows with increase H3K4 and decrease in H3K27ac
-K4up.K27down.X <- merged.K4$region[OLP@to[df$direction_K4 == "up" & df$FDR_K4 < 0.1 &
-                                        df$direction_K27 == "down" & df$FDR_K27 < 0.1]]
-K4up.K27down.X <- K4up.K27down.X[seqnames(K4up.K27down.X) == "X"]
-
-# Windows with increase H3K4 and no changes in H3K27ac
-K4up.K27no.X <- merged.K4$region[OLP@to[df$direction_K4 == "up" & df$FDR_K4 < 0.1 & df$FDR_K27 > 0.1]]
-K4up.K27no.X <- K4up.K27no.X[seqnames(K4up.K27no.X) == "X"]
+# K27
+olap <- findOverlaps(promoters.X, H3K27ac$windows)
+tabprom <- combineOverlaps(olap, H3K27ac$DB)
+df.K27 <- data.frame(Gene=promoters.X$symbol, tabprom)[!is.na(tabprom$PValue),]
 ```
 
-# Overlay these regions with tss
+# Detect differential regulation
 
 ```{r}
-# Windows with increase H3K4 and increase in H3K27ac
-tss[overlapsAny(tss, K4up.K27up.X)]
+# Genes that gain peaks in spermatids
+cur_df <- df.K4[df.K4$direction == "up",]
+cur_df <- cur_df[order(cur_df$FDR, decreasing = FALSE),]
+cur_df
 
-# Windows with increase H3K4 and decrease in H3K27ac
-tss[overlapsAny(tss, K4up.K27down.X)]
-
-# Windows with increase H3K4 and no changes in H3K27ac
-tss[overlapsAny(tss, K4up.K27no.X)]
+# Visualize their regulation for H3K27ac
+df.K27[match(cur_df$Gene, df.K27$Gene),]
 ```
 
-# Save final figure
-
-```{r final}
-final <- plot_grid(proportions.p, Aurkc, ncol = 1, nrow = 2)
-ggsave(filename = "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.pdf", final, width = 8, height = 8)
-```
