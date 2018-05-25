@@ -28,6 +28,8 @@ library(scater)
 library(viridis)
 library(RColorBrewer)
 library(irlba)
+library(dynamicTreeCut)
+library(RColorBrewer)
 
 
 # Read in data - Single cell experiment object per batch
@@ -220,6 +222,216 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
 
 ```{r}
 saveRDS(sce.all, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```
 
 # Batch correction
+
+```{r correction}
+source("../../Functions/auxiliary.R")
+# Split datasets into batches
+sce.single <- split.sce(sce = sce.all, groups = unique(colData(sce.all)$Library), 
+                        colData.name = "Library")
+rm(sce.all)
+
+# Batch correction
+corrected <- batch.correction(sce.single)
+rm(sce.single)
+
+# Save batch corrected matrix in sce object
+metadata(sce.all)$corrected <- corrected
+
+saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+```
+
+# Visualize batch corrected data
+
+```{r visualizataion}
+set.seed(12345)
+pca <- prcomp_irlba(t(metadata(sce.all)$corrected), n = 50)
+tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 200)
+reducedDims(sce.all)$TSNE <- tsne$Y
+
+# Batches
+col_vector <- c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(8, "Set3"))
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  batch = paste(colData(sce.all)$Sample,
+                                colData(sce.all)$Library))) +
+  geom_point(aes(tsne1, tsne2, colour = batch)) +
+  scale_color_manual(values = col_vector)
+
+# Verification of chr21 expression: PDXK
+# PDXK 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "PDXK"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene))
+
+# Library size
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = colData(sce.all)$log10_total_counts)) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Number genes expressed
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = colData(sce.all)$total_features)) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Mitochondrial genes
+mt <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE,
+                 stringsAsFactors = FALSE)
+mt <- mt[mt$Chromosome.scaffold.name == "MT",]
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  mito = Matrix::colSums(counts(sce.all)[rowData(sce.all)$ID %in%
+                                                mt$Gene.stable.ID,])/
+                    Matrix::colSums(counts(sce.all)))) + geom_point(aes(tsne1, tsne2, colour = mito)) + scale_colour_viridis()
+
+# Stra8 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Stra8"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Defb19 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Defb19"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Prm1 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Prm1"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Dazl 
+  ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Dazl"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+```
+
+# Clustering
+
+```{r clustering}
+g <- buildSNNGraph(metadata(sce.all)$corrected, k = 3, pc.approx = TRUE)
+
+clusters <- igraph::cluster_louvain(g)$membership
+
+clusters[clusters == names(table(clusters))[table(clusters) < 30]] <- "Outliers"
+
+# Visualize clustering
+qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+#color_vector = c("#47476B", "#F36E21","#985D25","#643F18","#5F4E97","#C58C58","#B19B31","#572972","#D62261","#851A4F","#FFDFB2","#71719A","#9595C9","#AFB3DA","#176D38","#421449","#EE6493","#2A348B","#827BAF","#93381F","#D9D9ED","#242435","#CECAE5","#067277","#8A8A9B","#6167AF","#0F1131","#282B69","#BCBCC2","#4A1028","#A58D81","#ff00ff")
+#names(color_vector) <- levels(as.factor(clusters))
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  cluster = as.factor(clusters))) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) +
+  scale_color_manual(values = col_vector)
+
+
+# Visualize sample
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  cluster = as.factor(colData(sce.all)$Sample))) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) +
+  scale_color_manual(values = col_vector)
+
+colData(sce.all)$Clusters <- clusters
+```
+
+# Annotation of clusters
+
+```{r annotation}
+new.clusters <- colData(sce.all)$Clusters
+new.clusters[new.clusters == 1] <- "S11"
+new.clusters[new.clusters == 2] <- "S12"
+new.clusters[new.clusters == 3] <- "S4"
+new.clusters[new.clusters == 4] <- "S9"
+new.clusters[new.clusters == 5] <- "S8"
+new.clusters[new.clusters == 6] <- "S14"
+new.clusters[new.clusters == 7] <- "Mid_Spermatocytes_2"
+new.clusters[new.clusters == 9] <- "Immature_Leydig"
+new.clusters[new.clusters == 10] <- "tMg"
+new.clusters[new.clusters == 11] <- "Leydig"
+new.clusters[new.clusters == 12] <- "Sertoli"
+new.clusters[new.clusters == 13] <- "Meiosis"
+new.clusters[new.clusters == 14] <- "PTM"
+new.clusters[new.clusters == 15] <- "Outliers"
+new.clusters[new.clusters == 16] <- "Late_Spermatocytes_2"
+new.clusters[new.clusters == 17] <- "Early_Spermatocytes_2"
+new.clusters[new.clusters == 18] <- "Mid_Spermatocytes_1"
+new.clusters[new.clusters == 19] <- "Endothelial_cells"
+new.clusters[new.clusters == 20] <- "S5"
+new.clusters[new.clusters == 21] <- "S2"
+new.clusters[new.clusters == 22] <- "Spermatogonia"
+new.clusters[new.clusters == 23] <- "Late_Spermatocytes_1"
+new.clusters[new.clusters == 24] <- "Early_Spermatocytes_1"
+new.clusters[new.clusters == 25] <- "S7"
+new.clusters[new.clusters == 26] <- "S1"
+new.clusters[new.clusters == 27] <- "Outliers"
+new.clusters[new.clusters == 28] <- "S3"
+new.clusters[new.clusters == 29] <- "S10"
+new.clusters[new.clusters == 30] <- "Outliers"
+new.clusters[new.clusters == 31] <- "S13"
+new.clusters[new.clusters == 32] <- "S6"
+
+colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
+      levels = c("Spermatogonia", "Early_Spermatocytes_1", 
+                   "Early_Spermatocytes_2", "Mid_Spermatocytes_1" , 
+                   "Mid_Spermatocytes_2", "Late_Spermatocytes_1" ,
+                   "Late_Spermatocytes_2", "Meiosis", "S1", "S2",
+                   "S3", "S4", "S5", "S6", "S7", "S8", "S9",
+                   "S10", "S11", "S12", "S13",
+                   "S14", "Sertoli", "Leydig", "Immature_Leydig", "PTM", 
+                   "Endothelial_cells", "tMg",  "Outliers"))
+
+colour_vector <- c("Spermatogonia" = "#166D37", 
+                   "Early_Spermatocytes_1" = "#EE6493", 
+                   "Early_Spermatocytes_2" = "#D62361",
+                   "Mid_Spermatocytes_1" = "#851A4F", 
+                   "Mid_Spermatocytes_2" = "#58253A",
+                   "Late_Spermatocytes_1" = "#421449",
+                   "Late_Spermatocytes_2" = "#572972", 
+                   "Meiosis" = "#5F4E97",
+                   "S1" = "#827BAF",
+                   "S2" = "#AFB3DA",
+                   "S3" = "#D9D9ED",
+                   "S4" = "#CECAE5",
+                   "S5" = "#9595C9",
+                   "S6" = "#6167AF",
+                   "S7" = "#2A348B",
+                   "S8" = "#282B69",
+                   "S9" = "#0F1131",
+                   "S10" = "#242535",
+                   "S11" = "#47466B",
+                   "S12" = "#71719A",
+                   "S13" = "#8A8A9B",
+                   "S14" = "#BCBCC2",
+                   "Sertoli" = "#643F18",
+                   "Leydig" = "#985D25",
+                   "Immature_Leydig" = "#A58D81",
+                   "PTM" = "#C58C58", 
+                   "Endothelial_cells" = "#FFDFB2",
+                   "tMg" = "#F36E20",
+                   "Outliers" = "#067277")
+
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  cluster = as.factor(colData(sce.all)$Sample))) +
+  geom_point(aes(tsne1, tsne2, colour = colData(sce.all)$AnnotatedClusters)) +
+  scale_color_manual(values = colour_vector)
+
+metadata(sce.all)$color_vector <- colour_vector
+```
+
+```{r}
+saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+```
