@@ -387,7 +387,7 @@ new.clusters[new.clusters == 31] <- "S13"
 new.clusters[new.clusters == 32] <- "S14"
 new.clusters[new.clusters == 33] <- "S7"
 new.clusters[new.clusters == 34] <- "S10"
-new.clusters[new.clusters == 35] <- "NA6"
+new.clusters[new.clusters == 35] <- "Outliers"
 new.clusters[new.clusters == 36] <- "S12"
 
 colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
