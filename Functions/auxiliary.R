@@ -6,7 +6,7 @@
 library(scater)
 library(scran)
 library(dynamicTreeCut)
-library(slingshot)
+library(princurve)
 library(dbscan)
 library(edgeR)
 library(destiny)
