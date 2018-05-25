@@ -177,7 +177,7 @@ ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Fi
 
 ```{r}
 # Remove lowly expressed genes
-sce.spermatocytes <- sce.spermatocytes[Matrix::rowMeans(logcounts(sce.spermatocytes)) > 1,]
+sce.spermatocytes <- sce.spermatocytes[Matrix::rowMeans(logcounts(sce.spermatocytes)) > 0.1,]
 
 cur_mat <- rbind(logcounts(sce.spermatocytes), number.genes)
 
