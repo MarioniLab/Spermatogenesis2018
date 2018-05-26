@@ -9,7 +9,9 @@ library(RColorBrewer)
 
 # Read in data
 # Adult
-sce <- readRDS("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- sce[,!(colData(sce)$AnnotatedClusters %in% c(paste("NA", 1:5, sep = ""), "Outliers"))]
+sce <- normalize(sce)
 
 # Read in genanames
 mouse.genes <- read.table("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/Mouse_genes.txt",

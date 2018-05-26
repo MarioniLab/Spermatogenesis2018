@@ -222,7 +222,7 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
 
 ```{r}
 saveRDS(sce.all, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.all <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```
 
 # Batch correction
@@ -241,7 +241,7 @@ rm(sce.single)
 # Save batch corrected matrix in sce object
 metadata(sce.all)$corrected <- corrected
 
-saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+saveRDS(sce.all, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```
 
 # Visualize batch corrected data
@@ -447,5 +447,5 @@ metadata(sce.all)$color_vector <- colour_vector
 ```
 
 ```{r}
-saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+saveRDS(sce.all, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```

@@ -100,6 +100,14 @@ shinyServer(function(input, output, session) {
       Gene <- logcounts(sce)[rowData(sce)$Symbol == gene,]
     }
     
+    # Build current factor
+    Sample <- colData(sce)$Sample[grepl(paste(input$dataset,collapse="|"), 
+                                        colData(sce)$Sample) & 
+                                    colData(sce)$AnnotatedClusters %in% input$group]
+    Library <- colData(sce)$Library[grepl(paste(input$dataset,collapse="|"), 
+                                         colData(sce)$Sample) & 
+                                     colData(sce)$AnnotatedClusters %in% input$group]
+    
     ggplot(data.frame(value = Gene[grepl(paste(input$dataset,collapse="|"), 
                                          colData(sce)$Sample) & 
                                      colData(sce)$AnnotatedClusters %in% input$group],
@@ -107,9 +115,7 @@ shinyServer(function(input, output, session) {
                                                          colData(sce)$Sample) & 
                                             colData(sce)$AnnotatedClusters %in% input$group],
                                      levels = names(color_vector)),
-                      sample = factor(colData(sce)$Sample[grepl(paste(input$dataset,collapse="|"), 
-                                                         colData(sce)$Sample) & 
-                                          colData(sce)$AnnotatedClusters %in% input$group]))) +
+                      sample = factor(paste(Sample, Library)))) +
       geom_boxplot(aes(x = cluster, y = value, fill = cluster, 
                        group = interaction(cluster, sample))) + 
       scale_fill_manual(values = color_vector) + 
