@@ -84,7 +84,7 @@ DTC <- function(sce, HVG.genes, minClusterSize = 10, deepSplit = 0){
 }
 
 #### Find specifc marker genes
-marker.detection <- function(sce, clusters, design){
+marker.detection <- function(sce, clusters){
   # User scran function findMarkers to perform differential expression
   cur_markers <- findMarkers(sce, clusters)
   
@@ -103,6 +103,7 @@ marker.detection <- function(sce, clusters, design){
   })
   
 }
+
 
 #### Compute pseudorank
 PT <- function(rd, clusters, col_vector, 
