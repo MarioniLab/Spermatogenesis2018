@@ -14,3 +14,96 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+This script reproduces the plots shown in figure 1.
+
+# Read in the data and libraries
+
+```{r libraries, messages=FALSE}
+library(scater)
+library(viridis)
+library(scran)
+library(openxlsx)
+library(cowplot)
+# Read in the auxiliary functions file
+source("../Functions/auxiliary.R")
+```
+
+```{r data}
+# Read in full dataset
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+
+# Select adult B6 samples and exclude outlying cells 
+# Also exclude endothelia cells since only one cell was detected
+sce <- sce[,colData(sce)$Sample == "B6" & !(colData(sce)$AnnotatedClusters %in% 
+                                             c(paste("NA", 1:5, sep = ""), "Outliers", "Endothelial_cells"))]
+sce <- normalize(sce)
+```
+
+# Perform differential expression analysis between the remaining clusters
+
+To detect cluster-specific marker genes, we use the `findMarkers` function implemented in `scran`.
+Here, we use a wrapper for the call which can be found in the auxiliary function file in the Functions
+folder.
+
+```{r DE}
+sperm.markers <- marker.detection(sce, as.character(colData(sce)$AnnotatedClusters))
+
+# Save this list as Table S1
+write.xlsx(sperm.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S1.xlsx")
+```
+
+# Visualize marker gene expression
+
+We now visualize the expression of selected genes from the list of
+cluster-specific marker genes.
+
+```{r marker-genes}
+genes <- c("Cldn11", "Fabp3", "Dmrt1", "Piwil1", "Tex21", "Tnp1")
+
+gene.list <- lapply(as.list(genes), function(n){
+  ggplot(data = data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
+                             tSNE2 = reducedDims(sce)$TSNE[,2],
+                             gene = logcounts(sce)[rowData(sce)$Symbol == n,])) +
+      geom_point(aes(tSNE1, tSNE2, colour = gene), size = 0.5) +
+      scale_color_viridis(name = NULL) + 
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(), axis.ticks = element_blank(),
+        axis.title = element_text(size = 12, face = "bold"),
+        plot.title = element_text(size = 12, face = "bold", hjust = 0.5), 
+        line = element_blank()) +
+    ggtitle(n)
+})
+```
+
+# Visualize tsne of all adult B6 cells
+
+Next we visualize the clusters across all cells of the adult B6 sample.
+
+```{r all-cells}
+p.cells <- ggplot(data = data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
+                             tSNE2 = reducedDims(sce)$TSNE[,2],
+                             group = colData(sce)$AnnotatedClusters)) +
+      geom_point(aes(tSNE1, tSNE2, colour = group)) +
+      scale_color_manual(values = metadata(sce)$color_vector) + 
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.text = element_blank(), axis.ticks = element_blank(),
+        axis.title = element_text(size = 12, face = "bold"), 
+        line = element_blank()) + 
+  guides(colour = FALSE)
+```
+
+# Save the final figure
+
+Now we build the parts of the final figure coming from the scRNA-Seq analysis.
+
+```{r save}
+final.1 <- plot_grid(plotlist = gene.list, nrow = 2, ncol = 3)
+final <- plot_grid(final.1, p.cells, ncol = 2, nrow = 1, rel_widths = c(2,1), 
+                   labels = c("D", "E"), label_size = 16)
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_1/Fig_1.pdf",
+       final, units = "mm", width = 300, height = 90)
+```
