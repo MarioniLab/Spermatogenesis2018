@@ -84,7 +84,7 @@ DTC <- function(sce, HVG.genes, minClusterSize = 10, deepSplit = 0){
 }
 
 #### Find specifc marker genes
-marker.detection <- function(sce, clusters){
+marker.detection <- function(sce, clusters, design){
   # User scran function findMarkers to perform differential expression
   cur_markers <- findMarkers(sce, clusters)
   
@@ -93,7 +93,7 @@ marker.detection <- function(sce, clusters){
     if(!is.na(n$Top[1])){
     cur_n <- n[n$FDR < 0.1 & apply(n[,3:ncol(n)], 1, function(x){sum(x > 0)}) == ncol(n) - 2,]
       if(nrow(cur_n) > 0){
-        cur_n$GeneName <- rowData(sce.B6)$Symbol[match(rownames(cur_n), rowData(sce.B6)$ID)]
+        cur_n$GeneName <- rowData(sce)$Symbol[match(rownames(cur_n), rowData(sce)$ID)]
       }
     }
     else{
