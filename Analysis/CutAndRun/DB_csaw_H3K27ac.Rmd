@@ -17,7 +17,7 @@ knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
 First we define the relevant files.
 
 ```{r}
-bam.files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K27ac/", full.names = TRUE,
+bam.files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K27ac/", full.names = TRUE,
                         pattern = "*.bam$")
 ```
 
@@ -111,7 +111,7 @@ for (x in 2:ncol(adjc)) {
 We save the normalization factors and library sizes for later use.
 
 ```{r}
-write.table(file="/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/norm_1000.tsv", quote=FALSE, row.names=FALSE, sep="\t",
+write.table(file="/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/norm_1000.tsv", quote=FALSE, row.names=FALSE, sep="\t",
     colData(filtered)[,c("bam.files", "totals", "norm.factors")])
 ```
 
@@ -250,6 +250,6 @@ write.table(prom_df, file="promoter_regions_5kb_up_down_H3K27ac.bed", quote=F, s
 Saving the window coordinates as well as the various results.
 
 ```{r}
-saveRDS(file="/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds", list(windows=rowRanges(filtered), 
+saveRDS(file="/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds", list(windows=rowRanges(filtered), 
     DB=out)) 
 ```
