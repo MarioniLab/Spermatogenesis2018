@@ -94,11 +94,18 @@ colnames(tabbest.K4) <- paste(colnames(tabbest.K4), "_K4", sep = "")
 anno.ranges <- detailRanges(orgdb=EnsDb.Mmusculus.v79,
  txdb=mmusculusEnsembl,name.field = c("SYMBOL"),
  key.field = "GENEID")
+
+# Replce with 
+promoters(genes(EnsDb.Mmusculus.v79), 
+                 upstream = 0, downstream = 1)
+
 promoters <- anno.ranges[anno.ranges$exon==0L]
 promoters.X <- promoters[seqnames(promoters) == "X"]
 
 # K4
 olap <- findOverlaps(promoters.X, H3K4me3$windows)
+# Look into
+getBestOverlaps
 tabprom <- combineOverlaps(olap, H3K4me3$DB)
 df.K4 <- data.frame(Gene=promoters.X$symbol, tabprom)[!is.na(tabprom$PValue),]
 
