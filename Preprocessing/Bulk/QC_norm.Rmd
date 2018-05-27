@@ -18,14 +18,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 # Load reads
-raw_counts <- read.table("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/raw/1st_wave_bulk_all_reverse-stranded.txt", sep = "\t")
+raw_counts <- read.table("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/raw/1st_wave_bulk_all_reverse-stranded.txt", sep = "\t")
 
 # Load library
 library(DESeq2)
 
 raw_counts <- raw_counts[,!is.na(raw_counts[1,])]
 
-# Filter reads
+# Filter libraries
 plot(log10(colSums(raw_counts)), pch = 16)
 
 plot(as.numeric(raw_counts["__no_feature",]/colSums(raw_counts)), pch = 16)
@@ -35,7 +35,6 @@ plot(as.numeric(raw_counts["__not_aligned",]/colSums(raw_counts)), pch = 16)
 plot(as.numeric(raw_counts["__alignment_not_unique",]/colSums(raw_counts)), pch = 16)
 
 # Percentage of mapped counts
-raw_counts <- raw_counts[!grepl("ERCC", rownames(raw_counts)),]
 plot(as.numeric(colSums(raw_counts[!grepl("__", rownames(raw_counts)),])/colSums(raw_counts)), pch = 16)
 
 # Total mapped counts
@@ -56,5 +55,20 @@ dds <- DESeqDataSetFromMatrix(countData = raw_counts,
 dds <- estimateSizeFactors(dds)
 norm <- counts(dds, normalized = TRUE)
 
-saveRDS(norm, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+saveRDS(norm, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+```
+
+# Save information of this data as supllementary table S1
+
+```{r metainfo}
+library(openxlsx)
+# Read in metainfo
+meta <- read.xlsx("../../../../Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/Bulk/sdrf.xlsx")
+
+stats.df <- data.frame(row.names = meta$Source.Name,
+                       Tissue = meta$`Characteristics[tissue]`,
+                       Age = paste(meta$`Characteristics.[Age]`, "days"))
+
+write.table(stats.df, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/BulkSamples_stats.txt", 
+            sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE)
 ```
