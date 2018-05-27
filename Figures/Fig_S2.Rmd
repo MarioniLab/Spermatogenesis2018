@@ -14,7 +14,8 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This figure analyses the different cell populations in the P10 sample.
+This script recapitulates the visualization of all juvenile samples and 
+plots marker genes for the P10 sample.
 
 # Load data and libraries
 
@@ -32,23 +33,25 @@ library(viridis)
 source("../Functions/auxiliary.R")
 
 # Single cell data
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce.all <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0")) & 
+                     !(colData(sce.all)$AnnotatedClusters %in% c(paste("NA", 1:5, sep = ""), "Outliers"))]
 ```
 
 # Visualize all juvenile and adult cells
 
 ```{r}
-cur_df <- data.frame(tsne1 = reducedDims(sce)$TSNE[!grepl("Tc1|Tc0", colData(sce)$Sample) & colData(sce)$AnnotatedClusters != "Outliers",1],
-                     tsne2 = reducedDims(sce)$TSNE[!grepl("Tc1|Tc0", colData(sce)$Sample) & colData(sce)$AnnotatedClusters != "Outliers",2],
-                     batches = colData(sce)$Sample[!grepl("Tc1|Tc0", colData(sce)$Sample) & colData(sce)$AnnotatedClusters != "Outliers"],
-                     clusters = colData(sce)$AnnotatedClusters[!grepl("Tc1|Tc0", colData(sce)$Sample) & colData(sce)$AnnotatedClusters != "Outliers"]) 
+cur_df <- data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                     tsne2 = reducedDims(sce.all)$TSNE[,2],
+                     samples = colData(sce.all)$Sample,
+                     clusters = colData(sce.all)$AnnotatedClusters) 
 
 juvenile.mapping <- ggplot(cur_df) +
-  geom_point(aes(tsne1, tsne2, colour = batches), size = 0.5) + scale_color_brewer(palette = "Set3") + 
+  geom_point(aes(tsne1, tsne2, colour = samples), size = 0.5) + scale_color_brewer(palette = "Set3") + 
   ylab("tSNE 2") + xlab("tSNE 1")
 
 juvenile.mapping.clusters <- ggplot(cur_df) +
-  geom_point(aes(tsne1, tsne2, colour = clusters), size = 0.5) + scale_color_manual(values = metadata(sce)$color_vector) + 
+  geom_point(aes(tsne1, tsne2, colour = clusters), size = 0.5) + scale_color_manual(values = metadata(sce.all)$color_vector) + 
   ylab("tSNE 2") + xlab("tSNE 1")
 
 ```
@@ -56,20 +59,20 @@ juvenile.mapping.clusters <- ggplot(cur_df) +
 # Visualize P10 sample
 
 ```{r}
-cur_df <- data.frame(tsne1 = reducedDims(sce)$TSNE[grepl("P10", colData(sce)$Sample) ,1],
-                     tsne2 = reducedDims(sce)$TSNE[grepl("P10", colData(sce)$Sample),2],
-                     cell_type = colData(sce)$AnnotatedClusters[grepl("P10", colData(sce)$Sample)]) 
+cur_df <- data.frame(tsne1 = reducedDims(sce.all)$TSNE[grepl("P10", colData(sce.all)$Sample) ,1],
+                     tsne2 = reducedDims(sce.all)$TSNE[grepl("P10", colData(sce.all)$Sample),2],
+                     cell_type = colData(sce.all)$AnnotatedClusters[grepl("P10", colData(sce.all)$Sample)]) 
 
 P10 <- ggplot(cur_df) +
   geom_point(aes(tsne1, tsne2, colour = cell_type), size = 0.5) + 
-  ylab("tSNE 2") + xlab("tSNE 1") + scale_color_manual(values = metadata(sce)$color_vector)
+  ylab("tSNE 2") + xlab("tSNE 1") + scale_color_manual(values = metadata(sce.all)$color_vector)
 ```
 
 # Visualize marker genes for P10
 
 ```{r}
 # Calculate highly variable genes across P10
-sce.P10 <- sce[,grepl("P10", colData(sce)$Sample)]
+sce.P10 <- sce.all[,grepl("P10", colData(sce.all)$Sample)]
 sce.P10 <- normalize(sce.P10)
 
 # Calculate HVG
@@ -80,7 +83,7 @@ cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(sce.P10)[HVgenes,]),
                                   method = "spearman"))/2))
 
 # Genes to visualize
-genes <- c("Cst12", "Sycp1", "Dmrt1", "Dlk1", "Col4a3", "Insl3", "Tm4sf1", "Cd14")
+genes <- c("Cst12", "Sycp1", "Dmrt1", "Dlk1", "Col4a3", "Tm4sf1", "Insl3", "Cd14")
 
 # Heatmap
 # Visualize in heatmap
@@ -88,7 +91,7 @@ for.heatmap <- logcounts(sce.P10)[match(genes, rowData(sce.P10)$Symbol),]
 rownames(for.heatmap) <- genes
 colnames(for.heatmap) <- colData(sce.P10)$Barcode 
 
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S2/P10_heatmap.pdf", 
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S2/P10_heatmap.pdf", 
     onefile = FALSE, width = 15, height = 5)
 pheatmap(for.heatmap, cluster_rows = FALSE,
          clustering_distance_cols = cur_dist,
@@ -113,6 +116,6 @@ dev.off()
 final <- plot_grid(juvenile.mapping,
                    juvenile.mapping.clusters,
                    P10, NULL, ncol = 2, nrow = 2)
-ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S2/Fig_S2.pdf", 
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S2/Fig_S2.pdf", 
        final, width = 15, height = 8)
 ```
