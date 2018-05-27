@@ -49,7 +49,7 @@ folder.
 sperm.markers <- marker.detection(sce, as.character(colData(sce)$AnnotatedClusters))
 
 # Save this list as Table S1
-write.xlsx(sperm.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S1.xlsx")
+write.xlsx(sperm.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S2.xlsx")
 ```
 
 # Visualize marker gene expression
