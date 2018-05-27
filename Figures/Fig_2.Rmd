@@ -30,15 +30,14 @@ library(pheatmap)
 library(viridis)
 
 # Single cell data
-sce.all <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce.all <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0"))]
 
 # Bulk data
-bulk <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
 
 # Meta info
-meta <- as.data.frame(read.xlsx("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Metadata.xlsx", sheet = 2))
-meta <- meta[!is.na(meta$DO.number),]
-rownames(meta) <- meta$DO.number
+meta <- read.table("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/BulkSamples_stats.txt", sep = "\t")
 ```
 
 # Ratios of cell types in each sample
@@ -55,16 +54,18 @@ proportions <- with(df, table(sample, group))/plyr::count(df = df, vars = "sampl
 # Visualize percentages for germ cells
 
 ```{r, visualization}
-cur_df <- proportions[c("B6", "P15", "P20","P30", "P35"),1:22]
+cur_df <- proportions[c("B6", "P15", "P20", "P25", "P30", "P35"),1:23]
 cur_df.melt <- melt(cur_df)
-levels(cur_df.melt$sample) <- rev(c("B6", "P15", "P20", "P30", "P35"))
+levels(cur_df.melt$sample) <- rev(c("B6", "P15", "P20", "P25", "P30", "P35"))
 levels(cur_df.melt$group) <- levels(colData(sce.all)$AnnotatedClusters)
 
-proportions.p <- ggplot(cur_df.melt) + geom_point(aes(group, rev(sample), size = value, fill = group), shape = 22) +
+proportions.p <- ggplot(cur_df.melt) + 
+  geom_point(aes(group, rev(sample), size = value, fill = group), shape = 22) +
   scale_fill_manual(values = metadata(sce.all)$color_vector) + 
   theme(panel.background = element_blank(), axis.title = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
-        axis.text.y = element_text(size = 12))
+        axis.text.y = element_text(size = 12)) +
+  scale_size_area(max_size = 6) + guides(colour = FALSE)
 ```
 
 # Map bulk libraries to stages
@@ -74,13 +75,14 @@ and the top 50 marker genes for each group. The training is performed on adult B
 
 ```{r bulk mapping}
 # Load marker genes
-marker.genes <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.rds")
+marker.genes <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.rds")
 cur_markers <- as.character(unlist(lapply(marker.genes, function(n){rownames(n)[1:50]})))
 cur_markers <- cur_markers[cur_markers %in% rownames(bulk)]
 
-# Train the classifier on adult B6 - remove outliers
+# Train the classifier on adult B6 - remove outliers, unannotated cells and endothelia cells
 sce.B6 <- sce.all[,grepl("B6", colData(sce.all)$Sample) & 
-                    colData(sce.all)$AnnotatedClusters != "Outliers"]
+                    !(colData(sce.all)$AnnotatedClusters %in% 
+             c(paste("NA", 1:5, sep = ""), "Outliers", "Endothelial_cells"))]
 sce.B6 <- normalize(sce.B6)
 labels <- factor(colData(sce.B6)$AnnotatedClusters,
                     levels = levels(colData(sce.B6)$AnnotatedClusters)[
@@ -118,82 +120,15 @@ new.data <- log(bulk[cur_markers,] + 1)
 new.data.Z <- t(apply(new.data, 1, function(n){(n - mean(n))/sd(n)}))
 
 pred.bulk <- predict(object = Tree, newdata = t(new.data.Z), type="prob")
-pred.bulk <- pred.bulk[rownames(pred.bulk) != "do18154",]
-
-meta <- meta[rownames(meta) != "DO18154",]
 
 # Collect day info on libraries
 df <- data.frame(library = rownames(pred.bulk),
-                 day = meta$`Age.(days)`[order(rownames(meta))])
+                 day = as.numeric(sub(" days", "", meta[rownames(pred.bulk),"Age"])))
 
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2/Fig_2_bulkmapping_heatmap.pdf", 
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2/Fig_2_bulkmapping_heatmap.pdf", 
     onefile = FALSE)
 pheatmap(pred.bulk[order(df$day),], cluster_cols = FALSE, cluster_rows = FALSE,
          col = inferno(100),
-         annotation_row = data.frame(row.names = rownames(pred.bulk),
-                    sample = factor(df$day, levels = unique(df$day)[order(unique(df$day))])),
-         labels_row = df$day[order(df$day)])
-dev.off()
-
-```
-
-# Map P10 sample and bulk P6-P15
-
-```{r bulk mapping}
-# Load marker genes
-marker.genes.P10 <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_P10.rds")
-cur_markers <- as.character(unlist(lapply(marker.genes.P10, function(n){rownames(n)[1:50]})))
-cur_markers <- cur_markers[cur_markers %in% rownames(bulk)]
-
-# Train the classifier on adult B6 - remove outliers
-sce.P10 <- sce.all[,grepl("P10", colData(sce.all)$Sample) & 
-                    colData(sce.all)$AnnotatedClusters != "Outliers"]
-sce.P10 <- normalize(sce.P10)
-labels <- factor(colData(sce.P10)$AnnotatedClusters,
-                    levels = levels(colData(sce.P10)$AnnotatedClusters)[
-                      levels(colData(sce.P10)$AnnotatedClusters) %in%
-                        unique(colData(sce.P10)$AnnotatedClusters)])
-
-# Create training and testing datasets
-set.seed(1234)
-sam <- sample(1:ncol(sce.P10), 2000)
-#train.data <- data.frame(t(as.matrix(logcounts(sce.B6)[cur_markers,sam])))
-#train.data$labels <- labels[sam] 
-#test.data <- data.frame(t(as.matrix(logcounts(sce.B6)[cur_markers,-sam])))
-#test.data$labels <- labels[-sam] 
-
-train.data <- as.matrix(logcounts(sce.P10)[cur_markers,sam])
-train.labels <- labels[sam] 
-test.data <- as.matrix(logcounts(sce.P10)[cur_markers,-sam])
-test.labels <- labels[-sam] 
-
-# logistic regression
-#model <- multinom(labels ~ ., data = train.data, MaxNWts = 40000, maxit = 1000)
-
-# Scale the counts prior to training
-# Z score
-train.data.Z <- t(apply(train.data, 1, function(n){(n - mean(n))/sd(n)}))
-test.data.Z <- t(apply(test.data, 1, function(n){(n - mean(n))/sd(n)}))
-
-# Random forrest
-Tree <- randomForest(x = t(as.matrix(train.data.Z)), y = train.labels, 
-                     xtest = t(as.matrix(test.data.Z)), 
-                     ytest = test.labels, keep.forest = TRUE)
-
-# Prediction 
-new.data <- log(bulk[cur_markers,1:10] + 1)
-new.data.Z <- t(apply(new.data, 1, function(n){(n - mean(n))/sd(n)}))
-
-pred.bulk <- predict(object = Tree, newdata = t(new.data.Z), type="prob")
-
-# Collect day info on libraries
-df <- data.frame(library = rownames(pred.bulk),
-                 day = meta$`Age.(days)`[1:10])
-
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2/Fig_2_bulkmapping_heatmap_P10.pdf", 
-    onefile = FALSE)
-pheatmap(pred.bulk[order(df$day),], cluster_cols = FALSE, cluster_rows = FALSE,
-         col = colorRampPalette(c("white", "red", "black"))(100),
          annotation_row = data.frame(row.names = rownames(pred.bulk),
                     sample = factor(df$day, levels = unique(df$day)[order(unique(df$day))])),
          labels_row = df$day[order(df$day)])
@@ -205,5 +140,5 @@ dev.off()
 
 ```{r final}
 final <- plot_grid(proportions.p)
-ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2.pdf", final)
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2.pdf", final)
 ```
