@@ -33,7 +33,7 @@ library(RColorBrewer)
 source("../Functions/auxiliary.R")
 
 # Single cell data
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 
 # Select spermatogonia and spermatocytes
 sce <- sce[,grepl("B6", colData(sce)$Sample)]
@@ -65,19 +65,23 @@ prank <- PT(rd = pca$x[,1:3],
 
 # Histone variants over spermiogenesis
 
+Here, we visualize the histone variants taken from Kennani et al. Epigenetics & Chromatin, 2017.
+
 ```{r hist-var}
-# Collect the histone variants
-Hist.all <- rowData(sce.spermatids)$Symbol[
-  grepl("^H[1-4]", rowData(sce.spermatids)$Symbol) |
-    grepl("^Hist", rowData(sce.spermatids)$Symbol)]
+# Read in histone variants
+Hist.all <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Mouse_histones.xlsx")
+Hist.all <- Hist.all[match(unique(Hist.all$Ensembl.Gene.ID),
+                           Hist.all$Ensembl.Gene.ID),]
+rownames(Hist.all) <- Hist.all$Ensembl.Gene.ID
 
 # Collect data for heatmap plotting
-for.heatmap <- logcounts(sce.spermatids)[match(Hist.all, 
-                  rowData(sce.spermatids)$Symbol),
+for.heatmap <- logcounts(sce.spermatids)[rowData(sce.spermatids)$ID %in% Hist.all$Ensembl.Gene.ID,
                   order(prank[,"rank"], decreasing = TRUE)]
-colnames(for.heatmap) <- colData(sce.spermatids)$Barcode[order(prank[,"rank"],
-                                                               decreasing = TRUE)]
-rownames(for.heatmap) <- Hist.all
+colnames(for.heatmap) <- paste(colData(sce.spermatids)$Barcode[order(prank[,"rank"],
+                                                               decreasing = TRUE)],
+                               colData(sce.spermatids)$Library[order(prank[,"rank"],
+                                                               decreasing = TRUE)],
+                               sep = "_")
 for.heatmap <- for.heatmap[Matrix::rowMeans(for.heatmap) > 0.1,]
 
 # Correlate this to pseudorank
@@ -92,14 +96,18 @@ cors <- correlatePairs(cur_df, null.dist=null.dist,
 cors <- cors[order(cors$rho, decreasing = TRUE),]
 
 # Plot these genes over pseudotime
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_HistoneVariants.pdf", onefile = FALSE)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_HistoneVariants.pdf", onefile = FALSE)
 pheatmap(for.heatmap[cors$gene2,], show_colnames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE, 
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
          annotation_col = data.frame(row.names = colnames(for.heatmap),
                   cell_type = colData(sce.spermatids)$AnnotatedClusters[order(prank[,"rank"],
                       decreasing = TRUE)]),
-         annotation_colors = list(cell_type = metadata(sce.spermatids)$color_vector), scale = "row")
+         labels_row = Hist.all[cors$gene2,"Gene.name"],
+         annotation_colors = list(cell_type = metadata(sce.spermatids)$color_vector), 
+         scale = "row",
+         annotation_row = data.frame(row.names = cors$gene2,
+                                     Testis_specific = Hist.all[cors$gene2,"X7"]))
 dev.off()
 ```
 
@@ -123,7 +131,7 @@ p.number.genes <- ggplot(
         panel.grid.minor = element_blank(), axis.title.y = element_text(size = 15), 
         axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
 
-ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/NoGenes.pdf", 
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/NoGenes.pdf", 
        p.number.genes, width = 12, height = 4)
 ```
 
@@ -153,9 +161,10 @@ for(i in 1:(splits - 1)){
   mat[i,] <- colMeans(z.score[cors$rho <= ran[i] & cors$rho > ran[i + 1],])
 }
 
-colnames(mat) <- colData(sce.spermatids)$Barcode
+colnames(mat) <- paste(colData(sce.spermatids)$Barcode,
+                       colData(sce.spermatids)$Library)
 
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_TranscriptionalShotdown.pdf", onefile = FALSE)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_TranscriptionalShotdown.pdf", onefile = FALSE)
 pheatmap(mat[,order(PT, decreasing = TRUE)], breaks = seq(-2, 2, length.out = 100),
          cluster_rows = FALSE, cluster_cols = FALSE, 
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
@@ -172,6 +181,6 @@ for(i in 1:(splits - 1)){
 
 cors$group <- groups
 cors <- cors[order(cors$rho, decreasing = FALSE),]
-write.xlsx(cors, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/CorrrelationNoGenes.xlsx")
+write.xlsx(cors, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/CorrrelationNoGenes.xlsx")
 
 ```
