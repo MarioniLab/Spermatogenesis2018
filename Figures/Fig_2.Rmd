@@ -66,6 +66,10 @@ proportions.p <- ggplot(cur_df.melt) +
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12)) +
   scale_size_area(max_size = 6) + guides(colour = FALSE)
+
+# Save plot
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2/ProportionsPlot.pdf", proportions.p,
+       width = 180, units = "mm", height = 80)
 ```
 
 # Map bulk libraries to stages
@@ -134,11 +138,4 @@ pheatmap(pred.bulk[order(df$day),], cluster_cols = FALSE, cluster_rows = FALSE,
          labels_row = df$day[order(df$day)])
 dev.off()
 
-```
-
-# Save final figure
-
-```{r final}
-final <- plot_grid(proportions.p)
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2.pdf", final)
 ```
