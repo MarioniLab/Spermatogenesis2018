@@ -108,7 +108,7 @@ for(i in cur_groups){
   colnames(design) <- c("Tc0", "Tc1")
   y <- estimateDisp(y,design)
   
-  fit <- glmQLFit(y,design)
+  fit <- glmQLFit(y,design, robust = TRUE)
   qlf <- glmTreat(fit,coef=2, lfc = 0.5, 
                   contrast = makeContrasts(Tc1 - Tc0, levels = design))
   cur_markers <- topTags(qlf, n = nrow(qlf$table))$table
@@ -250,7 +250,7 @@ for(i in cur_groups){
   colnames(design) <- c("B6", "Tc1")
   y <- estimateDisp(y,design)
   
-  fit <- glmQLFit(y,design)
+  fit <- glmQLFit(y,design, robust = TRUE)
   qlf <- glmTreat(fit,coef=2, lfc = 0.5, 
                   contrast = makeContrasts(Tc1 - B6, levels = design))
   cur_markers <- topTags(qlf, n = nrow(qlf$table))$table
@@ -392,7 +392,7 @@ for(i in cur_groups){
   colnames(design) <- c("B6", "Tc0")
   y <- estimateDisp(y,design)
   
-  fit <- glmQLFit(y,design)
+  fit <- glmQLFit(y,design,robust = TRUE)
   qlf <- glmTreat(fit,coef=2, lfc = 0.5, 
                   contrast = makeContrasts(Tc0 - B6, levels = design))
   cur_markers <- topTags(qlf, n = nrow(qlf$table))$table
