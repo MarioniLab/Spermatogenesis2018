@@ -30,6 +30,7 @@ library(RColorBrewer)
 library(irlba)
 library(dynamicTreeCut)
 library(RColorBrewer)
+library(reshape2)
 
 
 # Read in data - Single cell experiment object per batch
@@ -112,6 +113,15 @@ sce.all <- cbind(sce.do17815, sce.do17816, sce.do15984, sce.do17622, sce.do18199
                  sce.do18195, sce.do17824, sce.do18196, sce.do17825, sce.do17827)
 rm(list = setdiff(ls(), "sce.all"))
 
+# Save statistics on these libraries
+cur_stats <- melt(table(colData(sce.all)$Sample, colData(sce.all)$Library))
+cur_stats <- cur_stats[cur_stats$value > 0,]
+cur_stats <- cur_stats[order(cur_stats$Var1),]
+stats.df <- data.frame(row.names = cur_stats$Var2,
+                       Sample = cur_stats$Var1,
+                       Library = cur_stats$Var2,
+                       CellRanger_filter = cur_stats$value)
+
 # Calculate QC metrics
 sce.all <- calculateQCMetrics(sce.all)
 
@@ -131,6 +141,12 @@ sce.all <- sce.all[,Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData
 
 # Remove genes that are not expressed
 sce.all <- sce.all[Matrix::rowSums(counts(sce.all)) > 0,]
+
+# Add to stats data frame
+cur_stats <- melt(table(colData(sce.all)$Sample, colData(sce.all)$Library))
+cur_stats <- cur_stats[cur_stats$value > 0,]
+cur_stats <- cur_stats[order(cur_stats$Var1),]
+stats.df$AfterFiltering <- cur_stats$value
 ```
 
 # Normalization
@@ -399,6 +415,19 @@ colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
                  "Immature_Leydig", "Immature_Leydig2", "PTM", "Endothelial_cells", 
                  "tMg", "NA1", "NA2", "NA3","NA4","NA5","NA6","Outliers"))
 
+# Add number of properly annotated cells to dataframe
+cur_stats <- melt(table(colData(sce.all)$Sample[!(colData(sce.all)$AnnotatedClusters %in% 
+                                  c(paste("NA", 1:5, sep = ""), "Outliers"))], 
+                        colData(sce.all)$Library[!(colData(sce.all)$AnnotatedClusters %in% 
+                                  c(paste("NA", 1:5, sep = ""), "Outliers"))]))
+cur_stats <- cur_stats[cur_stats$value > 0,]
+cur_stats <- cur_stats[order(cur_stats$Var1),]
+stats.df$ProperlyAnnotated <- cur_stats$value
+
+# Save dataframe
+write.table(stats.df, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/CellRangerFiltering_stats.txt", 
+            sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE)
+
 colour_vector <- c("Spermatogonia" = "#046735", 
                    "Spermatocytes_1" = "#FBDCEA", 
                    "Spermatocytes_2" = "#F2B2D1",
@@ -448,4 +477,5 @@ metadata(sce.all)$color_vector <- colour_vector
 
 ```{r}
 saveRDS(sce.all, "/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.all <- readRDS("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```
