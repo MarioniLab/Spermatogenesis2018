@@ -50,6 +50,9 @@ sperm.markers <- marker.detection(sce, as.character(colData(sce)$AnnotatedCluste
 
 # Save this list as Table S1
 write.xlsx(sperm.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S2.xlsx")
+
+# Save the rds file for later use
+saveRDS(sperm.markers, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.rds")
 ```
 
 # Visualize marker gene expression
