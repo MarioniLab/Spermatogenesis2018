@@ -241,59 +241,6 @@ dev.off()
 
 ```
 
-# GO analysis of genes that correlate with number of genes expressed
-
-Using DAVID
-
-```{r}
-# Write out background
-write.table(as.data.frame(cors$gene2), "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/background.txt", 
-            quote = FALSE, row.names = FALSE, col.names = FALSE)
-
-# Write out positively correlated genes
-write.table(as.data.frame(pos.cor$gene2), "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/PosCorGenes.txt", 
-            quote = FALSE, row.names = FALSE, col.names = FALSE)
-
-# Write out negatively correlated genes
-write.table(as.data.frame(neg.cor$gene2), "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/NegCorGenes.txt", 
-            quote = FALSE, row.names = FALSE, col.names = FALSE)
-```
-
-Using goseq
-
-```{r GO}
-# GO analysis
-cur_genes <- as.integer(cors$FDR < 0.1 & cors$rho > 0.3 & 
-                          cors$logFC.Spermatids > 1)
-names(cur_genes) <- cors$gene2
-  
-pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
-GO.wall=goseq(pwf,"mm10","ensGene")
-enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
-
-# Add genenames to the GO categories
-all_genes <- vector(length = nrow(enriched.GO))
-for(j in 1:nrow(enriched.GO)){
-  allegs = get(enriched.GO$category[j], org.Mm.egGO2ALLEGS)
-  genes = unique(unlist(mget(allegs,org.Mm.egSYMBOL)))
-  genes = as.character(genes[genes %in% cors$genename[cors$FDR < 0.1 & cors$rho > 0.5]])
-  all_genes[j] <- paste(genes, collapse = ", ")
-}
-enriched.GO$Genes <- all_genes
-  
-write.xlsx(enriched.GO, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/PosCorrelationNumberGenesExpressed_Spermatoytes_GO.xlsx")
-
-cur_genes <- as.integer(cors$FDR < 0.1 & cors$rho < -0.3 & 
-                          cors$logFC.Spermatids > 1)
-names(cur_genes) <- cors$gene2
-  
-pwf=nullp(cur_genes,"mm10","ensGene", bias.data = genelength[names(cur_genes),])
-GO.wall=goseq(pwf,"mm10","ensGene")
-enriched.GO=GO.wall[p.adjust(GO.wall$over_represented_pvalue,method="fdr")<.1,]
-
-write.xlsx(enriched.GO, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/NegCorrelationNumberGenesExpressed_Spermatoytes_GO.xlsx")
-```
-
 # Visualize up-or downregaulated genes in GO categories
 
 ```{r GO-visualization}
