@@ -17,7 +17,7 @@ knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
 First we define the relevant files.
 
 ```{r}
-bam.files <- list.files("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K27ac/", full.names = TRUE,
+bam.files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K27ac/", full.names = TRUE,
                         pattern = "*.bam$")
 ```
 
@@ -200,55 +200,11 @@ summary(decideTests(res))
 out <- res$table
 ```
 
-# Merge adjacent windows with a maximum width of 5kb
-
-```{r}
-merged <- mergeWindows(rowRanges(filtered), tol=1000L, max.width=5000L)
-summary(width(merged$region))
-
-merged$region
-
-tabcom <- combineTests(merged$id, res$table)
-head(tabcom)
-
-is.sig.region <- tabcom$FDR <= 0.05
-table(tabcom$direction[is.sig.region])
-
-mcols(merged$region) <- tabcom
-regions_df <- as.data.frame(merged$region)
-write.csv(regions_df, "clusters_5kb_H3K27ac.csv", row.names=F)
-write.table(regions_df, file="regions_max2500_H3K27ac.bed", quote=F, sep="\t", row.names=F, col.names=F)
-
-```
-
-
-#Cluster windows into regions
-
-Use promoter annotation to find overlap
-
-```{r}
-library(GenomicRanges)
-library(EnsDb.Mmusculus.v79)
-prom <- promoters(genes(EnsDb.Mmusculus.v79),
-                  upstream = 5000, downstream = 5000)
-olap <- findOverlaps(prom, rowRanges(filtered))
-
-tabprom <- combineOverlaps(olap, res$table)
-head(tabprom[!is.na(tabprom$PValue),])
-is.sig.prom <- prom$FDR <= 0.05
-table(prom$direction[is.sig.prom])
-
-mcols(prom) <- tabprom
-
-prom_df <- as.data.frame(prom[!is.na(prom$PValue),])
-write.table(prom_df, file="promoter_regions_5kb_up_down_H3K27ac.bed", quote=F, sep="\t", row.names=F, col.names=F)
-```
-
 # Saving the results
 
 Saving the window coordinates as well as the various results.
 
 ```{r}
 saveRDS(file="/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds", list(windows=rowRanges(filtered), 
-    DB=out)) 
+    DB=out, norm = cpm(y))) 
 ```
