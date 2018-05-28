@@ -207,7 +207,7 @@ fstat.spermatids <- filterWindows(data=out[,c(2,4)], background=bins[,c(2,4)], t
 fstat.spermatocytes <- filterWindows(data=out[,c(1,3)], background=bins[,c(1,3)], type="global")
 
 df.stats <- data.frame(spermatocytes = fstat.spermatocytes$filter,
-                       spermatocytes = fstat.spermatids$filter)
+                       spermatids = fstat.spermatids$filter)
 df.stats <- df.stats[keep,]
 ```
 
@@ -217,5 +217,5 @@ Saving the window coordinates as well as the various results.
 
 ```{r}
 saveRDS(file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds", list(windows=rowRanges(filtered), 
-    DB=out, enrichment = df.stats)) 
+    DB=out.tab, enrichment = df.stats)) 
 ```
