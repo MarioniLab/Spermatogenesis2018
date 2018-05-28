@@ -198,7 +198,6 @@ con <- makeContrasts(treatmentspermatids - treatmentspermatocytes, levels=design
 res <- glmQLFTest(fit, contrast=con)
 summary(decideTests(res))
 out <- res$table
-out$FDR <- p.adjust(out$PValue, method = "BH")
 ```
 
 # Merge adjacent windows with a maximum width of 5kb
