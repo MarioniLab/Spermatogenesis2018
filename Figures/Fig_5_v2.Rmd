@@ -31,7 +31,6 @@ library(ggsci)
 library(cowplot)
 library(openxlsx)
 library(csaw)
-library(Gviz)
 
 # Generate feature annotation
 tss <- promoters(genes(EnsDb.Mmusculus.v79), 
@@ -40,17 +39,25 @@ tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
 seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
 tss.X <- tss[seqnames(tss) == "X"]
 
+prom <- promoters(genes(EnsDb.Mmusculus.v79))
+prom <- prom[seqnames(prom) %in% c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(prom) <- c(as.character(1:19), "X", "Y", "MT")
+prom.X <- prom[seqnames(prom) == "X"]
+
+gen <- genes(EnsDb.Mmusculus.v79)
+gen <- gen[seqnames(gen) %in% c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(gen) <- c(as.character(1:19), "X", "Y", "MT")
+gen.X <- gen[seqnames(gen) == "X"]
+
 # Make TXDB for mus musculus
-mmusculusEnsembl <- makeTxDbFromBiomart(dataset="mmusculus_gene_ensembl", 
-                                        filter = "")
+mmusculusEnsembl <- makeTxDbFromBiomart(dataset="mmusculus_gene_ensembl")
 
 black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
 
 # Read in sce data
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce <- sce[,grepl("B6", colData(sce)$Sample) & 
-             !(colData(sce)$AnnotatedClusters %in% c("variable", "Leydig", "Sertoli",
-                                          "Endothelial_cells", "Outliers"))]
+             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
 sce <- normalize(sce)
 
 # Select XChr genes
@@ -60,22 +67,18 @@ sce.XChr <- sce[rowData(sce)$ID %in%
 sce.XChr <- normalize(sce.XChr)
 
 # Bulk data
-bulk <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
-# Use genes that are also detected in scRNAseq data
-#bulk <- bulk[rownames(bulk) %in% rowData(sce)$ID,]
+bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
 
 # Meta info
-meta <- as.data.frame(read.xlsx("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Metadata.xlsx", sheet = 2))
-meta <- meta[!is.na(meta$DO.number),]
-rownames(meta) <- meta$DO.number
+meta <- as.data.frame(read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/Bulk/sdrf.xlsx"))
 ```
 
 # Overlap DB for H3K4me3 and H3K27ac
 
 ```{r}
 # Load data
-H3K4me3 <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
-H3K27ac <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
+H3K4me3 <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
+H3K27ac <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
 
 # Merge the windows
 merged.K27 <- mergeWindows(H3K27ac$windows, tol=100L, max.width=5000L)
@@ -90,40 +93,16 @@ tabcom.K4 <- combineTests(merged.K4$id, H3K4me3$DB)
 colnames(tabcom.K4) <- paste(colnames(tabcom.K4), "_K4", sep = "")
 colnames(tabbest.K4) <- paste(colnames(tabbest.K4), "_K4", sep = "")
 
-# Annotate the regions
-anno.ranges <- detailRanges(orgdb=EnsDb.Mmusculus.v79,
- txdb=mmusculusEnsembl,name.field = c("SYMBOL"),
- key.field = "GENEID")
+# Find overlaps to promoter - K4 
+olap.prom <- findOverlaps(prom.X, merged.K4$region)
+df.K4 <- data.frame(ID = prom.X$gene_id[olap.prom@from],
+                    genename = prom.X$gene_name[olap.prom@from],
+                    tabbest.K4[olap.prom@to,])
 
-# Replce with 
-promoters(genes(EnsDb.Mmusculus.v79), 
-                 upstream = 0, downstream = 1)
-
-promoters <- anno.ranges[anno.ranges$exon==0L]
-promoters.X <- promoters[seqnames(promoters) == "X"]
-
-# K4
-olap <- findOverlaps(promoters.X, H3K4me3$windows)
-# Look into
-getBestOverlaps
-tabprom <- combineOverlaps(olap, H3K4me3$DB)
-df.K4 <- data.frame(Gene=promoters.X$symbol, tabprom)[!is.na(tabprom$PValue),]
-
-# K27
-olap <- findOverlaps(promoters.X, H3K27ac$windows)
-tabprom <- combineOverlaps(olap, H3K27ac$DB)
-df.K27 <- data.frame(Gene=promoters.X$symbol, tabprom)[!is.na(tabprom$PValue),]
-```
-
-# Detect differential regulation
-
-```{r}
-# Genes that gain peaks in spermatids
-cur_df <- df.K4[df.K4$direction == "up",]
-cur_df <- cur_df[order(cur_df$FDR, decreasing = FALSE),]
-cur_df
-
-# Visualize their regulation for H3K27ac
-df.K27[match(cur_df$Gene, df.K27$Gene),]
+# Overlap for K27
+olap.K27 <- findOverlaps(merged.K4$region[olap.prom@to], H3K27ac$windows)
+tab.K27 <- combineOverlaps(olap.K27, H3K27ac$DB)
+colnames(tab.K27) <- paste(colnames(tab.K27), "_K27", sep = "")
+df.K27 <- data.frame(df.K4,tab.K27)
 ```
 
