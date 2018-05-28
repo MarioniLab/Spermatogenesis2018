@@ -97,12 +97,66 @@ colnames(tabbest.K4) <- paste(colnames(tabbest.K4), "_K4", sep = "")
 olap.prom <- findOverlaps(prom.X, merged.K4$region)
 df.K4 <- data.frame(ID = prom.X$gene_id[olap.prom@from],
                     genename = prom.X$gene_name[olap.prom@from],
-                    tabbest.K4[olap.prom@to,])
+                    tabcom.K4[olap.prom@to,])
 
 # Overlap for K27
 olap.K27 <- findOverlaps(merged.K4$region[olap.prom@to], H3K27ac$windows)
 tab.K27 <- combineOverlaps(olap.K27, H3K27ac$DB)
 colnames(tab.K27) <- paste(colnames(tab.K27), "_K27", sep = "")
 df.K27 <- data.frame(df.K4,tab.K27)
+df.K27 <- df.K27[order(df.K27$direction_K4, df.K27$direction_K27, decreasing = FALSE),]
+
+# Remove the two genes that are named twice
+df.K27 <- df.K27[match(unique(df.K27$ID), df.K27$ID),]
+rownames(df.K27) <- df.K27$ID
+```
+
+# Visualize bulk RNA-Seq data
+
+```{r bulk}
+cur.genes <- as.character(df.K27$ID)
+cur.genes <- cur.genes[!is.na(match(cur.genes, rownames(bulk)))]
+for.heatmap <- bulk[cur.genes,
+                   meta$Source.Name[order(meta$`Characteristics.[Age]`, decreasing = FALSE)]]
+for.heatmap <- for.heatmap[rowMeans(for.heatmap) > 10,]
+
+pheatmap(log2(for.heatmap + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`[order(meta$`Characteristics.[Age]`, decreasing = FALSE)], sep = ""),
+         annotation_row = data.frame(row.names = rownames(for.heatmap),
+                                     H3K4me3 = df.K27[rownames(for.heatmap), "direction_K4"],
+                                     H3K27ac = df.K27[rownames(for.heatmap), "direction_K27"]),
+         scale = "row")
+
+```
+
+# Visualize scRNA-Seq data
+
+```{r scRNAseq}
+# Build mean expression matrix
+df <- as.data.frame(t(as.matrix(logcounts(sce)[rownames(for.heatmap),])))
+df$groups <- colData(sce.XChr)$AnnotatedClusters
+df.melt <- melt(df, id.vars = "groups")
+
+# Collect mean expression for each gene in each group
+mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
+mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
+rownames(mat.for.heatmap) <- mat.for.heatmap$variable
+mat.for.heatmap <- mat.for.heatmap[,-1]
+
+
+pheatmap(log2(mat.for.heatmap + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         border_color = NA,
+         annotation_row = data.frame(row.names = rownames(mat.for.heatmap),
+                                     H3K4me3 = df.K27[rownames(for.heatmap), "direction_K4"],
+                                     H3K27ac = df.K27[rownames(mat.for.heatmap), "direction_K27"]),
+         scale = "row")
+
 ```
 
