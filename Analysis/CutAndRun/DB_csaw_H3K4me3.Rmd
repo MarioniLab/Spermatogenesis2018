@@ -17,7 +17,7 @@ knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
 First we define the relevant files.
 
 ```{r}
-bam.files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K4me3/", full.names = TRUE,
+bam.files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K4me3/", full.names = TRUE,
                         pattern = "*.bam$")
 ```
 
@@ -35,9 +35,9 @@ data.frame(BAM=bam.files, Batch=batch, Treatment=treatment)
 Setting up a `readParam` object for read counting.
 This is paired-end data, and we remove read pairs with insert sizes above 1 kbp.
 We remove duplicated read pairs or reads with quality scores below 10.
-We also use the ENCODE hg38 blacklist to ignore reads in problematic regions.
+We also use the ENCODE mm10 blacklist to ignore reads in problematic regions.
 
-```{r}
+```{r, message=FALSE}
 library(csaw)
 library(rtracklayer)
 black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
@@ -67,7 +67,7 @@ hist(fstat$filter, col="grey80", xlab="Log2-fold increase above background",
     ylab="Number of windows", freq=TRUE)
 ```
 
-We require our windows to have at least 5-fold more intensity than expected due to background binding.
+We require our windows to have at least 2-fold more intensity than expected due to background binding.
 
 ```{r}
 keep <- fstat$filter >= log2(5)
@@ -84,7 +84,7 @@ filtered <- out[keep,]
 
 ## Computing TMM factors
 
-We normalize out efficiency biases, under the assumption that most histone marking does _not_ change upon lncRNA knockdown.
+We normalize out efficiency biases, under the assumption that most histone marking does _not_ change between spermatids and spermatocytes.
 
 ```{r}
 filtered <- normOffsets(filtered)
@@ -111,7 +111,7 @@ for (x in 2:ncol(adjc)) {
 We save the normalization factors and library sizes for later use.
 
 ```{r}
-write.table(file="/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/norm_1000.tsv", quote=FALSE, row.names=FALSE, sep="\t",
+write.table(file="/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/norm_1000.tsv", quote=FALSE, row.names=FALSE, sep="\t",
     colData(filtered)[,c("bam.files", "totals", "norm.factors")])
 ```
 
@@ -197,57 +197,25 @@ We test for differential binding between spermatids and spermatocytes.
 con <- makeContrasts(treatmentspermatids - treatmentspermatocytes, levels=design)
 res <- glmQLFTest(fit, contrast=con)
 summary(decideTests(res))
-out <- res$table
+out.tab <- res$table
 ```
 
-# Merge adjacent windows with a maximum width of 5kb
+# Create enrichment over background data frame
 
 ```{r}
-merged <- mergeWindows(rowRanges(filtered), tol=1000L, max.width=5000L)
-summary(width(merged$region))
+fstat.spermatids <- filterWindows(data=out[,c(2,4)], background=bins[,c(2,4)], type="global")
+fstat.spermatocytes <- filterWindows(data=out[,c(1,3)], background=bins[,c(1,3)], type="global")
 
-merged$region
-
-tabcom <- combineTests(merged$id, res$table)
-head(tabcom)
-
-is.sig.region <- tabcom$FDR <= 0.05
-table(tabcom$direction[is.sig.region])
-
-mcols(merged$region) <- tabcom
-regions_df <- as.data.frame(merged$region)
-write.csv(regions_df, "clusters_5kb_H3K4me3.csv", row.names=F)
-write.table(regions_df, file="regions_max2500_H3K4me3.bed", quote=F, sep="\t", row.names=F, col.names=F)
-
+df.stats <- data.frame(spermatocytes = fstat.spermatocytes$filter,
+                       spermatocytes = fstat.spermatids$filter)
+df.stats <- df.stats[keep,]
 ```
 
-
-#Cluster windows into regions
-
-Use promoter annotation to find overlap
-
-```{r}
-library(GenomicRanges)
-library(EnsDb.Mmusculus.v79)
-prom <- promoters(genes(EnsDb.Mmusculus.v79),
-                  upstream = 5000, downstream = 5000)
-olap <- findOverlaps(prom, rowRanges(filtered))
-
-tabprom <- combineOverlaps(olap, res$table)
-head(tabprom[!is.na(tabprom$PValue),])
-is.sig.prom <- prom$FDR <= 0.05
-table(prom$direction[is.sig.prom])
-
-mcols(prom) <- tabprom
-
-prom_df <- as.data.frame(prom[!is.na(prom$PValue),])
-write.table(prom_df, file="promoter_regions_5kb_up_down_H3K4me3.bed", quote=F, sep="\t", row.names=F, col.names=F)
-```
 # Saving the results
 
 Saving the window coordinates as well as the various results.
 
 ```{r}
-saveRDS(file="/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds", list(windows=rowRanges(filtered), 
-    DB=out)) 
+saveRDS(file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds", list(windows=rowRanges(filtered), 
+    DB=out, enrichment = df.stats)) 
 ```
