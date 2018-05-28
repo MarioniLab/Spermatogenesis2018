@@ -50,7 +50,7 @@ seqlevels(gen) <- c(as.character(1:19), "X", "Y", "MT")
 gen.X <- gen[seqnames(gen) == "X"]
 
 # Make TXDB for mus musculus
-mmusculusEnsembl <- makeTxDbFromBiomart(dataset="mmusculus_gene_ensembl")
+#mmusculusEnsembl <- makeTxDbFromBiomart(dataset="mmusculus_gene_ensembl")
 
 black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
 
@@ -111,7 +111,7 @@ df.K27 <- df.K27[match(unique(df.K27$ID), df.K27$ID),]
 rownames(df.K27) <- df.K27$ID
 ```
 
-# Visualize bulk RNA-Seq data
+## Visualize bulk RNA-Seq data
 
 ```{r bulk}
 cur.genes <- as.character(df.K27$ID)
@@ -133,7 +133,7 @@ pheatmap(log2(for.heatmap + 1),
 
 ```
 
-# Visualize scRNA-Seq data
+## Visualize scRNA-Seq data
 
 ```{r scRNAseq}
 # Build mean expression matrix
@@ -158,5 +158,142 @@ pheatmap(log2(mat.for.heatmap + 1),
                                      H3K27ac = df.K27[rownames(mat.for.heatmap), "direction_K27"]),
          scale = "row")
 
+```
+
+# Find DB regions for H3K4 and visualize H3K27ac enrichment
+
+```{r}
+# Load data
+H3K4me3 <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
+H3K27ac <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
+
+merged.K4 <- mergeWindows(H3K4me3$windows, tol=100L, max.width=5000L)
+tabbest.K4 <- getBestTest(merged.K4$id, H3K4me3$DB)
+tabcom.K4 <- combineTests(merged.K4$id, H3K4me3$DB)
+colnames(tabcom.K4) <- paste(colnames(tabcom.K4), "_K4", sep = "")
+colnames(tabbest.K4) <- paste(colnames(tabbest.K4), "_K4", sep = "")
+
+# Find overlaps to promoter - K4 
+olap.prom <- findOverlaps(prom.X, merged.K4$region)
+df.K4 <- data.frame(ID = prom.X$gene_id[olap.prom@from],
+                    genename = prom.X$gene_name[olap.prom@from],
+                    tabcom.K4[olap.prom@to,])
+
+# Overlap for K27
+olap.K27 <- findOverlaps(merged.K4$region[olap.prom@to], H3K27ac$windows, minoverlap = 500L)
+df.K4$K27_enrichment_spermatocytes <- ddply(data.frame(to = olap.K27@to, 
+                                         from = olap.K27@from, 
+                                         enrichment.spermatocytes =
+                                           H3K27ac$enrichment[olap.K27@to,"spermatocytes"]
+                                         ), .(from), summarize, mean = mean(enrichment.spermatocytes))$mean
+
+df.K4$K27_enrichment_spermatids <- ddply(data.frame(to = olap.K27@to, 
+                                         from = olap.K27@from, 
+                                         enrichment.spermatids =
+                                           H3K27ac$enrichment[olap.K27@to,"spermatids"]
+                                         ), .(from), summarize, mean = mean(enrichment.spermatids))$mean
+
+df.K4 <- df.K4[order(df.K4$direction_K4, df.K4$K27_enrichment_spermatocytes, decreasing = FALSE),]
+
+# Remove the two genes that are named twice
+df.K4 <- df.K4[match(unique(df.K4$ID), df.K4$ID),]
+rownames(df.K4) <- df.K4$ID
+
+```
+
+## Visualize bulk RNA-Seq data
+
+```{r bulk}
+cur.genes <- as.character(df.K4$ID)
+cur.genes <- cur.genes[!is.na(match(cur.genes, rownames(bulk)))]
+for.heatmap <- bulk[cur.genes,
+                   meta$Source.Name[order(meta$`Characteristics.[Age]`, decreasing = FALSE)]]
+for.heatmap <- for.heatmap[rowMeans(for.heatmap) > 10,]
+
+pheatmap(log2(for.heatmap + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`[order(meta$`Characteristics.[Age]`, decreasing = FALSE)], sep = ""),
+         annotation_row = data.frame(row.names = rownames(for.heatmap),
+                                     H3K4me3 = df.K4[rownames(for.heatmap), "direction_K4"],
+                                     H3K27ac = df.K4[rownames(for.heatmap), "K27_enrichment_spermatocytes"]),
+         scale = "row")
+
+```
+
+```{r scRNAseq}
+# Build mean expression matrix
+df <- as.data.frame(t(as.matrix(logcounts(sce)[rownames(for.heatmap),])))
+df$groups <- colData(sce.XChr)$AnnotatedClusters
+df.melt <- melt(df, id.vars = "groups")
+
+# Collect mean expression for each gene in each group
+mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
+mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
+rownames(mat.for.heatmap) <- mat.for.heatmap$variable
+mat.for.heatmap <- mat.for.heatmap[,-1]
+
+
+pheatmap(log2(mat.for.heatmap + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         border_color = NA,
+         annotation_row = data.frame(row.names = rownames(mat.for.heatmap),
+                                     H3K4me3 = df.K4[rownames(for.heatmap), "direction_K4"],
+                                     H3K27ac = df.K4[rownames(for.heatmap), "K27_enrichment_spermatocytes"]),
+         scale = "row")
+
+```
+
+# Plot H3K4me3 enrichment vs H3K27ac enrichment
+
+```{r}
+# Load data
+H3K4me3 <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
+H3K27ac <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
+
+# Find H3K4me3 in X promoters
+olap.prom.K4 <- findOverlaps(prom.X, H3K4me3$windows, minoverlap = 500)
+olap.prom.K27 <- findOverlaps(prom.X, H3K27ac$windows, minoverlap = 500)
+
+# Build the enrichment df
+df.K4 <- data.frame(
+  Gene = prom.X$gene_name[unique(olap.prom.K4@from)],
+  K4.enrichment.sc = ddply(data.frame(olap.prom.K4, 
+                                         enrichment.spermatocytes =
+                                           H3K4me3$enrichment[olap.prom.K4@to,"spermatocytes"]
+                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatocytes))$mean,
+    K4.enrichment.sp = ddply(data.frame(olap.prom.K4, 
+                                         enrichment.spermatids =
+                                           H3K4me3$enrichment[olap.prom.K4@to,"spermatids"]
+                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatids))$mean
+)
+rownames(df.K4) <- df.K4$Gene
+
+df.K27 <- data.frame(
+  Gene = prom.X$gene_name[unique(olap.prom.K27@from)],
+  K27.enrichment.sc = ddply(data.frame(olap.prom.K27, 
+                                         enrichment.spermatocytes =
+                                           H3K27ac$enrichment[olap.prom.K27@to,"spermatocytes"]
+                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatocytes))$mean,
+  K27.enrichment.sp = ddply(data.frame(olap.prom.K27, 
+                                         enrichment.spermatids =
+                                           H3K27ac$enrichment[olap.prom.K27@to,"spermatids"]
+                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatids))$mean
+)
+df.K27 <- df.K27[match(unique(df.K27$Gene), df.K27$Gene),]
+rownames(df.K27) <- df.K27$Gene
+
+genes <- intersect(df.K27$Gene, df.K4$Gene)
+
+# Plot change in H3K4 vs enrichment in spermatocytes
+ggplot(data.frame(logFC = log2(df.K4[genes, "K4.enrichment.sp"]/df.K4[genes, "K4.enrichment.sc"]),
+                  sc = df.K27[genes, "K27.enrichment.sc"])) + geom_point(aes(sc, logFC))
+
+genes[log2(df.K4[genes, "K4.enrichment.sp"]/df.K4[genes, "K4.enrichment.sc"]) > 2 &
+        df.K27[genes, "K27.enrichment.sc"] > 2]
 ```
 
