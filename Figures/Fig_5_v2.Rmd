@@ -166,6 +166,7 @@ pheatmap(log2(mat.for.heatmap + 1),
 # Load data
 H3K4me3 <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
 H3K27ac <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
+H3K9me3 <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K9me3/H3K9me3_1000.rds")
 
 merged.K4 <- mergeWindows(H3K4me3$windows, tol=100L, max.width=5000L)
 tabbest.K4 <- getBestTest(merged.K4$id, H3K4me3$DB)
@@ -181,17 +182,30 @@ df.K4 <- data.frame(ID = prom.X$gene_id[olap.prom@from],
 
 # Overlap for K27
 olap.K27 <- findOverlaps(merged.K4$region[olap.prom@to], H3K27ac$windows, minoverlap = 500L)
-df.K4$K27_enrichment_spermatocytes <- ddply(data.frame(to = olap.K27@to, 
-                                         from = olap.K27@from, 
+df.K4$K27_enrichment_spermatocytes <- ddply(data.frame(olap.K27, 
                                          enrichment.spermatocytes =
                                            H3K27ac$enrichment[olap.K27@to,"spermatocytes"]
-                                         ), .(from), summarize, mean = mean(enrichment.spermatocytes))$mean
+                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatocytes))$mean
 
-df.K4$K27_enrichment_spermatids <- ddply(data.frame(to = olap.K27@to, 
-                                         from = olap.K27@from, 
+df.K4$K27_enrichment_spermatids <- ddply(data.frame(olap.K27, 
                                          enrichment.spermatids =
                                            H3K27ac$enrichment[olap.K27@to,"spermatids"]
-                                         ), .(from), summarize, mean = mean(enrichment.spermatids))$mean
+                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatids))$mean
+
+df.K4 <- df.K4[order(df.K4$direction_K4, df.K4$K27_enrichment_spermatocytes, decreasing = FALSE),]
+
+# Overlap for K9
+olap.K9 <- findOverlaps(merged.K4$region[olap.prom@to], 
+                         H3K9me3$windows, minoverlap = 500L)
+df.K4$K9_enrichment_spermatocytes <- ddply(data.frame(olap.K9, 
+      enrichment.spermatocytes = H3K9me3$enrichment[olap.K9@to,"spermatocytes"]
+                          ), .(queryHits), summarize, mean =
+      mean(enrichment.spermatocytes))$mean
+
+df.K4$K27_enrichment_spermatids <- ddply(data.frame(olap.K27, 
+                                         enrichment.spermatids =
+                                           H3K27ac$enrichment[olap.K27@to,"spermatids"]
+                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatids))$mean
 
 df.K4 <- df.K4[order(df.K4$direction_K4, df.K4$K27_enrichment_spermatocytes, decreasing = FALSE),]
 
@@ -204,22 +218,22 @@ rownames(df.K4) <- df.K4$ID
 ## Visualize bulk RNA-Seq data
 
 ```{r bulk}
-cur.genes <- as.character(df.K4$ID)
-cur.genes <- cur.genes[!is.na(match(cur.genes, rownames(bulk)))]
-for.heatmap <- bulk[cur.genes,
+cur.genes <- df.K4
+cur.genes <- cur.genes[!is.na(match(cur.genes$ID, rownames(bulk))),]
+for.heatmap <- bulk[as.character(cur.genes$ID),
                    meta$Source.Name[order(meta$`Characteristics.[Age]`, decreasing = FALSE)]]
 for.heatmap <- for.heatmap[rowMeans(for.heatmap) > 10,]
 
 pheatmap(log2(for.heatmap + 1), 
          cluster_cols = FALSE, 
-         cluster_rows = FALSE, show_rownames = FALSE,
+         cluster_rows = FALSE, labels_row = as.character(cur.genes$genename),
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
          border_color = NA,
          labels_col = paste("P", meta$`Characteristics.[Age]`[order(meta$`Characteristics.[Age]`, decreasing = FALSE)], sep = ""),
          annotation_row = data.frame(row.names = rownames(for.heatmap),
                                      H3K4me3 = df.K4[rownames(for.heatmap), "direction_K4"],
                                      H3K27ac = df.K4[rownames(for.heatmap), "K27_enrichment_spermatocytes"]),
-         scale = "row")
+         scale = "row", cellheight = 8, fontsize = 7)
 
 ```
 
