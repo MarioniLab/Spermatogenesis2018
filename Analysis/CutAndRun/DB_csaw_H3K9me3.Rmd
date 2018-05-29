@@ -1,0 +1,197 @@
+---
+title: "DB analysis of H3K9me3"
+author: Aaron Lun
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    fig_caption: yes
+---
+
+```{r, echo=FALSE, message=FALSE, results="hide"}
+library(BiocStyle)
+knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
+```
+
+# Defining the files
+
+First we define the relevant files.
+
+```{r}
+bam.files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K9me3/", full.names = TRUE,
+                        pattern = "*.bam$")
+```
+
+We also define the conditions:
+
+```{r}
+batch <- gl(2, 2)
+treatment <- rep(c("spermatocytes", "spermatids"), 2)
+data.frame(BAM=bam.files, Batch=batch, Treatment=treatment)
+```
+
+
+# Counting reads in windows
+
+Setting up a `readParam` object for read counting.
+This is paired-end data, and we remove read pairs with insert sizes above 1 kbp.
+We remove duplicated read pairs or reads with quality scores below 10.
+We also use the ENCODE mm10 blacklist to ignore reads in problematic regions.
+
+```{r, message=FALSE}
+library(csaw)
+library(rtracklayer)
+black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
+param <- readParam(dedup=TRUE, minq=10, discard=black, pe="both", max.frag=1000)
+param
+```
+
+We then count reads into 1000 bp windows. 
+No read extension is necessary as the paired reads fully define each fragment.
+The spacing is set to a quarter of the width to avoid redundant loading of highly overlapping windows.
+
+```{r}
+out <- windowCounts(bam.files, param=param, width=1000,
+    spacing=max(50, 1000/4))
+out
+```
+
+# Filtering out low-abundance windows
+
+We apply a simple background-based filter to remove the low-abundance windows.
+This is done by computing the median coverage of 5 kbp bins across the genome to define the filter threshold.
+
+```{r}
+bins <- windowCounts(bam.files, param=param, width=5000, bin=TRUE)
+fstat <- filterWindows(data=out, background=bins, type="global")
+hist(fstat$filter, col="grey80", xlab="Log2-fold increase above background",
+    ylab="Number of windows", freq=TRUE)
+```
+
+We require our windows to have at least 2-fold more intensity than expected due to background binding.
+
+```{r}
+keep <- fstat$filter >= log2(3)
+summary(keep)
+```
+
+We apply this filter to our object.
+
+```{r}
+filtered <- out[keep,]
+```
+
+# Normalization for efficiency biases
+
+## Computing TMM factors
+
+We normalize out efficiency biases, under the assumption that most histone marking does _not_ change between spermatids and spermatocytes.
+
+```{r}
+filtered <- normOffsets(filtered)
+colData(filtered)[,c("totals", "norm.factors")]
+```
+
+We can create some MA plots using the larger bins to examine the normalization factors, especially relative to background.
+
+```{r}
+library(edgeR)
+tmp <- asDGEList(bins)
+adjc <- cpm(tmp, log=TRUE, prior.count=0.5)
+average <- aveLogCPM(tmp)
+norm.factors <- filtered$norm.factors
+
+par(mfrow=c(1, 2))
+for (x in 2:ncol(adjc)) {
+    smoothScatter(average, adjc[,x]-adjc[,1], xlab="Average", 
+        ylab=sprintf("M (%i vs 1)", x))
+    abline(h=log2(norm.factors[x]/norm.factors[1]), col="red", lty=2)        
+}
+```
+
+We save the normalization factors and library sizes for later use.
+
+```{r}
+write.table(file="/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K9me3/norm_1000.tsv", quote=FALSE, row.names=FALSE, sep="\t",
+    colData(filtered)[,c("bam.files", "totals", "norm.factors")])
+```
+
+## Creating MDS plots
+
+We can also use the adjusted log-coverage to create MDS plots.
+
+```{r}
+par(mfrow=c(1,3))
+labels <- paste0(treatment, ".", batch) 
+col <- c("blue", "orange", "red", "darkgreen")[as.integer(factor(treatment))]
+for (x in c(1000, 10000, 100000)) {
+    plotMDS(adjc, top=x, main=sprintf("Top %i windows", x),
+        labels=labels, col=col)
+}
+```
+
+# Modelling biological variability
+
+Setting up the design matrix:
+
+```{r}
+design <- model.matrix(~0 + treatment + batch)
+design
+```
+
+Estimating the NB dispersions:
+
+```{r}
+y <- asDGEList(filtered)
+y <- estimateDisp(y, design)
+y$common.dispersion
+```
+
+Examining them on a plot:
+
+```{r}
+plotBCV(y)
+```
+
+Estimating the QL dispersions:
+
+```{r}
+fit <- glmQLFit(y, design, robust=TRUE)
+summary(fit$df.prior)
+```
+
+Examining them on a plot:
+
+```{r}
+plotQLDisp(fit)
+```
+
+# Testing for differential binding
+
+We test for differential binding between spermatids and spermatocytes.
+
+```{r}
+con <- makeContrasts(treatmentspermatids - treatmentspermatocytes, levels=design)
+res <- glmQLFTest(fit, contrast=con)
+summary(decideTests(res))
+out.tab <- res$table
+```
+
+# Create enrichment over background data frame
+
+```{r}
+fstat.spermatids <- filterWindows(data=out[,c(2,4)], background=bins[,c(2,4)], type="global")
+fstat.spermatocytes <- filterWindows(data=out[,c(1,3)], background=bins[,c(1,3)], type="global")
+
+df.stats <- data.frame(spermatocytes = fstat.spermatocytes$filter,
+                       spermatids = fstat.spermatids$filter)
+df.stats <- df.stats[keep,]
+```
+
+# Saving the results
+
+Saving the window coordinates as well as the various results.
+
+```{r}
+saveRDS(file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K9me3/H3K9me3_1000.rds", list(windows=rowRanges(filtered), 
+    DB=out.tab, enrichment = df.stats)) 
+```
