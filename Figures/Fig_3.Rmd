@@ -30,6 +30,7 @@ library(goseq)
 library(GO.db)
 library(org.Mm.eg.db)
 library(RColorBrewer)
+library(edgeR)
 source("../Functions/auxiliary.R")
 
 # Single cell data
@@ -314,4 +315,66 @@ pheatmap(for.heatmap, show_colnames = FALSE,
                                      GO = df.neg$go.annot), scale = "row",
          gaps_row = c(6, 8))
 dev.off()
+```
+
+# Tc1 and Tc0 analysis
+
+## Read in data
+
+```{r Tc1}
+# Read in Tc1 data
+# Single cell data
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+
+# Select spermatogonia and spermatocytes
+sce <- sce[,grepl("Tc1|Tc0", colData(sce)$Sample)]
+sce <- normalize(sce)
+```
+
+## Calculate proportions
+
+```{r proportions}
+df <- data.frame(sample = paste(colData(sce)$Sample, colData(sce)$Library, sep = "_"),
+                 group = colData(sce)$AnnotatedClusters,
+                 value = rep(1, ncol(sce)))
+
+proportions <- with(df, table(sample, group))/plyr::count(df = df, vars = "sample")$freq
+
+cur_df <- proportions[,1:23]
+cur_df.melt <- melt(cur_df)
+cur_df.melt$Genotype <- sapply(as.character(cur_df.melt$sample), function(n){
+  unlist(strsplit(n, "_"))[1]
+})
+levels(cur_df.melt$Genotype) <- c("Tc0", "Tc1")
+levels(cur_df.melt$sample) <- rev(rownames(cur_df))
+levels(cur_df.melt$group) <- levels(colData(sce)$AnnotatedClusters)
+
+proportions.p <- ggplot(cur_df.melt) + geom_point(aes(group, rev(sample), size = value, fill = group), shape = 22) +
+  scale_fill_manual(values = metadata(sce)$color_vector) + 
+  theme(panel.background = element_blank(), axis.title = element_blank(),
+        axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12))
+
+# Save plot
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/CellTypeProportion_Tc1.pdf",
+       proportions.p, width = 10, height = 5)
+
+# Sattistical testing between conditions
+sample.counts <- with(df, table(sample, group))
+sample.counts <- sample.counts[,1:23]
+overall.counts <- plyr::count(df = df, vars = "sample")$freq
+
+y <- DGEList(counts = t(sample.counts), lib.size = overall.counts, 
+               group = c(rep("Tc0", 3), rep("Tc1", 4)))
+design <- model.matrix(~0+y$samples$group)
+colnames(design) <- c("Tc0", "Tc1")
+y <- estimateDisp(y,design)
+fit <- glmQLFit(y,design, robust = TRUE)
+qlf <- glmQLFTest(fit,coef=2, 
+                  contrast = makeContrasts(Tc1 - Tc0, levels = design))
+res <- topTags(qlf, n = nrow(qlf$table))$table
+
+# Tc1 
+res[res$logFC > 0 & res$FDR < 0.1,]
+res[res$logFC < 0 & res$FDR < 0.1,]
 ```
