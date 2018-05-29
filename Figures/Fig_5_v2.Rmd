@@ -27,6 +27,7 @@ library(plyr)
 library(reshape2)
 library(pheatmap)
 library(viridis)
+library(plot3D)
 library(ggsci)
 library(cowplot)
 library(openxlsx)
@@ -113,7 +114,7 @@ rownames(df.K27) <- df.K27$ID
 
 ## Visualize bulk RNA-Seq data
 
-```{r bulk}
+```{r}
 cur.genes <- as.character(df.K27$ID)
 cur.genes <- cur.genes[!is.na(match(cur.genes, rownames(bulk)))]
 for.heatmap <- bulk[cur.genes,
@@ -135,7 +136,7 @@ pheatmap(log2(for.heatmap + 1),
 
 ## Visualize scRNA-Seq data
 
-```{r scRNAseq}
+```{r}
 # Build mean expression matrix
 df <- as.data.frame(t(as.matrix(logcounts(sce)[rownames(for.heatmap),])))
 df$groups <- colData(sce.XChr)$AnnotatedClusters
@@ -178,7 +179,22 @@ colnames(tabbest.K4) <- paste(colnames(tabbest.K4), "_K4", sep = "")
 olap.prom <- findOverlaps(prom.X, merged.K4$region)
 df.K4 <- data.frame(ID = prom.X$gene_id[olap.prom@from],
                     genename = prom.X$gene_name[olap.prom@from],
+                    merged.id = olap.prom@to,
+                    region = merged.K4$region[olap.prom@to],
                     tabcom.K4[olap.prom@to,])
+
+# Mean K4 signal for these regions
+olap.K4 <- findOverlaps(merged.K4$region[olap.prom@to], H3K4me3$windows, minoverlap = 1000L)
+df.K4$K4_enrichment_spermatocytes <- ddply(data.frame(olap.K4, 
+                enrichment.spermatocytes =
+                  H3K4me3$enrichment[olap.K4@to,"spermatocytes"]
+                ), .(queryHits), summarize, 
+                mean = mean(enrichment.spermatocytes))$mean
+df.K4$K4_enrichment_spermatids <- ddply(data.frame(olap.K4, 
+                enrichment.spermatids =
+                  H3K4me3$enrichment[olap.K4@to,"spermatids"]
+                ), .(queryHits), summarize, 
+                mean = mean(enrichment.spermatids))$mean
 
 # Overlap for K27
 olap.K27 <- findOverlaps(merged.K4$region[olap.prom@to], H3K27ac$windows, minoverlap = 500L)
@@ -192,22 +208,22 @@ df.K4$K27_enrichment_spermatids <- ddply(data.frame(olap.K27,
                                            H3K27ac$enrichment[olap.K27@to,"spermatids"]
                                          ), .(queryHits), summarize, mean = mean(enrichment.spermatids))$mean
 
-df.K4 <- df.K4[order(df.K4$direction_K4, df.K4$K27_enrichment_spermatocytes, decreasing = FALSE),]
-
 # Overlap for K9
 olap.K9 <- findOverlaps(merged.K4$region[olap.prom@to], 
                          H3K9me3$windows, minoverlap = 500L)
-df.K4$K9_enrichment_spermatocytes <- ddply(data.frame(olap.K9, 
+df.K4$K9_enrichment_spermatocytes <- rep(NA, nrow(df.K4))
+df.K4$K9_enrichment_spermatocytes[unique(olap.K9@from)] <- ddply(data.frame(olap.K9, 
       enrichment.spermatocytes = H3K9me3$enrichment[olap.K9@to,"spermatocytes"]
                           ), .(queryHits), summarize, mean =
       mean(enrichment.spermatocytes))$mean
 
-df.K4$K27_enrichment_spermatids <- ddply(data.frame(olap.K27, 
-                                         enrichment.spermatids =
-                                           H3K27ac$enrichment[olap.K27@to,"spermatids"]
-                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatids))$mean
+df.K4$K9_enrichment_spermatids <- rep(NA, nrow(df.K4))
+df.K4$K9_enrichment_spermatids[unique(olap.K9@from)] <- ddply(data.frame(olap.K9, 
+      enrichment.spermatids = H3K9me3$enrichment[olap.K9@to,"spermatids"]
+                          ), .(queryHits), summarize, mean =
+      mean(enrichment.spermatids))$mean
 
-df.K4 <- df.K4[order(df.K4$direction_K4, df.K4$K27_enrichment_spermatocytes, decreasing = FALSE),]
+df.K4 <- df.K4[order(df.K4$K4_enrichment_spermatocytes, df.K4$K9_enrichment_spermatocytes, decreasing = FALSE, na.last = FALSE),]
 
 # Remove the two genes that are named twice
 df.K4 <- df.K4[match(unique(df.K4$ID), df.K4$ID),]
@@ -217,7 +233,7 @@ rownames(df.K4) <- df.K4$ID
 
 ## Visualize bulk RNA-Seq data
 
-```{r bulk}
+```{r, fig.height=25, fig.width=5}
 cur.genes <- df.K4
 cur.genes <- cur.genes[!is.na(match(cur.genes$ID, rownames(bulk))),]
 for.heatmap <- bulk[as.character(cur.genes$ID),
@@ -231,15 +247,26 @@ pheatmap(log2(for.heatmap + 1),
          border_color = NA,
          labels_col = paste("P", meta$`Characteristics.[Age]`[order(meta$`Characteristics.[Age]`, decreasing = FALSE)], sep = ""),
          annotation_row = data.frame(row.names = rownames(for.heatmap),
-                                     H3K4me3 = df.K4[rownames(for.heatmap), "direction_K4"],
-                                     H3K27ac = df.K4[rownames(for.heatmap), "K27_enrichment_spermatocytes"]),
+        H3K4me3.spermatocytes = df.K4[rownames(for.heatmap),
+                                      "K4_enrichment_spermatocytes"],
+        H3K4me3.spermatids = df.K4[rownames(for.heatmap), 
+                                      "K4_enrichment_spermatids"],
+        H3K27ac.spermatocytes = df.K4[rownames(for.heatmap), 
+                        "K27_enrichment_spermatocytes"],
+        H3K27ac.spermatids = df.K4[rownames(for.heatmap), 
+                        "K27_enrichment_spermatids"],
+        H3K9me3.spermatocytes = df.K4[rownames(for.heatmap), 
+                        "K9_enrichment_spermatocytes"],
+        H3K9me3.spermatids = df.K4[rownames(for.heatmap), 
+                        "K9_enrichment_spermatids"]),
          scale = "row", cellheight = 8, fontsize = 7)
 
 ```
 
-```{r scRNAseq}
+```{r, fig.height=25, fig.width=5}
 # Build mean expression matrix
-df <- as.data.frame(t(as.matrix(logcounts(sce)[rownames(for.heatmap),])))
+df <- as.data.frame(t(as.matrix(logcounts(sce)[rownames(for.heatmap)[
+  !is.na(match(rownames(for.heatmap), rownames(logcounts(sce))))],])))
 df$groups <- colData(sce.XChr)$AnnotatedClusters
 df.melt <- melt(df, id.vars = "groups")
 
@@ -252,13 +279,24 @@ mat.for.heatmap <- mat.for.heatmap[,-1]
 
 pheatmap(log2(mat.for.heatmap + 1), 
          cluster_cols = FALSE, 
-         cluster_rows = FALSE, show_rownames = FALSE,
+         cluster_rows = FALSE, labels_row = rowData(sce)$Symbol[
+           match(rownames(mat.for.heatmap), rowData(sce)$ID)],
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
          border_color = NA,
-         annotation_row = data.frame(row.names = rownames(mat.for.heatmap),
-                                     H3K4me3 = df.K4[rownames(for.heatmap), "direction_K4"],
-                                     H3K27ac = df.K4[rownames(for.heatmap), "K27_enrichment_spermatocytes"]),
-         scale = "row")
+         annotation_row = data.frame(row.names = rownames(for.heatmap),
+        H3K4me3.spermatocytes = df.K4[rownames(for.heatmap),
+                                      "K4_enrichment_spermatocytes"],
+        H3K4me3.spermatids = df.K4[rownames(for.heatmap), 
+                                      "K4_enrichment_spermatids"],
+        H3K27ac.spermatocytes = df.K4[rownames(for.heatmap), 
+                        "K27_enrichment_spermatocytes"],
+        H3K27ac.spermatids = df.K4[rownames(for.heatmap), 
+                        "K27_enrichment_spermatids"],
+        H3K9me3.spermatocytes = df.K4[rownames(for.heatmap), 
+                        "K9_enrichment_spermatocytes"],
+        H3K9me3.spermatids = df.K4[rownames(for.heatmap), 
+                        "K9_enrichment_spermatids"]),
+         scale = "row", cellheight = 8, fontsize = 7)
 
 ```
 
