@@ -18,7 +18,7 @@ First we define the relevant files.
 
 ```{r}
 bam.files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K9me3/", full.names = TRUE,
-                        pattern = "*.bam$")
+                        pattern = ".+JP30.+bam$")
 ```
 
 We also define the conditions:
@@ -106,6 +106,17 @@ for (x in 2:ncol(adjc)) {
         ylab=sprintf("M (%i vs 1)", x))
     abline(h=log2(norm.factors[x]/norm.factors[1]), col="red", lty=2)        
 }
+
+# Visualize X chromosome
+# Normalized Reads
+plot(average[as.vector(seqnames(bins@rowRanges) == "X")], 
+     adjc[as.vector(seqnames(bins@rowRanges) == "X"),2]-
+       adjc[as.vector(seqnames(bins@rowRanges) == "X"),1], pch = 16)
+
+# Raw Reads
+plot(average[as.vector(seqnames(bins@rowRanges) == "X")], 
+     log(tmp$counts[as.vector(seqnames(bins@rowRanges) == "X"),2] + 1)-
+       log(tmp$counts[as.vector(seqnames(bins@rowRanges) == "X"),1] + 1), pch = 16)
 ```
 
 We save the normalization factors and library sizes for later use.
