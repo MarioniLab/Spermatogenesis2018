@@ -304,14 +304,16 @@ sce.all <- sce.all[,sizeFactors(sce.all) > 0]
 sce.all <- normalize(sce.all, return_log = TRUE)
 
 saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+
+sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
 
 # Batch correction
 
 ```{r}
 # Split datasets into batches
-sce.single <- split.sce(sce = sce.all, groups = unique(colData(sce.all)$Sample), 
-                        colData.name = "Sample")
+sce.single <- split.sce(sce = sce.all, groups = unique(colData(sce.all)$Library), 
+                        colData.name = "Library")
 
 # Batch correction
 corrected <- batch.correction(sce.single)
