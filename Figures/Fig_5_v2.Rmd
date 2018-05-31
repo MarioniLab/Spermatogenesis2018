@@ -300,52 +300,109 @@ pheatmap(log2(mat.for.heatmap + 1),
 
 ```
 
-# Plot H3K4me3 enrichment vs H3K27ac enrichment
+# Overall level of epigenetic enrichment of the different chromosomes
 
 ```{r}
-# Load data
-H3K4me3 <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
-H3K27ac <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
+# Generate matrix to store the average K9 enrichment
+mat.K9 <- matrix(data = NA, ncol = length(seqlevels(H3K9me3$windows)), nrow = 2)
+rownames(mat.K9) <- c("Spermatocytes", "Spermatids")
+colnames(mat.K9) <- seqlevels(H3K9me3$windows)
 
-# Find H3K4me3 in X promoters
-olap.prom.K4 <- findOverlaps(prom.X, H3K4me3$windows, minoverlap = 500)
-olap.prom.K27 <- findOverlaps(prom.X, H3K27ac$windows, minoverlap = 500)
+# Loop trough the different chromosomes and find K9 enrichemnt for the whole chromosome
+for(i in seqlevels(prom)){
+  cur_windows <- seqnames(H3K9me3$windows) == i
+  mat.K9[1,i] <- mean(H3K9me3$enrichment[as.vector(cur_windows),"spermatocytes"])
+  mat.K9[2,i] <- mean(H3K9me3$enrichment[as.vector(cur_windows),"spermatids"])
+}
+mat.K9 <- mat.K9[,!is.na(mat.K9[1,])]
+mat.K9 <- mat.K9[,!(colnames(mat.K9) == "MT")]
+cur_df <- melt(mat.K9)
+ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K9me3")
 
-# Build the enrichment df
-df.K4 <- data.frame(
-  Gene = prom.X$gene_name[unique(olap.prom.K4@from)],
-  K4.enrichment.sc = ddply(data.frame(olap.prom.K4, 
-                                         enrichment.spermatocytes =
-                                           H3K4me3$enrichment[olap.prom.K4@to,"spermatocytes"]
-                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatocytes))$mean,
-    K4.enrichment.sp = ddply(data.frame(olap.prom.K4, 
-                                         enrichment.spermatids =
-                                           H3K4me3$enrichment[olap.prom.K4@to,"spermatids"]
-                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatids))$mean
-)
-rownames(df.K4) <- df.K4$Gene
+# Generate matrix to store the average K27 enrichment
+mat.K27 <- matrix(data = NA, ncol = length(seqlevels(H3K27ac$windows)), nrow = 2)
+rownames(mat.K27) <- c("Spermatocytes", "Spermatids")
+colnames(mat.K27) <- seqlevels(H3K27ac$windows)
 
-df.K27 <- data.frame(
-  Gene = prom.X$gene_name[unique(olap.prom.K27@from)],
-  K27.enrichment.sc = ddply(data.frame(olap.prom.K27, 
-                                         enrichment.spermatocytes =
-                                           H3K27ac$enrichment[olap.prom.K27@to,"spermatocytes"]
-                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatocytes))$mean,
-  K27.enrichment.sp = ddply(data.frame(olap.prom.K27, 
-                                         enrichment.spermatids =
-                                           H3K27ac$enrichment[olap.prom.K27@to,"spermatids"]
-                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatids))$mean
-)
-df.K27 <- df.K27[match(unique(df.K27$Gene), df.K27$Gene),]
-rownames(df.K27) <- df.K27$Gene
+# Loop trough the different chromosomes and find K27 enrichemnt for the whole chromosome
+for(i in seqlevels(prom)){
+  cur_windows <- seqnames(H3K27ac$windows) == i
+  mat.K27[1,i] <- mean(H3K27ac$enrichment[as.vector(cur_windows),"spermatocytes"])
+  mat.K27[2,i] <- mean(H3K27ac$enrichment[as.vector(cur_windows),"spermatids"])
+}
+mat.K27 <- mat.K27[,!is.na(mat.K27[1,])]
+mat.K27 <- mat.K27[,!(colnames(mat.K27) == "MT")]
+cur_df <- melt(mat.K27)
+ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K27ac")
 
-genes <- intersect(df.K27$Gene, df.K4$Gene)
+# Generate matrix to store the average K27 enrichment
+mat.K4 <- matrix(data = NA, ncol = length(seqlevels(H3K4me3$windows)), nrow = 2)
+rownames(mat.K4) <- c("Spermatocytes", "Spermatids")
+colnames(mat.K4) <- seqlevels(H3K4me3$windows)
 
-# Plot change in H3K4 vs enrichment in spermatocytes
-ggplot(data.frame(logFC = log2(df.K4[genes, "K4.enrichment.sp"]/df.K4[genes, "K4.enrichment.sc"]),
-                  sc = df.K27[genes, "K27.enrichment.sc"])) + geom_point(aes(sc, logFC))
-
-genes[log2(df.K4[genes, "K4.enrichment.sp"]/df.K4[genes, "K4.enrichment.sc"]) > 2 &
-        df.K27[genes, "K27.enrichment.sc"] > 2]
+# Loop trough the different chromosomes and find K4 enrichemnt for the whole chromosome
+for(i in seqlevels(prom)){
+  cur_windows <- seqnames(H3K4me3$windows) == i
+  mat.K4[1,i] <- mean(H3K4me3$enrichment[as.vector(cur_windows),"spermatocytes"])
+  mat.K4[2,i] <- mean(H3K4me3$enrichment[as.vector(cur_windows),"spermatids"])
+}
+mat.K4 <- mat.K4[,!is.na(mat.K4[1,])]
+mat.K4 <- mat.K4[,!(colnames(mat.K4) == "MT")]
+cur_df <- melt(mat.K4)
+ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K4me3")
 ```
 
+# Overall direction between spermatids and spermatocytes
+
+```{r}
+# Generate matrix to store the average K9 enrichment
+mat.K9 <- matrix(data = NA, ncol = length(seqlevels(H3K9me3$windows)), nrow = 3)
+rownames(mat.K9) <- c("down", "up", "mixed")
+colnames(mat.K9) <- seqlevels(H3K9me3$windows)
+
+# Loop trough the different chromosomes and find K9 enrichemnt for the whole chromosome
+for(i in seqlevels(prom)){
+  cur_windows <- seqnames(H3K9me3$windows) == i
+  cur_merged <- mergeWindows(H3K9me3$windows[as.vector(cur_windows)], tol=100L)
+  cur_tabcom <- combineTests(cur_merged$id, H3K9me3$DB[as.vector(cur_windows),])
+  mat.K9[1,i] <- sum(cur_tabcom$direction == "down")/nrow(cur_tabcom)
+  mat.K9[2,i] <- sum(cur_tabcom$direction == "up")/nrow(cur_tabcom)
+  mat.K9[3,i] <- sum(cur_tabcom$direction == "mixed")/nrow(cur_tabcom)
+}
+mat.K9 <- mat.K9[,!is.na(mat.K9[1,])]
+mat.K9 <- mat.K9[,!(colnames(mat.K9) == "MT")]
+cur_df <- melt(mat.K9)
+ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K9me3")
+
+# Generate matrix to store the average K27 enrichment
+mat.K27 <- matrix(data = NA, ncol = length(seqlevels(H3K27ac$windows)), nrow = 2)
+rownames(mat.K27) <- c("Spermatocytes", "Spermatids")
+colnames(mat.K27) <- seqlevels(H3K27ac$windows)
+
+# Loop trough the different chromosomes and find K27 enrichemnt for the whole chromosome
+for(i in seqlevels(prom)){
+  cur_windows <- seqnames(H3K27ac$windows) == i
+  mat.K27[1,i] <- mean(H3K27ac$enrichment[as.vector(cur_windows),"spermatocytes"])
+  mat.K27[2,i] <- mean(H3K27ac$enrichment[as.vector(cur_windows),"spermatids"])
+}
+mat.K27 <- mat.K27[,!is.na(mat.K27[1,])]
+mat.K27 <- mat.K27[,!(colnames(mat.K27) == "MT")]
+cur_df <- melt(mat.K27)
+ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K27ac")
+
+# Generate matrix to store the average K27 enrichment
+mat.K4 <- matrix(data = NA, ncol = length(seqlevels(H3K4me3$windows)), nrow = 2)
+rownames(mat.K4) <- c("Spermatocytes", "Spermatids")
+colnames(mat.K4) <- seqlevels(H3K4me3$windows)
+
+# Loop trough the different chromosomes and find K4 enrichemnt for the whole chromosome
+for(i in seqlevels(prom)){
+  cur_windows <- seqnames(H3K4me3$windows) == i
+  mat.K4[1,i] <- mean(H3K4me3$enrichment[as.vector(cur_windows),"spermatocytes"])
+  mat.K4[2,i] <- mean(H3K4me3$enrichment[as.vector(cur_windows),"spermatids"])
+}
+mat.K4 <- mat.K4[,!is.na(mat.K4[1,])]
+mat.K4 <- mat.K4[,!(colnames(mat.K4) == "MT")]
+cur_df <- melt(mat.K4)
+ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K4me3")
+```

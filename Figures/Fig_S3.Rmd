@@ -28,7 +28,7 @@ library(pheatmap)
 source("../Functions/auxiliary.R")
 
 # Single cell data
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```
 
 # Heatmap of P10 cells
@@ -134,6 +134,120 @@ pheatmap(logcounts(sce.spermatogonia)[c(rownames(head(rots.PC1, 20)),
          labels_row = c(as.character(head(rots.PC1, 20)$genename), 
                         as.character(tail(rots.PC1, 20)$genename)))
 dev.off()
+```
+
+# Visualize spermatogonia from P10 and P15
+
+```{r, spermatogonia_p10_p15}
+sce.P10.15 <- sce[,grepl("P1", colData(sce)$Sample)]
+sce.P10.15 <- normalize(sce.P10.15)
+
+sce.spermatogonia.p10.15 <- sce.P10.15[,
+          colData(sce.P10.15)$AnnotatedClusters == "Spermatogonia"]
+sce.spermatogonia.p10.15 <- normalize(sce.spermatogonia.p10.15)
+
+# Calculate HVG
+HVgenes.P10.15 <- HVG(sce.spermatogonia.p10.15)
+
+# PCA
+pca.P10.15 <- prcomp(t(logcounts(sce.spermatogonia.p10.15)[HVgenes.P10.15,]))
+
+# Visualize PCA with marker genes
+
+#Nanos3 marker for undifferentiated spermatogonia
+Nanos3.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
+                  PC2 = pca.P10.15$x[,2],
+                  Nanos3 = logcounts(sce.spermatogonia.p10.15)[
+                    rowData(sce.spermatogonia.p10.15)$Symbol == "Nanos3",])) +
+  geom_point(aes(PC1, PC2, colour = Nanos3)) + scale_colour_viridis()
+
+#NZbtb16/PLZF marker for undifferentiated spemratogonia but was also found in spermatogonia alreadt expressing Stra8
+Zbtb16.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
+                  PC2 = pca.P10.15$x[,2],
+                  Zbtb16 = logcounts(sce.spermatogonia.p10.15)[
+                    rowData(sce.spermatogonia.p10.15)$Symbol == "Zbtb16",])) +
+  geom_point(aes(PC1, PC2, colour = Zbtb16)) + scale_colour_viridis()
+
+# Induced by RA and upregulated during spermatogonial differentiation and again later on in preleptotene spermatocytes
+Stra8.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
+                  PC2 = pca.P10.15$x[,2],
+                  Stra8 = logcounts(sce.spermatogonia.p10.15)[
+                    rowData(sce.spermatogonia.p10.15)$Symbol == "Stra8",])) +
+  geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
+
+# Ccnd2 for spermatogonial differentiation and Ccnd1 in proliferating spermatogonia
+Ccnd2.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
+                  PC2 = pca.P10.15$x[,2],
+                  Ccnd2 = logcounts(sce.spermatogonia.p10.15)[
+                    rowData(sce.spermatogonia.p10.15)$Symbol == "Ccnd2",])) +
+  geom_point(aes(PC1, PC2, colour = Ccnd2)) + scale_colour_viridis()
+
+Ccnd1.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
+                  PC2 = pca.P10.15$x[,2],
+                  Ccnd1 = logcounts(sce.spermatogonia.p10.15)[
+                    rowData(sce.spermatogonia.p10.15)$Symbol == "Ccnd1",])) +
+  geom_point(aes(PC1, PC2, colour = Ccnd1)) + scale_colour_viridis()
+
+# Rhox13 higher in differentiating spermatogonia
+Rhox13.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
+                  PC2 = pca.P10.15$x[,2],
+                  Rhox13 = logcounts(sce.spermatogonia.p10.15)[
+                    rowData(sce.spermatogonia.p10.15)$Symbol == "Rhox13",])) +
+  geom_point(aes(PC1, PC2, colour = Rhox13)) + scale_colour_viridis()
+
+
+# Save rotations of PC1
+rots.PC1 <- data.frame(row.names = rownames(pca.P10.15$rotation),
+                       rot.PC1 = pca.P10.15$rotation[,1],
+                       genename = rowData(sce.spermatogonia.p10.15)$Symbol[
+                         match(rownames(pca.P10.15$rotation),
+                               rowData(sce.spermatogonia.p10.15)$ID)])
+rots.PC1 <- rots.PC1[order(rots.PC1$rot.PC1, decreasing = TRUE),]
+write.xlsx(rots.PC1, "/Users/ernst01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Rotations_PC1_spermatogonia_P10_P15.xlsx")
+
+# Visualize top genes in form of heatmap
+pdf("/Users/ernst01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Spermatogonia_heatmap_P10_P15.pdf", onefile = FALSE, width = 10, height = 7)
+pheatmap(logcounts(sce.spermatogonia.p10.15)[c(rownames(head(rots.PC1, 50)),
+                                        rownames(tail(rots.PC1, 50))),
+                                      order(pca.P10.15$x[,1], 
+                                            decreasing = TRUE)], 
+         cluster_rows = FALSE, cluster_cols = FALSE,
+         scale = "row",
+         show_colnames = FALSE, gaps_row = 50,
+         cellheight = 8, fontsize = 7,
+         color = colorRampPalette(c("#053061", "#4393c3", 
+                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
+         labels_row = c(as.character(head(rots.PC1, 50)$genename), 
+                        as.character(tail(rots.PC1, 50)$genename)))
+dev.off()
+
+
+# PCA on spermatogonia and earliest spermatocytes from P10 and P15
+sce.spg.p10.15 <- sce.P10.15[,
+          colData(sce.P10.15)$AnnotatedClusters == "Spermatogonia"]
+sce.sc1.p10.15 <- sce.P10.15[,
+          colData(sce.P10.15)$AnnotatedClusters == "Spermatocytes_1"]
+sce.spg.sc1 <- cbind(sce.spg.p10.15, sce.sc1.p10.15)
+sce.spg.sc1 <- normalize(sce.spg.sc1)
+
+HVgenes.spg.sc1 <- HVG(sce.spg.sc1)
+pca.spg.sc1 <- prcomp(t(logcounts(sce.spg.sc1)[HVgenes.spg.sc1,]))
+
+# Visalize PCA with marker genes
+
+Stra8.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
+                  PC2 = pca.spg.sc1$x[,2],
+                  Stra8 = logcounts(sce.spg.sc1)[
+                    rowData(sce.spg.sc1)$Symbol == "Stra8",])) +
+  geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
+
+H2afx.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
+                  PC2 = pca.spg.sc1$x[,2],
+                  H2afx = logcounts(sce.spg.sc1)[
+                    rowData(sce.spg.sc1)$Symbol == "H2afx",])) +
+  geom_point(aes(PC1, PC2, colour = H2afx)) + scale_colour_viridis()
+
+
 ```
 
 # Visualize emptyDrops
