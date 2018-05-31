@@ -184,3 +184,10 @@ cors <- cors[order(cors$rho, decreasing = FALSE),]
 write.xlsx(cors, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/CorrrelationNoGenes.xlsx")
 
 ```
+
+# Visualize infertility genes
+
+```{r}
+# Read in the data from IMPC
+infertility <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/male_infertility.xlsx")
+```

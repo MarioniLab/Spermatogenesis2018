@@ -25,6 +25,7 @@ library(Rtsne)
 library(ggplot2)
 library(DropletUtils)
 library(scater)
+library(reshape2)
 library(viridis)
 library(RColorBrewer)
 source("../../Functions/auxiliary.R")
@@ -247,16 +248,35 @@ sce.do18198 <- sce.do18198[,is.cell]
 rm(sce.do18198.empty)
 
 save.image("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops_temp.RData")
+load("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops_temp.RData")
 ```
 
 # Filtering
 
 ```{r filtering}
 # Merge datasets
-sce.all <- cbind(sce.do17815, sce.do17816, sce.do17821, sce.do17622, sce.do18199,
-                 sce.do15983, sce.do17623, sce.do18197, sce.do18198, sce.do17821,
+sce.all.1 <- cbind(sce.do17815, sce.do17816, sce.do15984, sce.do17622, sce.do18199,
+                 sce.do15983, sce.do17623)
+rm("sce.do17815")
+rm("sce.do17816")
+rm("sce.do15984")
+rm("sce.do17622")
+rm("sce.do18199")
+rm("sce.do15983")
+rm("sce.do17623")
+sce.all.2 <- cbind(sce.do18197, sce.do18198, sce.do17821,
                  sce.do18195, sce.do17824, sce.do18196, sce.do17825, sce.do17827)
-rm(list=setdiff(ls(), "sce.all"))
+rm("sce.do18197")
+rm("sce.do18198")
+rm("sce.do17821")
+rm("sce.do18195")
+rm("sce.do17824")
+rm("sce.do18196")
+rm("sce.do17825")
+rm("sce.do17827")
+sce.all <- cbind(sce.all.1, sce.all.2)
+rm("sce.all.1")
+rm("sce.all.2")
 
 # Save statistics on these libraries
 cur_stats <- melt(table(colData(sce.all)$Sample, colData(sce.all)$Library))
@@ -290,6 +310,7 @@ sce.all <- sce.all[,Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData
 sce.all <- sce.all[Matrix::rowSums(counts(sce.all)) > 0,]
 
 saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
 
 # Normalization
@@ -303,7 +324,7 @@ sce.all <- sce.all[,sizeFactors(sce.all) > 0]
 
 sce.all <- normalize(sce.all, return_log = TRUE)
 
-saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
 
 # Batch correction
