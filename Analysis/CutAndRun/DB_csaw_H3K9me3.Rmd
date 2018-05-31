@@ -17,8 +17,10 @@ knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
 First we define the relevant files.
 
 ```{r}
+library(cowplot)
+
 bam.files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K9me3/", full.names = TRUE,
-                        pattern = ".+JP30.+bam$")
+                        pattern = ".+JP26.+bam$")
 ```
 
 We also define the conditions:
@@ -109,6 +111,26 @@ for (x in 2:ncol(adjc)) {
 
 # Visualize X chromosome
 # Normalized Reads
+# In spermatocytes
+# Generate matrix to store the average K9 enrichment
+mat.K9 <- matrix(data = NA, ncol = length(seqlevels(bins)), nrow = 2)
+rownames(mat.K9) <- c("Spermatocytes", "Spermatids")
+colnames(mat.K9) <- seqlevels(bins)
+
+# Loop trough the different chromosomes and find K4 enrichemnt for the whole chromosome
+for(i in seqlevels(bins)){
+  cur_windows <- seqnames(bins) == i
+  mat.K9[1,i] <- mean(adjc[as.vector(cur_windows),1])
+  mat.K9[2,i] <- mean(adjc[as.vector(cur_windows),2])
+}
+mat.K9 <- mat.K9[,!grepl("GL|JH", colnames(mat.K9))]
+mat.K9 <- mat.K9[,!(colnames(mat.K9) == "MT")]
+cur_df <- melt(mat.K9)
+
+ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1), size = 2) + 
+  ggtitle("H3K9me3") + scale_color_aaas()
+
+
 plot(average[as.vector(seqnames(bins@rowRanges) == "X")], 
      adjc[as.vector(seqnames(bins@rowRanges) == "X"),2]-
        adjc[as.vector(seqnames(bins@rowRanges) == "X"),1], pch = 16)
