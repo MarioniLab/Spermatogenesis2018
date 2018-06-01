@@ -17,8 +17,12 @@ knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
 First we define the relevant files.
 
 ```{r}
+library(cowplot)
+library(reshape2)
+library(ggsci)
+
 bam.files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K27ac/", full.names = TRUE,
-                        pattern = "*.bam$")
+                        pattern = ".+JP26.+bam$")
 ```
 
 We also define the conditions:
@@ -40,7 +44,7 @@ We also use the ENCODE mm10 blacklist to ignore reads in problematic regions.
 ```{r, message=FALSE}
 library(csaw)
 library(rtracklayer)
-black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
+black <- import("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Blacklist_mm10.bed")
 param <- readParam(dedup=TRUE, minq=10, discard=black, pe="both", max.frag=1000)
 param
 ```
@@ -70,7 +74,7 @@ hist(fstat$filter, col="grey80", xlab="Log2-fold increase above background",
 We require our windows to have at least 2-fold more intensity than expected due to background binding.
 
 ```{r}
-keep <- fstat$filter >= log2(2)
+keep <- fstat$filter >= log2(3)
 summary(keep)
 ```
 
@@ -106,37 +110,55 @@ for (x in 2:ncol(adjc)) {
         ylab=sprintf("M (%i vs 1)", x))
     abline(h=log2(norm.factors[x]/norm.factors[1]), col="red", lty=2)        
 }
+
+# Visualize X chromosome
+# Normalized Reads
+# In spermatocytes
+# Generate matrix to store the average K9 enrichment
+mat.K27 <- matrix(data = NA, ncol = length(seqlevels(bins)), nrow = 2)
+rownames(mat.K27) <- c("Spermatocytes", "Spermatids")
+colnames(mat.K27) <- seqlevels(bins)
+
+# Loop trough the different chromosomes and find K4 enrichemnt for the whole chromosome
+for(i in seqlevels(bins)){
+  cur_windows <- seqnames(bins) == i
+  mat.K27[1,i] <- mean(adjc[as.vector(cur_windows),1])
+  mat.K27[2,i] <- mean(adjc[as.vector(cur_windows),2])
+}
+mat.K27 <- mat.K27[,!grepl("GL|JH", colnames(mat.K27))]
+mat.K27 <- mat.K27[,!(colnames(mat.K27) == "MT")]
+cur_df <- melt(mat.K27)
+
+ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1), size = 2) + 
+  ggtitle("H3K27ac") + scale_color_aaas()
+
+
+plot(average[as.vector(seqnames(bins@rowRanges) == "X")], 
+     adjc[as.vector(seqnames(bins@rowRanges) == "X"),2]-
+       adjc[as.vector(seqnames(bins@rowRanges) == "X"),1], pch = 16)
+
+# Raw Reads
+plot(average[as.vector(seqnames(bins@rowRanges) == "X")], 
+     log(tmp$counts[as.vector(seqnames(bins@rowRanges) == "X"),2] + 1)-
+       log(tmp$counts[as.vector(seqnames(bins@rowRanges) == "X"),1] + 1), pch = 16)
+```
+
+Save normalized reads in all the windows
+
+```{r}
+out <- normOffsets(out)
+tmp <- asDGEList(out)
+adjc <- cpm(tmp, log=TRUE, prior.count=0.5)
+colnames(adjc) <- paste(treatment, batch, sep = "_")
+saveRDS(file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K9me3/H3K9me3_1000_normReads.rds", list(windows=rowRanges(out), 
+    normReads=adjc)) 
 ```
 
 We save the normalization factors and library sizes for later use.
 
 ```{r}
-write.table(file="/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/norm_1000.tsv", quote=FALSE, row.names=FALSE, sep="\t",
+write.table(file="/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/norm_1000.tsv", quote=FALSE, row.names=FALSE, sep="\t",
     colData(filtered)[,c("bam.files", "totals", "norm.factors")])
-```
-
-## Computing trended offsets
-
-We take it to the next level and normalize out trended biases.
-
-```{r}
-filtered <- normOffsets(filtered, type="loess")
-head(assay(filtered, "offset"))
-```
-
-We can create some MA plots to check that we've correctly removed the bias.
-
-```{r}
-library(edgeR)
-tmp <- asDGEList(filtered)
-adjc <- log2(tmp$counts+0.5) - tmp$offset/log(2)
-average <- aveLogCPM(tmp)
-par(mfrow=c(1, 2))
-for (x in 2:ncol(adjc)) {
-    smoothScatter(average, adjc[,x]-adjc[,1], xlab="Average", 
-        ylab=sprintf("M (%i vs 1)", x))
-    abline(h=0, col="red", lty=2)        
-}
 ```
 
 ## Creating MDS plots

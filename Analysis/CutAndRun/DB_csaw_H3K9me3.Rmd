@@ -18,6 +18,8 @@ First we define the relevant files.
 
 ```{r}
 library(cowplot)
+library(reshape2)
+library(ggsci)
 
 bam.files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K9me3/", full.names = TRUE,
                         pattern = ".+JP26.+bam$")
@@ -42,7 +44,7 @@ We also use the ENCODE mm10 blacklist to ignore reads in problematic regions.
 ```{r, message=FALSE}
 library(csaw)
 library(rtracklayer)
-black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
+black <- import("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Blacklist_mm10.bed")
 param <- readParam(dedup=TRUE, minq=10, discard=black, pe="both", max.frag=1000)
 param
 ```
@@ -139,6 +141,17 @@ plot(average[as.vector(seqnames(bins@rowRanges) == "X")],
 plot(average[as.vector(seqnames(bins@rowRanges) == "X")], 
      log(tmp$counts[as.vector(seqnames(bins@rowRanges) == "X"),2] + 1)-
        log(tmp$counts[as.vector(seqnames(bins@rowRanges) == "X"),1] + 1), pch = 16)
+```
+
+Save normalized reads in all the windows
+
+```{r}
+out <- normOffsets(out)
+tmp <- asDGEList(out)
+adjc <- cpm(tmp, log=TRUE, prior.count=0.5)
+colnames(adjc) <- paste(treatment, batch, sep = "_")
+saveRDS(file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K9me3/H3K9me3_1000_normReads.rds", list(windows=rowRanges(out), 
+    normReads=adjc)) 
 ```
 
 We save the normalization factors and library sizes for later use.
