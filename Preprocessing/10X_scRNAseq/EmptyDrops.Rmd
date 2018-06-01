@@ -349,7 +349,7 @@ saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/A
 # Mark the cells that were labeled before
 
 ```{r}
-sce.old <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
+sce.old <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 
 annotatedclust <- rep("NewCell", ncol(sce.all))
 m <- match(colData(sce.old)$Barcode, colData(sce.all)$Barcode)
