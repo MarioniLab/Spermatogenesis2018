@@ -44,6 +44,8 @@ prom <- promoters(genes(EnsDb.Mmusculus.v79))
 prom <- prom[seqnames(prom) %in% c(as.character(1:19), "X", "Y", "MT"),]
 seqlevels(prom) <- c(as.character(1:19), "X", "Y", "MT")
 prom.X <- prom[seqnames(prom) == "X"]
+prom.Y <- prom[seqnames(prom) == "Y"]
+prom.9 <- prom[seqnames(prom) == "9"]
 
 gen <- genes(EnsDb.Mmusculus.v79)
 gen <- gen[seqnames(gen) %in% c(as.character(1:19), "X", "Y", "MT"),]
@@ -74,146 +76,9 @@ bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analy
 meta <- as.data.frame(read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/Bulk/sdrf.xlsx"))
 ```
 
-# Find enriched regions for H3K4 and visualize H3K9me3 norm counts
+# X chromosome
 
-```{r}
-# Load data
-H3K4me3 <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds")
-H3K27ac <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K27ac/H3K27ac_1000.rds")
-H3K9me3 <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K9me3/H3K9me3_1000.rds")
-
-merged.K4 <- mergeWindows(H3K4me3$windows, tol=100L, max.width=5000L)
-tabbest.K4 <- getBestTest(merged.K4$id, H3K4me3$DB)
-tabcom.K4 <- combineTests(merged.K4$id, H3K4me3$DB)
-colnames(tabcom.K4) <- paste(colnames(tabcom.K4), "_K4", sep = "")
-colnames(tabbest.K4) <- paste(colnames(tabbest.K4), "_K4", sep = "")
-
-# Find overlaps to promoter - K4 
-olap.prom <- findOverlaps(prom.X, merged.K4$region)
-df.K4 <- data.frame(ID = prom.X$gene_id[olap.prom@from],
-                    genename = prom.X$gene_name[olap.prom@from],
-                    merged.id = olap.prom@to,
-                    region = merged.K4$region[olap.prom@to],
-                    tabcom.K4[olap.prom@to,])
-
-# Mean K4 signal for these regions
-olap.K4 <- findOverlaps(merged.K4$region[olap.prom@to], H3K4me3$windows, minoverlap = 1000L)
-df.K4$K4_enrichment_spermatocytes <- ddply(data.frame(olap.K4, 
-                enrichment.spermatocytes =
-                  H3K4me3$enrichment[olap.K4@to,"spermatocytes"]
-                ), .(queryHits), summarize, 
-                mean = mean(enrichment.spermatocytes))$mean
-df.K4$K4_enrichment_spermatids <- ddply(data.frame(olap.K4, 
-                enrichment.spermatids =
-                  H3K4me3$enrichment[olap.K4@to,"spermatids"]
-                ), .(queryHits), summarize, 
-                mean = mean(enrichment.spermatids))$mean
-
-# Overlap for K27
-olap.K27 <- findOverlaps(merged.K4$region[olap.prom@to], H3K27ac$windows, minoverlap = 500L)
-df.K4$K27_enrichment_spermatocytes <- ddply(data.frame(olap.K27, 
-                                         enrichment.spermatocytes =
-                                           H3K27ac$enrichment[olap.K27@to,"spermatocytes"]
-                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatocytes))$mean
-
-df.K4$K27_enrichment_spermatids <- ddply(data.frame(olap.K27, 
-                                         enrichment.spermatids =
-                                           H3K27ac$enrichment[olap.K27@to,"spermatids"]
-                                         ), .(queryHits), summarize, mean = mean(enrichment.spermatids))$mean
-
-# Overlap for K9
-olap.K9 <- findOverlaps(merged.K4$region[olap.prom@to], 
-                         H3K9me3$windows, minoverlap = 500L)
-df.K4$K9_enrichment_spermatocytes <- rep(NA, nrow(df.K4))
-df.K4$K9_enrichment_spermatocytes[unique(olap.K9@from)] <- ddply(data.frame(olap.K9, 
-      enrichment.spermatocytes = H3K9me3$enrichment[olap.K9@to,"spermatocytes"]
-                          ), .(queryHits), summarize, mean =
-      mean(enrichment.spermatocytes))$mean
-
-df.K4$K9_enrichment_spermatids <- rep(NA, nrow(df.K4))
-df.K4$K9_enrichment_spermatids[unique(olap.K9@from)] <- ddply(data.frame(olap.K9, 
-      enrichment.spermatids = H3K9me3$enrichment[olap.K9@to,"spermatids"]
-                          ), .(queryHits), summarize, mean =
-      mean(enrichment.spermatids))$mean
-
-df.K4 <- df.K4[order(df.K4$K4_enrichment_spermatocytes, df.K4$K9_enrichment_spermatocytes, decreasing = FALSE, na.last = FALSE),]
-
-# Remove the two genes that are named twice
-df.K4 <- df.K4[match(unique(df.K4$ID), df.K4$ID),]
-rownames(df.K4) <- df.K4$ID
-
-```
-
-## Visualize bulk RNA-Seq data
-
-```{r, fig.height=25, fig.width=5}
-cur.genes <- df.K4
-cur.genes <- cur.genes[!is.na(match(cur.genes$ID, rownames(bulk))),]
-for.heatmap <- bulk[as.character(cur.genes$ID),
-                   meta$Source.Name[order(meta$`Characteristics.[Age]`, decreasing = FALSE)]]
-for.heatmap <- for.heatmap[rowMeans(for.heatmap) > 10,]
-
-pheatmap(log2(for.heatmap + 1), 
-         cluster_cols = FALSE, 
-         cluster_rows = FALSE, labels_row = as.character(cur.genes$genename),
-         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
-         border_color = NA,
-         labels_col = paste("P", meta$`Characteristics.[Age]`[order(meta$`Characteristics.[Age]`, decreasing = FALSE)], sep = ""),
-         annotation_row = data.frame(row.names = rownames(for.heatmap),
-        H3K4me3.spermatocytes = df.K4[rownames(for.heatmap),
-                                      "K4_enrichment_spermatocytes"],
-        H3K4me3.spermatids = df.K4[rownames(for.heatmap), 
-                                      "K4_enrichment_spermatids"],
-        H3K27ac.spermatocytes = df.K4[rownames(for.heatmap), 
-                        "K27_enrichment_spermatocytes"],
-        H3K27ac.spermatids = df.K4[rownames(for.heatmap), 
-                        "K27_enrichment_spermatids"],
-        H3K9me3.spermatocytes = df.K4[rownames(for.heatmap), 
-                        "K9_enrichment_spermatocytes"],
-        H3K9me3.spermatids = df.K4[rownames(for.heatmap), 
-                        "K9_enrichment_spermatids"]),
-         scale = "row", cellheight = 8, fontsize = 7)
-
-```
-
-```{r, fig.height=25, fig.width=5}
-# Build mean expression matrix
-df <- as.data.frame(t(as.matrix(logcounts(sce)[rownames(for.heatmap)[
-  !is.na(match(rownames(for.heatmap), rownames(logcounts(sce))))],])))
-df$groups <- colData(sce.XChr)$AnnotatedClusters
-df.melt <- melt(df, id.vars = "groups")
-
-# Collect mean expression for each gene in each group
-mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
-mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
-rownames(mat.for.heatmap) <- mat.for.heatmap$variable
-mat.for.heatmap <- mat.for.heatmap[,-1]
-
-
-pheatmap(log2(mat.for.heatmap + 1), 
-         cluster_cols = FALSE, 
-         cluster_rows = FALSE, labels_row = rowData(sce)$Symbol[
-           match(rownames(mat.for.heatmap), rowData(sce)$ID)],
-         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
-         border_color = NA,
-         annotation_row = data.frame(row.names = rownames(for.heatmap),
-        H3K4me3.spermatocytes = df.K4[rownames(for.heatmap),
-                                      "K4_enrichment_spermatocytes"],
-        H3K4me3.spermatids = df.K4[rownames(for.heatmap), 
-                                      "K4_enrichment_spermatids"],
-        H3K27ac.spermatocytes = df.K4[rownames(for.heatmap), 
-                        "K27_enrichment_spermatocytes"],
-        H3K27ac.spermatids = df.K4[rownames(for.heatmap), 
-                        "K27_enrichment_spermatids"],
-        H3K9me3.spermatocytes = df.K4[rownames(for.heatmap), 
-                        "K9_enrichment_spermatocytes"],
-        H3K9me3.spermatids = df.K4[rownames(for.heatmap), 
-                        "K9_enrichment_spermatids"]),
-         scale = "row", cellheight = 8, fontsize = 7)
-
-```
-
-# Visualize the normalized H3K9me3 counts within the H3K4me3 peaks
+# Visualize the normalized H3K9me3 and H3K4me3 normalized counts in promoter regions
 
 ```{r}
 # Find spermatid specific genes first
@@ -231,16 +96,9 @@ bulk.X <- bulk.X[,df$library]
 bulk.X <- bulk.X[order(log(rowMeans(bulk.X[,df$day < 20])/
                    rowMeans(bulk.X[,df$day > 20])), decreasing = TRUE),]
 
-# Order based on where gene expression reaches 10 counts for the first time
-#bulk.X <- bulk.X[order(apply(bulk.X, 1, function(n){
-#  which(n > 10)[1]
-#}), decreasing = FALSE),]
-
 # Save info if gene is spermatid specifc or not
-spermatid.spec <- ifelse(log(rowMeans(bulk.X[,df$day < 20])/
-                   rowMeans(bulk.X[,df$day > 20])) < -2, TRUE, FALSE)
-
-for.heatmap <- bulk.X
+spermatid.spec <- ifelse(log(rowMeans(bulk.Y[,df$day < 20])/
+                   rowMeans(bulk.Y[,df$day > 20])) < -2, TRUE, FALSE)
 ```
 
 Collect H3K4 and H3K9 signal for these promoters
@@ -293,28 +151,223 @@ cur_df$K4.spermatids[unique(queryHits(olap.K4))] <- ddply(data.frame(olap.K4,
 
 ```
 
-Plot heatmap
+Plot heatmaps
 
-```{r, fig.height=100, fig.width=5}
-# Order based on spermatid specificity and H3K9me3 signal in spermatocytes
+```{r, fig.height=30, fig.width=10}
+# We split genes based on spermatid specificity and high or low K9 in spermatocytes
+cur_df <- cur_df[!is.na(cur_df$K9.spermatocytes) & !is.na(cur_df$K4.spermatocytes),]
 cur_df <- cur_df[order(as.numeric(cur_df$spermatid_specific), cur_df$K9.spermatocytes),]
-for.heatmap <- for.heatmap[rownames(cur_df),]
+cur_mat <- bulk.X[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == FALSE & cur_df$K9.spermatocytes < 0.5, ]
 
-
-pheatmap(log2(for.heatmap + 1), 
+# Plot heatmap - non-spermatid specifc - low K9
+pheatmap(log2(cur_mat + 1), 
          cluster_cols = FALSE, 
-         cluster_rows = FALSE, 
-         labels_row = prom.X$gene_name[match(rownames(for.heatmap), prom.X$gene_id)],
+         cluster_rows = FALSE, show_rownames = FALSE,
          color = viridis(100),
          border_color = NA,
-         labels_col = paste("P", meta$`Characteristics.[Age]`[order(meta$`Characteristics.[Age]`, decreasing = FALSE)], sep = ""),
-         annotation_row = data.frame(row.names = rownames(for.heatmap),
-        H3K4me3.spermatocytes = cur_df$K4.spermatocytes,
-        H3K4me3.spermatids = cur_df$K4.spermatids,
-        H3K9me3.spermatocytes = cur_df$K9.spermatocytes,
-        H3K9me3.spermatids = cur_df$K9.spermatids,
-        spermatid_specific = as.numeric(cur_df$spermatid_specific)), 
-        cellheight = 8, fontsize = 7)
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 1, cellwidth = 8, fontsize = 7)
+
+cur_mat <- bulk.X[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == FALSE & cur_df$K9.spermatocytes > 0.5, ]
+
+# Plot heatmap - non-spermatid specifc - high K9
+pheatmap(log2(cur_mat + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, labels_row = prom.X$gene_name[match(rownames(cur_mat), 
+                                                                   prom.X$gene_id)],
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 8, cellwidth = 8, fontsize = 7)
+
+cur_mat <- bulk.X[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == TRUE & cur_df$K9.spermatocytes < 0.5, ]
+
+# Plot heatmap - non-spermatid specifc - low K9
+pheatmap(log2(cur_mat + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 1, cellwidth = 8, fontsize = 7, 
+        annotation_colors = list(H3K9me3.spermatocytes = inferno(100)),
+        )
+
+cur_mat <- bulk.X[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == TRUE & cur_df$K9.spermatocytes > 0.5, ]
+
+# Plot heatmap - non-spermatid specifc - high K9
+pheatmap(log2(cur_mat + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, labels_row = prom.X$gene_name[match(rownames(cur_mat), 
+                                                                   prom.X$gene_id)],
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 8, cellwidth = 8, fontsize = 7)
+
+
+```
+
+# Y chromosome
+
+# Visualize the normalized H3K9me3 and H3K4me3 normalized counts in promoter regions
+
+```{r}
+# Find spermatid specific genes first
+# Select Y chromosome genes
+bulk.Y <- bulk[intersect(prom.Y$gene_id, rownames(bulk)),]
+bulk.Y <- bulk.Y[rowMeans(bulk.Y) > 10,]
+
+# Collect day info on libraries
+df <- data.frame(library = meta$Source.Name,
+                 day = meta$`Characteristics.[Age]`)
+bulk.Y <- bulk.Y[,df$library]
+
+# Order genes based on their logFC between spermatocytes (< P20)
+# and spermatids (> P20)
+bulk.Y <- bulk.Y[order(log(rowMeans(bulk.Y[,df$day < 20])/
+                   rowMeans(bulk.Y[,df$day > 20])), decreasing = TRUE),]
+
+# Save info if gene is spermatid specifc or not
+spermatid.spec <- ifelse(log(rowMeans(bulk.Y[,df$day < 20])/
+                   rowMeans(bulk.Y[,df$day > 20])) < -2, TRUE, FALSE)
+```
+
+Collect H3K4 and H3K9 signal for these promoters
+
+```{r}
+cur_prom <- prom.Y[match(rownames(bulk.Y), prom.Y$gene_id)]
+cur_df <- data.frame(row.names = rownames(bulk.Y),
+                     genenames = prom.Y$gene_name[match(rownames(bulk.Y), 
+                                                        prom.Y$gene_id)],
+                     spermatid_specific = spermatid.spec)
+
+
+# K9 signal
+olap.K9 <- findOverlaps(cur_prom, H3K9me3.normReads$windows, minoverlap = 500L)
+cur_df$K9.spermatocytes <- rep(NA, nrow(cur_df))
+cur_df$K9.spermatocytes[unique(queryHits(olap.K9))] <- ddply(data.frame(olap.K9, 
+                enrichment.spermatocytes =
+                  rowMeans(H3K9me3.normReads$normReads[subjectHits(olap.K9),
+                                    c("spermatocytes_1", "spermatocytes_2")]
+                )), .(queryHits), summarize, 
+                mean = mean(enrichment.spermatocytes))$mean
+
+cur_df$K9.spermatids <- rep(NA, nrow(cur_df))
+cur_df$K9.spermatids[unique(queryHits(olap.K9))] <- ddply(data.frame(olap.K9, 
+                enrichment.spermatocytes =
+                  rowMeans(H3K9me3.normReads$normReads[subjectHits(olap.K9),
+                                    c("spermatids_1", "spermatids_2")]
+                )), .(queryHits), summarize, 
+                mean = mean(enrichment.spermatocytes))$mean
+
+# K4 signal
+olap.K4 <- findOverlaps(cur_prom, H3K4me3.normReads$windows, minoverlap = 500L)
+cur_df$K4.spermatocytes <- rep(NA, nrow(cur_df))
+cur_df$K4.spermatocytes[unique(queryHits(olap.K4))] <- ddply(data.frame(olap.K4, 
+                enrichment.spermatocytes =
+                  rowMeans(H3K4me3.normReads$normReads[subjectHits(olap.K4),
+                                    c("spermatocytes_1", "spermatocytes_2")]
+                )), .(queryHits), summarize, 
+                mean = mean(enrichment.spermatocytes))$mean
+
+cur_df$K4.spermatids <- rep(NA, nrow(cur_df))
+cur_df$K4.spermatids[unique(queryHits(olap.K4))] <- ddply(data.frame(olap.K4, 
+                enrichment.spermatocytes =
+                  rowMeans(H3K4me3.normReads$normReads[subjectHits(olap.K4),
+                                    c("spermatids_1", "spermatids_2")]
+                )), .(queryHits), summarize, 
+                mean = mean(enrichment.spermatocytes))$mean
+
+```
+
+Plot heatmaps
+
+```{r, fig.height=30, fig.width=10}
+# We split genes based on spermatid specificity and high or low K9 in spermatocytes
+cur_df <- cur_df[!is.na(cur_df$K9.spermatocytes) & !is.na(cur_df$K4.spermatocytes),]
+cur_df <- cur_df[order(as.numeric(cur_df$spermatid_specific), cur_df$K9.spermatocytes),]
+cur_mat <- bulk.Y[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == FALSE & cur_df$K9.spermatocytes < 0.5, ]
+
+# Plot heatmap - non-spermatid specifc - low K9
+pheatmap(log2(cur_mat + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 4, cellwidth = 8, fontsize = 7)
+
+cur_mat <- bulk.Y[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == FALSE & cur_df$K9.spermatocytes > 0.5, ]
+
+# Plot heatmap - non-spermatid specifc - high K9
+pheatmap(log2(cur_mat + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, labels_row = prom.Y$gene_name[match(rownames(cur_mat), 
+                                                                   prom.Y$gene_id)],
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 8, cellwidth = 8, fontsize = 7)
+
+cur_mat <- bulk.Y[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == TRUE & cur_df$K9.spermatocytes < 0.5, ]
+
+# Plot heatmap - non-spermatid specifc - low K9
+pheatmap(log2(as.matrix(cur_mat) + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 4, cellwidth = 8, fontsize = 7, 
+        annotation_colors = list(H3K9me3.spermatocytes = inferno(100)),
+        )
+
+cur_mat <- bulk.Y[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == TRUE & cur_df$K9.spermatocytes > 0.5, ]
+
+# Plot heatmap - non-spermatid specifc - high K9
+pheatmap(log2(cur_mat + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, labels_row = prom.Y$gene_name[match(rownames(cur_mat), 
+                                                                   prom.Y$gene_id)],
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 8, cellwidth = 8, fontsize = 7)
+
+
 ```
 
 # Visualize K3 and K9 signal for spermtid specifc an non-specifc genes
@@ -327,132 +380,184 @@ ddply(cur_df, .(spermatid_specific), summarize, mean.K9.spermatocytes = mean(K9.
       mean.K4.spermatids = mean(K4.spermatids, na.rm = TRUE))
 
 # Fisher test
-# Set up contigency table - K9 high > 1
+# Set up contigency table - K9 high > 0.5
 K9.spermatocytes.table <- matrix(data = NA, ncol = 2, nrow = 2)
 colnames(K9.spermatocytes.table) <- c("specific", "non-specific")
 rownames(K9.spermatocytes.table) <- c("K9-high", "K9-low")
-K9.spermatocytes.table[1,1] <- sum(cur_df$K9.spermatocytes > 1 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == TRUE) 
-K9.spermatocytes.table[1,2] <- sum(cur_df$K9.spermatocytes > 1 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == FALSE) 
-K9.spermatocytes.table[2,1] <- sum(cur_df$K9.spermatocytes < 1 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == TRUE) 
-K9.spermatocytes.table[2,2] <- sum(cur_df$K9.spermatocytes < 1 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == FALSE)
-
-fisher.test(K9.spermatocytes.table, alternative = "greater")
-
-# Set up contigency table - K9 high > 0
-K9.spermatocytes.table <- matrix(data = NA, ncol = 2, nrow = 2)
-colnames(K9.spermatocytes.table) <- c("specific", "non-specific")
-rownames(K9.spermatocytes.table) <- c("K9-high", "K9-low")
-K9.spermatocytes.table[1,1] <- sum(cur_df$K9.spermatocytes > 0 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == TRUE) 
-K9.spermatocytes.table[1,2] <- sum(cur_df$K9.spermatocytes > 0 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == FALSE) 
-K9.spermatocytes.table[2,1] <- sum(cur_df$K9.spermatocytes < 0 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == TRUE) 
-K9.spermatocytes.table[2,2] <- sum(cur_df$K9.spermatocytes < 0 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == FALSE)
+K9.spermatocytes.table[1,1] <- sum(cur_df$K9.spermatocytes > 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == TRUE) 
+K9.spermatocytes.table[1,2] <- sum(cur_df$K9.spermatocytes > 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == FALSE) 
+K9.spermatocytes.table[2,1] <- sum(cur_df$K9.spermatocytes < 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == TRUE) 
+K9.spermatocytes.table[2,2] <- sum(cur_df$K9.spermatocytes < 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == FALSE)
 
 fisher.test(K9.spermatocytes.table, alternative = "greater")
 ```
 
-# Overall level of epigenetic enrichment of the different chromosomes
+
+
+# 9 chromosome
+
+# Visualize the normalized H3K9me3 and H3K4me3 normalized counts in promoter regions
 
 ```{r}
-# Generate matrix to store the average K9 enrichment
-mat.K9 <- matrix(data = NA, ncol = length(seqlevels(H3K9me3$windows)), nrow = 2)
-rownames(mat.K9) <- c("Spermatocytes", "Spermatids")
-colnames(mat.K9) <- seqlevels(H3K9me3$windows)
+# Find spermatid specific genes first
+# Select 9 chromosome genes
+bulk.9 <- bulk[intersect(prom.9$gene_id, rownames(bulk)),]
+bulk.9 <- bulk.9[rowMeans(bulk.9) > 10,]
 
-# Loop trough the different chromosomes and find K9 enrichemnt for the whole chromosome
-for(i in seqlevels(prom)){
-  cur_windows <- seqnames(H3K9me3$windows) == i
-  mat.K9[1,i] <- mean(H3K9me3$enrichment[as.vector(cur_windows),"spermatocytes"])
-  mat.K9[2,i] <- mean(H3K9me3$enrichment[as.vector(cur_windows),"spermatids"])
-}
-mat.K9 <- mat.K9[,!is.na(mat.K9[1,])]
-mat.K9 <- mat.K9[,!(colnames(mat.K9) == "MT")]
-cur_df <- melt(mat.K9)
-ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K9me3")
+# Collect day info on libraries
+df <- data.frame(library = meta$Source.Name,
+                 day = meta$`Characteristics.[Age]`)
+bulk.9 <- bulk.9[,df$library]
 
-# Generate matrix to store the average K27 enrichment
-mat.K27 <- matrix(data = NA, ncol = length(seqlevels(H3K27ac$windows)), nrow = 2)
-rownames(mat.K27) <- c("Spermatocytes", "Spermatids")
-colnames(mat.K27) <- seqlevels(H3K27ac$windows)
+# Order genes based on their logFC between spermatocytes (< P20)
+# and spermatids (> P20)
+bulk.9 <- bulk.9[order(log(rowMeans(bulk.9[,df$day < 20])/
+                   rowMeans(bulk.9[,df$day > 20])), decreasing = TRUE),]
 
-# Loop trough the different chromosomes and find K27 enrichemnt for the whole chromosome
-for(i in seqlevels(prom)){
-  cur_windows <- seqnames(H3K27ac$windows) == i
-  mat.K27[1,i] <- mean(H3K27ac$enrichment[as.vector(cur_windows),"spermatocytes"])
-  mat.K27[2,i] <- mean(H3K27ac$enrichment[as.vector(cur_windows),"spermatids"])
-}
-mat.K27 <- mat.K27[,!is.na(mat.K27[1,])]
-mat.K27 <- mat.K27[,!(colnames(mat.K27) == "MT")]
-cur_df <- melt(mat.K27)
-ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K27ac")
-
-# Generate matrix to store the average K27 enrichment
-mat.K4 <- matrix(data = NA, ncol = length(seqlevels(H3K4me3$windows)), nrow = 2)
-rownames(mat.K4) <- c("Spermatocytes", "Spermatids")
-colnames(mat.K4) <- seqlevels(H3K4me3$windows)
-
-# Loop trough the different chromosomes and find K4 enrichemnt for the whole chromosome
-for(i in seqlevels(prom)){
-  cur_windows <- seqnames(H3K4me3$windows) == i
-  mat.K4[1,i] <- mean(H3K4me3$enrichment[as.vector(cur_windows),"spermatocytes"])
-  mat.K4[2,i] <- mean(H3K4me3$enrichment[as.vector(cur_windows),"spermatids"])
-}
-mat.K4 <- mat.K4[,!is.na(mat.K4[1,])]
-mat.K4 <- mat.K4[,!(colnames(mat.K4) == "MT")]
-cur_df <- melt(mat.K4)
-ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K4me3")
+# Save info if gene is spermatid specifc or not
+spermatid.spec <- ifelse(log(rowMeans(bulk.9[,df$day < 20])/
+                   rowMeans(bulk.9[,df$day > 20])) < -2, TRUE, FALSE)
 ```
 
-# Overall direction between spermatids and spermatocytes
+Collect H3K4 and H3K9 signal for these promoters
 
 ```{r}
-# Generate matrix to store the average K9 enrichment
-mat.K9 <- matrix(data = NA, ncol = length(seqlevels(H3K9me3$windows)), nrow = 3)
-rownames(mat.K9) <- c("down", "up", "mixed")
-colnames(mat.K9) <- seqlevels(H3K9me3$windows)
+cur_prom <- prom.9[match(rownames(bulk.9), prom.9$gene_id)]
+cur_df <- data.frame(row.names = rownames(bulk.9),
+                     genenames = prom.9$gene_name[match(rownames(bulk.9), 
+                                                        prom.9$gene_id)],
+                     spermatid_specific = spermatid.spec)
 
-# Loop trough the different chromosomes and find K9 enrichemnt for the whole chromosome
-for(i in seqlevels(prom)){
-  cur_windows <- seqnames(H3K9me3$windows) == i
-  cur_merged <- mergeWindows(H3K9me3$windows[as.vector(cur_windows)], tol=100L)
-  cur_tabcom <- combineTests(cur_merged$id, H3K9me3$DB[as.vector(cur_windows),])
-  mat.K9[1,i] <- sum(cur_tabcom$direction == "down")/nrow(cur_tabcom)
-  mat.K9[2,i] <- sum(cur_tabcom$direction == "up")/nrow(cur_tabcom)
-  mat.K9[3,i] <- sum(cur_tabcom$direction == "mixed")/nrow(cur_tabcom)
-}
-mat.K9 <- mat.K9[,!is.na(mat.K9[1,])]
-mat.K9 <- mat.K9[,!(colnames(mat.K9) == "MT")]
-cur_df <- melt(mat.K9)
-ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K9me3")
 
-# Generate matrix to store the average K27 enrichment
-mat.K27 <- matrix(data = NA, ncol = length(seqlevels(H3K27ac$windows)), nrow = 2)
-rownames(mat.K27) <- c("Spermatocytes", "Spermatids")
-colnames(mat.K27) <- seqlevels(H3K27ac$windows)
+# K9 signal
+olap.K9 <- findOverlaps(cur_prom, H3K9me3.normReads$windows, minoverlap = 500L)
+cur_df$K9.spermatocytes <- rep(NA, nrow(cur_df))
+cur_df$K9.spermatocytes[unique(queryHits(olap.K9))] <- ddply(data.frame(olap.K9, 
+                enrichment.spermatocytes =
+                  rowMeans(H3K9me3.normReads$normReads[subjectHits(olap.K9),
+                                    c("spermatocytes_1", "spermatocytes_2")]
+                )), .(queryHits), summarize, 
+                mean = mean(enrichment.spermatocytes))$mean
 
-# Loop trough the different chromosomes and find K27 enrichemnt for the whole chromosome
-for(i in seqlevels(prom)){
-  cur_windows <- seqnames(H3K27ac$windows) == i
-  mat.K27[1,i] <- mean(H3K27ac$enrichment[as.vector(cur_windows),"spermatocytes"])
-  mat.K27[2,i] <- mean(H3K27ac$enrichment[as.vector(cur_windows),"spermatids"])
-}
-mat.K27 <- mat.K27[,!is.na(mat.K27[1,])]
-mat.K27 <- mat.K27[,!(colnames(mat.K27) == "MT")]
-cur_df <- melt(mat.K27)
-ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K27ac")
+cur_df$K9.spermatids <- rep(NA, nrow(cur_df))
+cur_df$K9.spermatids[unique(queryHits(olap.K9))] <- ddply(data.frame(olap.K9, 
+                enrichment.spermatocytes =
+                  rowMeans(H3K9me3.normReads$normReads[subjectHits(olap.K9),
+                                    c("spermatids_1", "spermatids_2")]
+                )), .(queryHits), summarize, 
+                mean = mean(enrichment.spermatocytes))$mean
 
-# Generate matrix to store the average K27 enrichment
-mat.K4 <- matrix(data = NA, ncol = length(seqlevels(H3K4me3$windows)), nrow = 2)
-rownames(mat.K4) <- c("Spermatocytes", "Spermatids")
-colnames(mat.K4) <- seqlevels(H3K4me3$windows)
+# K4 signal
+olap.K4 <- findOverlaps(cur_prom, H3K4me3.normReads$windows, minoverlap = 500L)
+cur_df$K4.spermatocytes <- rep(NA, nrow(cur_df))
+cur_df$K4.spermatocytes[unique(queryHits(olap.K4))] <- ddply(data.frame(olap.K4, 
+                enrichment.spermatocytes =
+                  rowMeans(H3K4me3.normReads$normReads[subjectHits(olap.K4),
+                                    c("spermatocytes_1", "spermatocytes_2")]
+                )), .(queryHits), summarize, 
+                mean = mean(enrichment.spermatocytes))$mean
 
-# Loop trough the different chromosomes and find K4 enrichemnt for the whole chromosome
-for(i in seqlevels(prom)){
-  cur_windows <- seqnames(H3K4me3$windows) == i
-  mat.K4[1,i] <- mean(H3K4me3$enrichment[as.vector(cur_windows),"spermatocytes"])
-  mat.K4[2,i] <- mean(H3K4me3$enrichment[as.vector(cur_windows),"spermatids"])
-}
-mat.K4 <- mat.K4[,!is.na(mat.K4[1,])]
-mat.K4 <- mat.K4[,!(colnames(mat.K4) == "MT")]
-cur_df <- melt(mat.K4)
-ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1)) + ggtitle("H3K4me3")
+cur_df$K4.spermatids <- rep(NA, nrow(cur_df))
+cur_df$K4.spermatids[unique(queryHits(olap.K4))] <- ddply(data.frame(olap.K4, 
+                enrichment.spermatocytes =
+                  rowMeans(H3K4me3.normReads$normReads[subjectHits(olap.K4),
+                                    c("spermatids_1", "spermatids_2")]
+                )), .(queryHits), summarize, 
+                mean = mean(enrichment.spermatocytes))$mean
+
+```
+
+Plot heatmaps
+
+```{r, fig.height=30, fig.width=10}
+# We split genes based on spermatid specificity and high or low K9 in spermatocytes
+cur_df <- cur_df[!is.na(cur_df$K9.spermatocytes) & !is.na(cur_df$K4.spermatocytes),]
+cur_df <- cur_df[order(as.numeric(cur_df$spermatid_specific), cur_df$K9.spermatocytes),]
+cur_mat <- bulk.9[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == FALSE & cur_df$K9.spermatocytes < 0.5, ]
+
+# Plot heatmap - non-spermatid specifc - low K9
+pheatmap(log2(cur_mat + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 4, cellwidth = 8, fontsize = 7)
+
+cur_mat <- bulk.9[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == FALSE & cur_df$K9.spermatocytes > 0.5, ]
+
+# Plot heatmap - non-spermatid specifc - high K9
+pheatmap(log2(cur_mat + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, labels_row = prom.9$gene_name[match(rownames(cur_mat), 
+                                                                   prom.9$gene_id)],
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 8, cellwidth = 8, fontsize = 7)
+
+cur_mat <- bulk.9[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == TRUE & cur_df$K9.spermatocytes < 0.5, ]
+
+# Plot heatmap - non-spermatid specifc - low K9
+pheatmap(log2(as.matrix(cur_mat) + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 4, cellwidth = 8, fontsize = 7, 
+        annotation_colors = list(H3K9me3.spermatocytes = inferno(100)),
+        )
+
+cur_mat <- bulk.9[rownames(cur_df),]
+cur_mat <- cur_mat[cur_df$spermatid_specific == TRUE & cur_df$K9.spermatocytes > 0.5, ]
+
+# Plot heatmap - non-spermatid specifc - high K9
+pheatmap(log2(cur_mat + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, labels_row = prom.9$gene_name[match(rownames(cur_mat), 
+                                                                   prom.9$gene_id)],
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
+        cellheight = 8, cellwidth = 8, fontsize = 7)
+
+
+```
+
+# Visualize K3 and K9 signal for spermtid specifc an non-specifc genes
+
+```{r}
+# Collect mean K4 and K9 signal from spermtid specifc and non-specific genes  
+ddply(cur_df, .(spermatid_specific), summarize, mean.K9.spermatocytes = mean(K9.spermatocytes, na.rm = TRUE),
+      mean.K9.spermatids = mean(K9.spermatids, na.rm = TRUE),
+      mean.K4.spermatocytes = mean(K4.spermatocytes, na.rm = TRUE),
+      mean.K4.spermatids = mean(K4.spermatids, na.rm = TRUE))
+
+# Fisher test
+# Set up contigency table - K9 high > 0.5
+K9.spermatocytes.table <- matrix(data = NA, ncol = 2, nrow = 2)
+colnames(K9.spermatocytes.table) <- c("specific", "non-specific")
+rownames(K9.spermatocytes.table) <- c("K9-high", "K9-low")
+K9.spermatocytes.table[1,1] <- sum(cur_df$K9.spermatocytes > 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == TRUE) 
+K9.spermatocytes.table[1,2] <- sum(cur_df$K9.spermatocytes > 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == FALSE) 
+K9.spermatocytes.table[2,1] <- sum(cur_df$K9.spermatocytes < 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == TRUE) 
+K9.spermatocytes.table[2,2] <- sum(cur_df$K9.spermatocytes < 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == FALSE)
+
+fisher.test(K9.spermatocytes.table, alternative = "greater")
 ```
