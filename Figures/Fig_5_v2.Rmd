@@ -74,6 +74,13 @@ bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analy
 
 # Meta info
 meta <- as.data.frame(read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/Bulk/sdrf.xlsx"))
+
+# Read in genelists
+retro <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/X_retrogenes.xlsx")
+retro <- retro[grepl("ENS", retro$Parental.Gene),]
+
+K27writers.Rnf8 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 1)
+K27writers.Scml2 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 2)
 ```
 
 # X chromosome
@@ -97,8 +104,8 @@ bulk.X <- bulk.X[order(log(rowMeans(bulk.X[,df$day < 20])/
                    rowMeans(bulk.X[,df$day > 20])), decreasing = TRUE),]
 
 # Save info if gene is spermatid specifc or not
-spermatid.spec <- ifelse(log(rowMeans(bulk.Y[,df$day < 20])/
-                   rowMeans(bulk.Y[,df$day > 20])) < -2, TRUE, FALSE)
+spermatid.spec <- ifelse(log(rowMeans(bulk.X[,df$day < 20])/
+                   rowMeans(bulk.X[,df$day > 20])) < -2, TRUE, FALSE)
 ```
 
 Collect H3K4 and H3K9 signal for these promoters
@@ -110,7 +117,14 @@ cur_prom <- prom.X[match(rownames(bulk.X), prom.X$gene_id)]
 cur_df <- data.frame(row.names = rownames(bulk.X),
                      genenames = prom.X$gene_name[match(rownames(bulk.X), 
                                                         prom.X$gene_id)],
-                     spermatid_specific = spermatid.spec)
+                     spermatid_specific = spermatid.spec,
+                     retro = ifelse(rownames(bulk.X) %in% retro$Parental.Gene, 1, 0),
+                     Rnf8 = ifelse(prom.X$gene_name[match(rownames(bulk.X), 
+                                                        prom.X$gene_id)] %in% 
+                                     K27writers.Rnf8$gene_id, 1, 0),
+                     Scml2 = ifelse(prom.X$gene_name[match(rownames(bulk.X), 
+                                                        prom.X$gene_id)] %in% 
+                                     K27writers.Scml2$gene_id, 1, 0))
 
 
 # K9 signal
@@ -154,6 +168,25 @@ cur_df$K4.spermatids[unique(queryHits(olap.K4))] <- ddply(data.frame(olap.K4,
 Plot heatmaps
 
 ```{r, fig.height=30, fig.width=10}
+cur_df <- cur_df[!is.na(cur_df$K9.spermatocytes) & !is.na(cur_df$K4.spermatocytes),]
+cur_df <- cur_df[order(as.numeric(cur_df$spermatid_specific), cur_df$K9.spermatocytes),]
+cur_mat <- bulk.X[rownames(cur_df),]
+
+# Full heatmap
+pheatmap(log2(cur_mat + 1), 
+         cluster_cols = FALSE, 
+         cluster_rows = FALSE, show_rownames = FALSE,
+         color = viridis(100),
+         border_color = NA,
+         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         annotation_row = data.frame(row.names = rownames(cur_mat),
+        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
+        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"],
+        retro = cur_df[rownames(cur_mat),"retro"],
+        Rnf8 = cur_df[rownames(cur_mat),"Rnf8"],
+        Scml2 = cur_df[rownames(cur_mat),"Scml2"]),       
+        cellheight = 0.5, cellwidth = 8, fontsize = 7)
+
 # We split genes based on spermatid specificity and high or low K9 in spermatocytes
 cur_df <- cur_df[!is.na(cur_df$K9.spermatocytes) & !is.na(cur_df$K4.spermatocytes),]
 cur_df <- cur_df[order(as.numeric(cur_df$spermatid_specific), cur_df$K9.spermatocytes),]
