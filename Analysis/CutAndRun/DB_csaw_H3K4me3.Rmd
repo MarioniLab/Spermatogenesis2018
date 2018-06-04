@@ -19,10 +19,12 @@ First we define the relevant files.
 ```{r}
 library(cowplot)
 library(reshape2)
-library(ggsci)
+
+# Select the day for profiling
+day <- "26" 
 
 bam.files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K4me3/", full.names = TRUE,
-                        pattern = ".+JP26.+bam$")
+                        pattern = paste(".+JP", day, ".+bam$", sep = ""))
 ```
 
 We also define the conditions:
@@ -49,39 +51,13 @@ param <- readParam(dedup=TRUE, minq=10, discard=black, pe="both", max.frag=1000)
 param
 ```
 
-We then count reads into 1000 bp windows. 
+We then count reads into 1000 and 5000 bp bins 
 No read extension is necessary as the paired reads fully define each fragment.
-The spacing is set to a quarter of the width to avoid redundant loading of highly overlapping windows.
 
 ```{r}
-out <- windowCounts(bam.files, param=param, width=1000,
-    spacing=max(50, 1000/4))
+out <- windowCounts(bam.files, param=param, width=1000, bin = TRUE)
 out
-```
-
-# Filtering out low-abundance windows
-
-We apply a simple background-based filter to remove the low-abundance windows.
-This is done by computing the median coverage of 5 kbp bins across the genome to define the filter threshold.
-
-```{r}
-bins <- windowCounts(bam.files, param=param, width=5000, bin=TRUE)
-fstat <- filterWindows(data=out, background=bins, type="global")
-hist(fstat$filter, col="grey80", xlab="Log2-fold increase above background",
-    ylab="Number of windows", freq=TRUE)
-```
-
-We require our windows to have at least 2-fold more intensity than expected due to background binding.
-
-```{r}
-keep <- fstat$filter >= log2(3)
-summary(keep)
-```
-
-We apply this filter to our object.
-
-```{r}
-filtered <- out[keep,]
+bins <- windowCounts(bam.files, param=param, width=5000, bin = TRUE)
 ```
 
 # Normalization for efficiency biases
@@ -91,18 +67,18 @@ filtered <- out[keep,]
 We normalize out efficiency biases, under the assumption that most histone marking does _not_ change between spermatids and spermatocytes.
 
 ```{r}
-filtered <- normOffsets(filtered)
-colData(filtered)[,c("totals", "norm.factors")]
+out <- normOffsets(out)
+colData(out)[,c("totals", "norm.factors")]
 ```
 
-We can create some MA plots using the larger bins to examine the normalization factors, especially relative to background.
+We can create some MA plots using the bins to examine the normalization factors.
 
 ```{r}
 library(edgeR)
 tmp <- asDGEList(bins)
 adjc <- cpm(tmp, log=TRUE, prior.count=0.5)
 average <- aveLogCPM(tmp)
-norm.factors <- filtered$norm.factors
+norm.factors <- out$norm.factors
 
 par(mfrow=c(1, 2))
 for (x in 2:ncol(adjc)) {
@@ -110,146 +86,14 @@ for (x in 2:ncol(adjc)) {
         ylab=sprintf("M (%i vs 1)", x))
     abline(h=log2(norm.factors[x]/norm.factors[1]), col="red", lty=2)        
 }
-
-# Visualize X chromosome
-# Normalized Reads
-# In spermatocytes
-# Generate matrix to store the average K9 enrichment
-mat.K4 <- matrix(data = NA, ncol = length(seqlevels(bins)), nrow = 2)
-rownames(mat.K4) <- c("Spermatocytes", "Spermatids")
-colnames(mat.K4) <- seqlevels(bins)
-
-# Loop trough the different chromosomes and find K4 enrichemnt for the whole chromosome
-for(i in seqlevels(bins)){
-  cur_windows <- seqnames(bins) == i
-  mat.K4[1,i] <- mean(adjc[as.vector(cur_windows),1])
-  mat.K4[2,i] <- mean(adjc[as.vector(cur_windows),2])
-}
-mat.K4 <- mat.K4[,!grepl("GL|JH", colnames(mat.K4))]
-mat.K4 <- mat.K4[,!(colnames(mat.K4) == "MT")]
-cur_df <- melt(mat.K4)
-
-ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1), size = 2) + 
-  ggtitle("H3K4me3") + scale_color_aaas()
-
-
-plot(average[as.vector(seqnames(bins@rowRanges) == "X")], 
-     adjc[as.vector(seqnames(bins@rowRanges) == "X"),2]-
-       adjc[as.vector(seqnames(bins@rowRanges) == "X"),1], pch = 16)
-
-# Raw Reads
-plot(average[as.vector(seqnames(bins@rowRanges) == "X")], 
-     log(tmp$counts[as.vector(seqnames(bins@rowRanges) == "X"),2] + 1)-
-       log(tmp$counts[as.vector(seqnames(bins@rowRanges) == "X"),1] + 1), pch = 16)
-```
-
-Save normalized reads in all the windows
-
-```{r}
-out <- normOffsets(out)
-tmp <- asDGEList(out)
-adjc <- cpm(tmp, log=TRUE, prior.count=0.5)
-colnames(adjc) <- paste(treatment, batch, sep = "_")
-saveRDS(file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000_normReads.rds", list(windows=rowRanges(out), 
-    normReads=adjc)) 
 ```
 
 Save normalized reads in 1Kb bins
 
 ```{r}
-cur_bins <- windowCounts(bam.files, param=param, width=1000, bin=TRUE)
-cur_bins <- normOffsets(cur_bins)
-tmp <- asDGEList(cur_bins)
+tmp <- asDGEList(out)
 adjc <- cpm(tmp, log=TRUE, prior.count=0.5)
 colnames(adjc) <- paste(treatment, batch, sep = "_")
-saveRDS(file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000kb_bins_normReads.rds", list(windows=rowRanges(cur_bins), 
+saveRDS(file=paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3", day, "_1000kb_bins_normReads.rds", sep = ""), list(windows=rowRanges(out), 
     normReads=adjc)) 
-```
-
-We save the normalization factors and library sizes for later use.
-
-```{r}
-write.table(file="/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/norm_1000.tsv", quote=FALSE, row.names=FALSE, sep="\t",
-    colData(filtered)[,c("bam.files", "totals", "norm.factors")])
-```
-
-## Creating MDS plots
-
-We can also use the adjusted log-coverage to create MDS plots.
-
-```{r}
-par(mfrow=c(1,3))
-labels <- paste0(treatment, ".", batch) 
-col <- c("blue", "orange", "red", "darkgreen")[as.integer(factor(treatment))]
-for (x in c(1000, 10000, 100000)) {
-    plotMDS(adjc, top=x, main=sprintf("Top %i windows", x),
-        labels=labels, col=col)
-}
-```
-
-# Modelling biological variability
-
-Setting up the design matrix:
-
-```{r}
-design <- model.matrix(~0 + treatment + batch)
-design
-```
-
-Estimating the NB dispersions:
-
-```{r}
-y <- asDGEList(filtered)
-y <- estimateDisp(y, design)
-y$common.dispersion
-```
-
-Examining them on a plot:
-
-```{r}
-plotBCV(y)
-```
-
-Estimating the QL dispersions:
-
-```{r}
-fit <- glmQLFit(y, design, robust=TRUE)
-summary(fit$df.prior)
-```
-
-Examining them on a plot:
-
-```{r}
-plotQLDisp(fit)
-```
-
-# Testing for differential binding
-
-We test for differential binding between spermatids and spermatocytes.
-
-```{r}
-con <- makeContrasts(treatmentspermatids - treatmentspermatocytes, levels=design)
-res <- glmQLFTest(fit, contrast=con)
-summary(decideTests(res))
-out.tab <- res$table
-```
-
-# Create enrichment over background data frame
-
-```{r}
-fstat.spermatids <- filterWindows(data=out[,c(2,4)], background=bins[,c(2,4)], type="global")
-fstat.spermatocytes <- filterWindows(data=out[,c(1,3)], background=bins[,c(1,3)], type="global")
-
-df.stats <- data.frame(spermatocytes = fstat.spermatocytes$filter,
-                       spermatids = fstat.spermatids$filter)
-df.stats <- df.stats[keep,]
-```
-
-# Saving the results
-
-Saving the window coordinates as well as the various results.
-
-```{r}
-saveRDS(file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000.rds", list(windows=rowRanges(filtered), 
-    DB=out.tab, enrichment = df.stats)) 
 ```
