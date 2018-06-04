@@ -154,6 +154,18 @@ saveRDS(file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analy
     normReads=adjc)) 
 ```
 
+Save normalized reads in 1Kb bins
+
+```{r}
+cur_bins <- windowCounts(bam.files, param=param, width=1000, bin=TRUE)
+cur_bins <- normOffsets(cur_bins)
+tmp <- asDGEList(cur_bins)
+adjc <- cpm(tmp, log=TRUE, prior.count=0.5)
+colnames(adjc) <- paste(treatment, batch, sep = "_")
+saveRDS(file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000kb_bins_normReads.rds", list(windows=rowRanges(cur_bins), 
+    normReads=adjc)) 
+```
+
 We save the normalization factors and library sizes for later use.
 
 ```{r}
