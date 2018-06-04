@@ -124,8 +124,8 @@ ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Ana
 # Visualize the K9 and K4 signal coming from the different chromosomes
 
 ```{r}
-H3K4me3.normReads <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me3_1000kb_bins_normReads.rds")
-H3K9me3.normReads <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K9me3/H3K9me3_1000kb_bins_normReads.rds")
+H3K4me3.normReads <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me326_1000kb_bins_normReads.rds")
+H3K9me3.normReads <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K9me3/H3K9me326_1000kb_bins_normReads.rds")
 
 # For K9 signal
 mat.K9 <- matrix(data = NA, ncol = length(seqlevels(H3K9me3.normReads$windows)), nrow = 2)
@@ -142,9 +142,13 @@ for(i in colnames(mat.K9)){
 }
 
 cur_df <- melt(mat.K9)
+levels(cur_df$Var2) <- c(as.character(1:19), "X", "Y")
 
-ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1), size = 2) + 
-  ggtitle("H3K9me3") + scale_color_aaas()
+K9.signal <- ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1), size = 2) + 
+  ggtitle("H3K9me3") + scale_color_aaas(name = "Cell type") + 
+  ylab("Average log(CPM)") + xlab("")
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/K9signal.pdf", 
+       K9.signal, width = 7, height = 4)
 
 # For K4 signal
 mat.K4 <- matrix(data = NA, ncol = length(seqlevels(H3K4me3.normReads$windows)), nrow = 2)
@@ -161,11 +165,13 @@ for(i in colnames(mat.K4)){
 }
 
 cur_df <- melt(mat.K4)
+levels(cur_df$Var2) <- c(as.character(1:19), "X", "Y")
 
-ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1), size = 2) + 
-  ggtitle("H3K4me3") + scale_color_aaas()
-
-
+K4.signal <- ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1), size = 2) + 
+  ggtitle("H3K4me3") + scale_color_aaas(name = "Cell type") + 
+  ylab("Average log(CPM)") + xlab("")
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/K4signal.pdf", 
+       K9.signal, width = 7, height = 4)
 ```
 
 # X chromosome
@@ -186,16 +192,28 @@ bulk.X <- bulk.X[,df$library]
 # Order genes based on their logFC between spermatocytes (< P20)
 # and spermatids (> P20)
 # Perform differential expression testing
+y <- DGEList(counts=bulk.X,
+             group=ifelse(df$day < 20, "Spermatocytes", "Spermatids"))
+y <- calcNormFactors(y)
+design <- model.matrix(~0+y$samples$group)
+colnames(design) <- c("Spermatids", "Spermatocytes")
+y <- estimateDisp(y,design)
+  
+fit <- glmQLFit(y,design, robust = TRUE)
+qlf <- glmTreat(fit,coef=2, lfc = 2, 
+                contrast = makeContrasts(Spermatids - Spermatocytes, 
+                                         levels = design))
+cur_markers <- topTags(qlf, n = nrow(qlf$table))$table
+cur_markers <- cur_markers[rownames(bulk.X),]
 
-bulk.X <- bulk.X[order(log(rowMeans(bulk.X[,df$day < 20])/
-                   rowMeans(bulk.X[,df$day > 20])), decreasing = TRUE),]
+bulk.X <- bulk.X[order(cur_markers$logFC, decreasing = FALSE),]
+cur_markers <- cur_markers[rownames(bulk.X),]
 
 # Save info if gene is spermatid specifc or not
-spermatid.spec <- ifelse(log(rowMeans(bulk.X[,df$day < 20])/
-                   rowMeans(bulk.X[,df$day > 20])) < -2, TRUE, FALSE)
+spermatid.spec <- ifelse(cur_markers$logFC > 2 & cur_markers$FDR < 0.1, TRUE, FALSE)
 ```
 
-Collect H3K4 and H3K9 signal for these promoters
+Collect H3K4 and H3K9 signal for X chromosome promoters
 
 ```{r}
 cur_prom <- prom.X[match(rownames(bulk.X), prom.X$gene_id)]
@@ -258,6 +276,8 @@ cur_df <- cur_df[order(as.numeric(cur_df$spermatid_specific), cur_df$K9.spermato
 cur_mat <- bulk.X[rownames(cur_df),]
 
 # Full heatmap
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Bulk_heatmap_X.pdf", 
+    width = 7, height = 12)
 pheatmap(log2(cur_mat + 1), 
          cluster_cols = FALSE, 
          cluster_rows = FALSE, show_rownames = FALSE,
@@ -270,75 +290,39 @@ pheatmap(log2(cur_mat + 1),
         retro = cur_df[rownames(cur_mat),"retro"],
         Rnf8 = cur_df[rownames(cur_mat),"Rnf8"],
         Scml2 = cur_df[rownames(cur_mat),"Scml2"]),       
-        cellheight = 0.5, cellwidth = 8, fontsize = 7)
+        cellheight = 0.5, cellwidth = 8, fontsize = 7, 
+        annotation_colors = list(H3K9me3.spermatocytes = inferno(100)))
+dev.off()
 
-# We split genes based on spermatid specificity and high or low K9 in spermatocytes
-cur_df <- cur_df[!is.na(cur_df$K9.spermatocytes) & !is.na(cur_df$K4.spermatocytes),]
-cur_df <- cur_df[order(as.numeric(cur_df$spermatid_specific), cur_df$K9.spermatocytes),]
-cur_mat <- bulk.X[rownames(cur_df),]
-cur_mat <- cur_mat[cur_df$spermatid_specific == FALSE & cur_df$K9.spermatocytes < 0.5, ]
+# Test for statistical enrichment of K4 and K9
+# Collect mean K4 and K9 signal from spermtid specifc and non-specific genes  
+ddply(cur_df, .(spermatid_specific), summarize, mean.K9.spermatocytes = mean(K9.spermatocytes, na.rm = TRUE),
+      mean.K9.spermatids = mean(K9.spermatids, na.rm = TRUE),
+      mean.K4.spermatocytes = mean(K4.spermatocytes, na.rm = TRUE),
+      mean.K4.spermatids = mean(K4.spermatids, na.rm = TRUE))
 
-# Plot heatmap - non-spermatid specifc - low K9
-pheatmap(log2(cur_mat + 1), 
-         cluster_cols = FALSE, 
-         cluster_rows = FALSE, show_rownames = FALSE,
-         color = viridis(100),
-         border_color = NA,
-         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
-         annotation_row = data.frame(row.names = rownames(cur_mat),
-        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
-        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
-        cellheight = 1, cellwidth = 8, fontsize = 7)
+# Fisher test
+# Set up contigency table - K9 high > 0.5
+K9.spermatocytes.table <- matrix(data = NA, ncol = 2, nrow = 2)
+colnames(K9.spermatocytes.table) <- c("specific", "non-specific")
+rownames(K9.spermatocytes.table) <- c("K9-high", "K9-low")
+K9.spermatocytes.table[1,1] <- sum(cur_df$K9.spermatocytes > 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == TRUE) 
+K9.spermatocytes.table[1,2] <- sum(cur_df$K9.spermatocytes > 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == FALSE) 
+K9.spermatocytes.table[2,1] <- sum(cur_df$K9.spermatocytes < 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == TRUE) 
+K9.spermatocytes.table[2,2] <- sum(cur_df$K9.spermatocytes < 0.5 & !is.na(cur_df$K9.spermatocytes) & cur_df$spermatid_specific == FALSE)
 
-cur_mat <- bulk.X[rownames(cur_df),]
-cur_mat <- cur_mat[cur_df$spermatid_specific == FALSE & cur_df$K9.spermatocytes > 0.5, ]
+fisher.test(K9.spermatocytes.table, alternative = "greater")
 
-# Plot heatmap - non-spermatid specifc - high K9
-pheatmap(log2(cur_mat + 1), 
-         cluster_cols = FALSE, 
-         cluster_rows = FALSE, labels_row = prom.X$gene_name[match(rownames(cur_mat), 
-                                                                   prom.X$gene_id)],
-         color = viridis(100),
-         border_color = NA,
-         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
-         annotation_row = data.frame(row.names = rownames(cur_mat),
-        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
-        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
-        cellheight = 8, cellwidth = 8, fontsize = 7)
+# Set up contigency table - K4 high > 0.5
+K4.spermatocytes.table <- matrix(data = NA, ncol = 2, nrow = 2)
+colnames(K4.spermatocytes.table) <- c("specific", "non-specific")
+rownames(K4.spermatocytes.table) <- c("K4-high", "K4-low")
+K4.spermatocytes.table[1,1] <- sum(cur_df$K4.spermatocytes > 0.5 & !is.na(cur_df$K4.spermatocytes) & cur_df$spermatid_specific == TRUE) 
+K4.spermatocytes.table[1,2] <- sum(cur_df$K4.spermatocytes > 0.5 & !is.na(cur_df$K4.spermatocytes) & cur_df$spermatid_specific == FALSE) 
+K4.spermatocytes.table[2,1] <- sum(cur_df$K4.spermatocytes < 0.5 & !is.na(cur_df$K4.spermatocytes) & cur_df$spermatid_specific == TRUE) 
+K4.spermatocytes.table[2,2] <- sum(cur_df$K4.spermatocytes < 0.5 & !is.na(cur_df$K4.spermatocytes) & cur_df$spermatid_specific == FALSE)
 
-cur_mat <- bulk.X[rownames(cur_df),]
-cur_mat <- cur_mat[cur_df$spermatid_specific == TRUE & cur_df$K9.spermatocytes < 0.5, ]
-
-# Plot heatmap - non-spermatid specifc - low K9
-pheatmap(log2(cur_mat + 1), 
-         cluster_cols = FALSE, 
-         cluster_rows = FALSE, show_rownames = FALSE,
-         color = viridis(100),
-         border_color = NA,
-         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
-         annotation_row = data.frame(row.names = rownames(cur_mat),
-        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
-        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
-        cellheight = 1, cellwidth = 8, fontsize = 7, 
-        annotation_colors = list(H3K9me3.spermatocytes = inferno(100)),
-        )
-
-cur_mat <- bulk.X[rownames(cur_df),]
-cur_mat <- cur_mat[cur_df$spermatid_specific == TRUE & cur_df$K9.spermatocytes > 0.5, ]
-
-# Plot heatmap - non-spermatid specifc - high K9
-pheatmap(log2(cur_mat + 1), 
-         cluster_cols = FALSE, 
-         cluster_rows = FALSE, labels_row = prom.X$gene_name[match(rownames(cur_mat), 
-                                                                   prom.X$gene_id)],
-         color = viridis(100),
-         border_color = NA,
-         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
-         annotation_row = data.frame(row.names = rownames(cur_mat),
-        H3K4me3.spermatocytes = cur_df[rownames(cur_mat),"K4.spermatocytes"],
-        H3K9me3.spermatocytes = cur_df[rownames(cur_mat),"K9.spermatocytes"]),       
-        cellheight = 8, cellwidth = 8, fontsize = 7)
-
+fisher.test(K4.spermatocytes.table, alternative = "less")
 
 ```
 
@@ -348,23 +332,37 @@ pheatmap(log2(cur_mat + 1),
 
 ```{r}
 # Find spermatid specific genes first
-# Select Y chromosome genes
-bulk.Y <- bulk[intersect(prom.Y$gene_id, rownames(bulk)),]
-bulk.Y <- bulk.Y[rowMeans(bulk.Y) > 10,]
+# Select X chromosome genes
+bulk.Y <- bulk[intersect(prom.X$gene_id, rownames(bulk)),]
+bulk.X <- bulk.X[rowMeans(bulk.X) > 10,]
 
 # Collect day info on libraries
 df <- data.frame(library = meta$Source.Name,
                  day = meta$`Characteristics.[Age]`)
-bulk.Y <- bulk.Y[,df$library]
+bulk.X <- bulk.X[,df$library]
 
 # Order genes based on their logFC between spermatocytes (< P20)
 # and spermatids (> P20)
-bulk.Y <- bulk.Y[order(log(rowMeans(bulk.Y[,df$day < 20])/
-                   rowMeans(bulk.Y[,df$day > 20])), decreasing = TRUE),]
+# Perform differential expression testing
+y <- DGEList(counts=bulk.X,
+             group=ifelse(df$day < 20, "Spermatocytes", "Spermatids"))
+y <- calcNormFactors(y)
+design <- model.matrix(~0+y$samples$group)
+colnames(design) <- c("Spermatids", "Spermatocytes")
+y <- estimateDisp(y,design)
+  
+fit <- glmQLFit(y,design, robust = TRUE)
+qlf <- glmTreat(fit,coef=2, lfc = 2, 
+                contrast = makeContrasts(Spermatids - Spermatocytes, 
+                                         levels = design))
+cur_markers <- topTags(qlf, n = nrow(qlf$table))$table
+cur_markers <- cur_markers[rownames(bulk.X),]
+
+bulk.X <- bulk.X[order(cur_markers$logFC, decreasing = FALSE),]
+cur_markers <- cur_markers[rownames(bulk.X),]
 
 # Save info if gene is spermatid specifc or not
-spermatid.spec <- ifelse(log(rowMeans(bulk.Y[,df$day < 20])/
-                   rowMeans(bulk.Y[,df$day > 20])) < -2, TRUE, FALSE)
+spermatid.spec <- ifelse(cur_markers$logFC > 2 & cur_markers$FDR < 0.1, TRUE, FALSE)
 ```
 
 Collect H3K4 and H3K9 signal for these promoters
