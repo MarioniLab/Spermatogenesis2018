@@ -1,273 +1,193 @@
 ---
-title: "Figure 5"
-author: "Nils Eling"
+title: "Figure 4"
+author: "nils Eling"
 date: "`r Sys.Date()`"
 output: 
   html_document:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4.html') })
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Load data and libraries
+# Read in data
 
 ```{r data, message=FALSE}
-library(rtracklayer)
-library(EnrichedHeatmap)
-library(GenomicFeatures)
-library(EnsDb.Mmusculus.v79)
+# Libraries
 library(scater)
-library(plyr)
+library(ggplot2)
 library(reshape2)
-library(pheatmap)
-library(viridis)
-library(ggsci)
-library(cowplot)
+library(plyr)
 library(openxlsx)
+library(cowplot)
+library(viridis)
+library(pheatmap)
+library(goseq)
+library(GO.db)
+library(org.Mm.eg.db)
+library(RColorBrewer)
+source("../Functions/auxiliary.R")
 
-# Generate feature annotation
-tss <- promoters(genes(EnsDb.Mmusculus.v79), 
-                 upstream = 0, downstream = 1)
-tss <- tss[seqnames(tss) %in% c(as.character(1:19), "X", "Y", "MT"),]
-seqlevels(tss) <- c(as.character(1:19), "X", "Y", "MT")
-tss.X <- tss[seqnames(tss) == "X"]
+# Single cell data
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 
-blacklist <- import("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Blacklist_mm10.bed")
-seqlevels(blacklist) <- sub("^chr", '', seqlevels(blacklist))
-
-# Read in sce data
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all_clusters.rds")
-sce <- sce[,grepl("B6", colData(sce)$Sample) & 
-             !(colData(sce)$AnnotatedClusters %in% c("variable", "Leydig", "Sertoli",
-                                          "Endothelial_cells", "Outliers"))]
+# Select spermatogonia and spermatocytes
+sce <- sce[,grepl("B6", colData(sce)$Sample)]
 sce <- normalize(sce)
 
-# Select XChr genes
-genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
-sce.XChr <- sce[rowData(sce)$ID %in% 
-                  genenames[genenames$Chromosome.scaffold.name == "X",1],]
-sce.XChr <- normalize(sce.XChr)
-
-# Bulk data
-bulk <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
-# Use genes that are also detected in scRNAseq data
-bulk <- bulk[rownames(bulk) %in% rowData(sce)$ID,]
-
-# Meta info
-meta <- as.data.frame(read.xlsx("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Metadata.xlsx", sheet = 2))
-meta <- meta[!is.na(meta$DO.number),]
-rownames(meta) <- meta$DO.number
+# Read in length of genes
+genelength <- read.table("../Data/Genelength.txt", header = TRUE, sep = "\t")
 ```
 
-# Visualize X inactivation and reactivation
+# Order cells over the differentiation time course
 
-## Visualize X inactivation and reactivation
+```{r ordering}
+# Select Spermatids
+sce.spermatids <- sce[, colData(sce)$AnnotatedClusters %in% 
+                           paste("S", 1:14, sep = "")]
+sce.spermatids <- normalize(sce.spermatids)
 
-This is done with single cells
+# Compute HVG
+HVgenes <- HVG(sce.spermatids)
 
-```{r in-reactivation}
-# Remove lowly expressed genes
-genes <- rowData(sce)$ID[
-  apply(logcounts(sce)[,colData(sce)$AnnotatedClusters %in% 
-          c("Spermatogonia", paste("S", 1:14, sep = ""))], 1,
-              function(n){length(which(n > 0))}) >
-    0.3*sum(colData(sce)$AnnotatedClusters %in% 
-              c("Spermatogonia", paste("S", 1:14, sep = "")))]
+# Compute PCA
+pca <- prcomp(t(logcounts(sce.spermatids)[HVgenes,]))
 
-# Collect genes for some chromosomes
-genes.X <- genes[genes %in% genenames[genenames[,3] == "X",1]]
-genes.9 <- genes[genes %in% genenames[genenames[,3] == "9",1]]
-genes.A <- genes[genes %in% genenames[genenames[,3] != "X" & 
-                                        genenames[,3] != "Y" &
-                                        genenames[,3] != "MT",1]]
-
-# Calculate X:A ratio and 16:X ratio
-ratio.X.A <- colMeans(as.matrix(logcounts(sce)[genes.X,]))/
-  colMeans(as.matrix(logcounts(sce)[genes.A,]))
-ratio.X.A[is.nan(ratio.X.A)] <- 0
-
-ratio.9.A <- colMeans(as.matrix(logcounts(sce)[genes.9,]))/
-  colMeans(as.matrix(logcounts(sce)[genes.A,]))
-ratio.9.A[is.nan(ratio.9.A)] <- 0
-
-# Build mean ratio matrix
-df <- data.frame(ratios = c(ratio.X.A, ratio.9.A),
-                 groups = factor(c(as.character(colData(sce)$AnnotatedClusters), 
-                            as.character(colData(sce)$AnnotatedClusters)), 
-                            levels = levels(colData(sce)$AnnotatedClusters)),
-                 chr = c(rep("X", length(ratio.X.A)), rep("9", length(ratio.9.A))))
-
-# visualize in form of boxplots
-x.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) + 
-  scale_fill_jama() + ylab("Chr:Autosome ratio") + 
-    theme(panel.background = element_blank(), axis.title.x = element_blank(),
-        axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
-        axis.text.y = element_text(size = 12))
-ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Xdynamics.pdf", 
-       x.inactivation, width = 12, height = 7)
+# Pseudo rank
+prank <- PT(rd = pca$x[,1:3], 
+            clusters = colData(sce.spermatids)$AnnotatedClusters,
+            col_vector = metadata(sce.spermatids)$color_vector)
 ```
 
-## Visualize in bulk data
+# Histone variants over spermiogenesis
 
-```{r bulk}
-# Select X chromosome genes
-bulk.X <- bulk[intersect(rowData(sce.XChr)$ID, rownames(bulk)),]
-bulk.X <- bulk.X[rowMeans(bulk.X) > 10,]
+Here, we visualize the histone variants taken from Kennani et al. Epigenetics & Chromatin, 2017.
 
-# Collect day info on libraries
-df <- data.frame(library = colnames(bulk.X),
-                 day = meta$`Age.(days)`[order(rownames(meta))])
+```{r hist-var}
+# Read in histone variants
+Hist.all <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Mouse_histones.xlsx")
+Hist.all <- Hist.all[match(unique(Hist.all$Ensembl.Gene.ID),
+                           Hist.all$Ensembl.Gene.ID),]
+rownames(Hist.all) <- Hist.all$Ensembl.Gene.ID
 
-# Order genes based on their logFC between spermatocytes (< P20)
-# and spermatids (> P20)
-bulk.X <- bulk.X[order(log(rowMeans(bulk.X[,df$day < 20])/
-                   rowMeans(bulk.X[,df$day > 20])), decreasing = TRUE),]
+# Collect data for heatmap plotting
+for.heatmap <- logcounts(sce.spermatids)[rowData(sce.spermatids)$ID %in% Hist.all$Ensembl.Gene.ID,
+                  order(prank[,"rank"], decreasing = TRUE)]
+colnames(for.heatmap) <- paste(colData(sce.spermatids)$Barcode[order(prank[,"rank"],
+                                                               decreasing = TRUE)],
+                               colData(sce.spermatids)$Library[order(prank[,"rank"],
+                                                               decreasing = TRUE)],
+                               sep = "_")
+for.heatmap <- for.heatmap[Matrix::rowMeans(for.heatmap) > 0.1,]
 
-# Order based on where gene expression reaches 10 counts for the first time
-bulk.X <- bulk.X[order(apply(bulk.X, 1, function(n){
-  which(n > 10)[1]
-}), decreasing = FALSE),]
+# Correlate this to pseudorank
+cur_df <- rbind(for.heatmap, prank[order(prank[,"rank"], decreasing = TRUE),"rank"])
+rownames(cur_df) <- c(rownames(for.heatmap), "pseudorank")
 
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/BulkExpression.pdf",
-    width = 10, height = 15, onefile=FALSE)
-pheatmap(log10(bulk.X[,order(df$day)] + 1), cluster_cols = FALSE, 
-         cluster_rows = FALSE, show_rownames = FALSE,
-         color = viridis(100),
-         border_color = NA,
-         labels_col = paste("P", df$day[order(df$day)], sep = ""))
+null.dist <- correlateNull(ncells = ncol(sce.spermatids), iters = 100000)
+cors <- correlatePairs(cur_df, null.dist=null.dist, 
+                       pairings = list(c("pseudorank"), rownames(cur_df)))
+
+# Order correlations
+cors <- cors[order(cors$rho, decreasing = TRUE),]
+
+# Plot these genes over pseudotime
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_HistoneVariants.pdf", onefile = FALSE)
+pheatmap(for.heatmap[cors$gene2,], show_colnames = FALSE,
+         cluster_rows = FALSE, cluster_cols = FALSE, 
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_col = data.frame(row.names = colnames(for.heatmap),
+                  cell_type = colData(sce.spermatids)$AnnotatedClusters[order(prank[,"rank"],
+                      decreasing = TRUE)]),
+         labels_row = Hist.all[cors$gene2,"Gene.name"],
+         annotation_colors = list(cell_type = metadata(sce.spermatids)$color_vector), 
+         scale = "row",
+         annotation_row = data.frame(row.names = cors$gene2,
+                                     Testis_specific = Hist.all[cors$gene2,"X7"]))
 dev.off()
 ```
 
-## Visualize different groups of genes
-
-```{r genesets}
-# Build mean expression matrix
-df <- as.data.frame(t(as.matrix(logcounts(sce.XChr))))
-df$groups <- colData(sce.XChr)$AnnotatedClusters
-df.melt <- melt(df, id.vars = "groups")
-
-# Collect mean expression for each gene in each group
-mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
-mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
-rownames(mat.for.heatmap) <- mat.for.heatmap$variable
-mat.for.heatmap <- mat.for.heatmap[,-1]
-
-# Match genes with bulk libraries
-mat.for.heatmap <- mat.for.heatmap[rownames(bulk.X),]
-```
-
-## Save different heatmaps
+# Find transcriptional shutdown
 
 ```{r}
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/GeneExpression.pdf",
-    width = 10, height = 15, onefile=FALSE)
-pheatmap(mat.for.heatmap, cluster_cols = FALSE, 
-         cluster_rows = FALSE, show_rownames = FALSE,
-         show_colnames = FALSE,
-         color = viridis(100), 
-         annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
-                                     Cell_type = colnames(mat.for.heatmap)),
-         annotation_colors = list(Cell_type = metadata(sce.XChr)$color_vector),
-         border_color = NA)
+PT <-  prank[,"rank"]
+
+number.genes <- apply(logcounts(sce.spermatids), 2, function(n){length(which(n>0))})
+
+p.number.genes <- ggplot(
+  data.frame(x = PT,
+             y = number.genes,
+             group = colData(sce.spermatids)$AnnotatedClusters)) + 
+  geom_point(aes(x, y , fill = group), shape = 21, size = 3) +
+  scale_x_reverse() + 
+  geom_smooth(aes(x = x, y = y), colour = "black") + ylab("# genes expressed") +
+  scale_fill_manual(values = metadata(sce.spermatids)$color_vector) + 
+  theme(legend.position = "none", panel.background = element_blank(), 
+        panel.grid.major = element_line(colour="grey",size = rel(0.5)), 
+        panel.grid.minor = element_blank(), axis.title.y = element_text(size = 15), 
+        axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/NoGenes.pdf", 
+       p.number.genes, width = 12, height = 4)
+```
+
+# Correlate genes to number of genes expressed
+
+```{r}
+cur_mat <- rbind(logcounts(sce.spermatids), number.genes)
+cur_mat <- cur_mat[Matrix::rowMeans(cur_mat) > 0.1,]
+
+null.dist <- correlateNull(ncells = ncol(sce.spermatids), iters = 100000)
+cors <- correlatePairs(cur_mat, null.dist=null.dist, 
+                       pairings = list(c("number.genes"), rownames(cur_mat)))
+cors$genename <- rowData(sce.spermatids)$Symbol[match(cors$gene2, rowData(sce.spermatids)$ID)]
+
+# Visualize results
+# Calculate the Z score
+z.score <- t(apply(as.matrix(cur_mat)[rownames(cur_mat) != "number.genes",],
+                   1, function(n){(n-mean(n))/sd(n)}))
+cors <- cors[match(rownames(z.score), cors$gene2),]
+
+# Generate meta profiles 
+splits <- 10
+ran <- rev(seq(min(cors$rho) - 0.001, max(cors$rho) + 0.001, length.out = splits))
+mat <- matrix(data = NA, nrow = splits - 1, ncol = ncol(z.score))
+
+for(i in 1:(splits - 1)){
+  mat[i,] <- colMeans(z.score[cors$rho <= ran[i] & cors$rho > ran[i + 1],])
+}
+
+colnames(mat) <- paste(colData(sce.spermatids)$Barcode,
+                       colData(sce.spermatids)$Library)
+
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_TranscriptionalShotdown.pdf", onefile = FALSE)
+pheatmap(mat[,order(PT, decreasing = TRUE)], breaks = seq(-2, 2, length.out = 100),
+         cluster_rows = FALSE, cluster_cols = FALSE, 
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_col = data.frame(row.names = colnames(mat)[order(PT, decreasing = TRUE)],
+                  cell_type = colData(sce.spermatids)$AnnotatedClusters[order(PT, decreasing = TRUE)]),
+         annotation_colors = list(cell_type = metadata(sce.spermatids)$color_vector), show_colnames = FALSE)
 dev.off()
-```
 
-# Visualize peaks for these genes
+groups <- vector(length = nrow(z.score))
 
-## H3K4me3
-
-```{r peaks}
-cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
-                        full.names = TRUE)
-filenames <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K4me3/", 
-                        full.names = FALSE)
-
-cur_files <- cur_files[sapply(filenames, 
-                function(n){all(sapply(c("spermatids|spermatocytes", "JP18|JP20|JP22|JP24|JP26|JP28|JP30"), 
-                                   grepl, n))})]
-
-
-filenames <- as.character(sub(".bed.1-1000.bedgraph.gz$", ".pdf",
-                 sapply(cur_files, function(n){unlist(strsplit(n, "/"))[11]})))
-
-cur_genes <- rownames(mat.for.heatmap)
-cur_tss <- tss[match(cur_genes, tss@elementMetadata$gene_id)[
-  !is.na(match(cur_genes, tss@elementMetadata$gene_id))
-]]
-
-for(i in 1:length(cur_files)){
-  cur_file <- import(cur_files[i])
-  
-  # Exclude blacklisted regions
-  cur_removed <- overlapsAny(cur_file, blacklist)
-  cur_file <- cur_file[!cur_removed]
-  cur_file <- cur_file[seqnames(cur_file) %in%
-                         c(as.character(1:19), "X", "Y", "MT"),]
-  seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
-
-  cur_bed <- cur_file[seqnames(cur_file) == "X"]
-
-  cur_mat = normalizeToMatrix(cur_bed, cur_tss, 
-                        value_column = "score",
-                        extend = 5000, mean_mode = "w0", 
-                        w = 50, keep = c(0,0.99))
-  
-  pdf(paste("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/", 
-          filenames[i], sep = ""), width = 10, height = 15, onefile=FALSE)
-  print(EnrichedHeatmap(cur_mat, col = c("white", "red", "black"),
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = 2:4))),
-                  row_order = 1:nrow(cur_mat)))
-  dev.off()
+for(i in 1:(splits - 1)){
+  groups[cors$rho <= ran[i] & cors$rho > ran[i + 1]] <- paste("Group", i)
 }
+
+cors$group <- groups
+cors <- cors[order(cors$rho, decreasing = FALSE),]
+write.xlsx(cors, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/CorrrelationNoGenes.xlsx")
+
 ```
 
-## H3K27ac
+# Visualize infertility genes
 
-```{r peaks}
-cur_files <- list.files("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bedgraphs/H3K27ac/", 
-                        full.names = TRUE)
-
-filenames <- as.character(sub(".bed.1-1000.bedgraph.gz$", ".pdf",
-                 sapply(cur_files, function(n){unlist(strsplit(n, "/"))[11]})))
-
-cur_genes <- rownames(rbind(mat.1, mat.2, mat.3))
-cur_tss <- tss[match(cur_genes, tss@elementMetadata$gene_id)]
-
-for(i in 1:length(cur_files)){
-  cur_file <- import(cur_files[i])
-  
-  # Exclude blacklisted regions
-  cur_removed <- overlapsAny(cur_file, blacklist)
-  cur_file <- cur_file[!cur_removed]
-  cur_file <- cur_file[seqnames(cur_file) %in%
-                         c(as.character(1:19), "X", "Y", "MT"),]
-  seqlevels(cur_file) <- c(as.character(1:19), "X", "Y", "MT")
-
-  cur_bed <- cur_file[seqnames(cur_file) == "X"]
-
-  cur_mat = normalizeToMatrix(cur_bed, cur_tss, 
-                        value_column = "score",
-                        extend = 5000, mean_mode = "w0", 
-                        w = 50, keep = c(0,0.99))
-  
-  pdf(paste("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/", 
-          filenames[i], sep = ""), width = 10, height = 15, onefile=FALSE)
-  print(EnrichedHeatmap(cur_mat[cur_genes,], col = c("white", "red", "black"), 
-                  split = c(rep(1, nrow(mat.1)), rep(2, nrow(mat.2)), rep(3, nrow(mat.3))),
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = 2:4))),
-                  row_order = 1:length(cur_genes)))
-  dev.off()
-}
-```
-
-# Save final figure
-
-```{r final}
-final <- plot_grid(proportions.p, Aurkc, ncol = 1, nrow = 2)
-ggsave(filename = "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.pdf", final, width = 8, height = 8)
+```{r}
+# Read in the data from IMPC
+infertility <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/male_infertility.xlsx")
 ```

@@ -1,5 +1,5 @@
 ---
-title: "Figure 5"
+title: "Figure 6"
 author: "Nils Eling"
 date: "`r Sys.Date()`"
 output: 
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -15,6 +15,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Load data and libraries
+
+Aaron: Just use scaledAverage - don't need to care about fancy normalization schemes
+regionCounts()
 
 ```{r data, message=FALSE}
 library(rtracklayer)

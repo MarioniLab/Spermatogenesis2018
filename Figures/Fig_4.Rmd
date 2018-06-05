@@ -1,5 +1,5 @@
 ---
-title: "Figure 4"
+title: "Figure 3"
 author: "nils Eling"
 date: "`r Sys.Date()`"
 output: 
@@ -7,14 +7,14 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3.html') })
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Read in data
+# Load data and libraries
 
 ```{r data, message=FALSE}
 # Libraries
@@ -30,164 +30,351 @@ library(goseq)
 library(GO.db)
 library(org.Mm.eg.db)
 library(RColorBrewer)
+library(edgeR)
 source("../Functions/auxiliary.R")
 
 # Single cell data
 sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 
 # Select spermatogonia and spermatocytes
-sce <- sce[,grepl("B6", colData(sce)$Sample)]
+sce <- sce[,colData(sce)$Sample == "B6"]
 sce <- normalize(sce)
 
 # Read in length of genes
 genelength <- read.table("../Data/Genelength.txt", header = TRUE, sep = "\t")
 ```
 
-# Order cells over the differentiation time course
+# Spermatocytes
 
-```{r ordering}
-# Select Spermatids
-sce.spermatids <- sce[, colData(sce)$AnnotatedClusters %in% 
-                           paste("S", 1:14, sep = "")]
-sce.spermatids <- normalize(sce.spermatids)
+# Order cells in pseudotime
+
+```{r PT}
+sce.spermatocytes <- sce[, colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[2:9]]
+sce.spermatocytes <- normalize(sce.spermatocytes)
 
 # Compute HVG
-HVgenes <- HVG(sce.spermatids)
+HVgenes <- HVG(sce.spermatocytes)
 
 # Compute PCA
-pca <- prcomp(t(logcounts(sce.spermatids)[HVgenes,]))
+pca <- prcomp(t(logcounts(sce.spermatocytes)[HVgenes,]))
 
 # Pseudo rank
-prank <- PT(rd = pca$x[,1:3], 
-            clusters = colData(sce.spermatids)$AnnotatedClusters,
-            col_vector = metadata(sce.spermatids)$color_vector)
+prank <- PT(rd = pca$x[,1:3], clusters = colData(sce.spermatocytes)$AnnotatedClusters,
+            col_vector = metadata(sce.spermatocytes)$color_vector)
+
 ```
 
-# Histone variants over spermiogenesis
-
-Here, we visualize the histone variants taken from Kennani et al. Epigenetics & Chromatin, 2017.
-
-```{r hist-var}
-# Read in histone variants
-Hist.all <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Mouse_histones.xlsx")
-Hist.all <- Hist.all[match(unique(Hist.all$Ensembl.Gene.ID),
-                           Hist.all$Ensembl.Gene.ID),]
-rownames(Hist.all) <- Hist.all$Ensembl.Gene.ID
-
-# Collect data for heatmap plotting
-for.heatmap <- logcounts(sce.spermatids)[rowData(sce.spermatids)$ID %in% Hist.all$Ensembl.Gene.ID,
-                  order(prank[,"rank"], decreasing = TRUE)]
-colnames(for.heatmap) <- paste(colData(sce.spermatids)$Barcode[order(prank[,"rank"],
-                                                               decreasing = TRUE)],
-                               colData(sce.spermatids)$Library[order(prank[,"rank"],
-                                                               decreasing = TRUE)],
-                               sep = "_")
-for.heatmap <- for.heatmap[Matrix::rowMeans(for.heatmap) > 0.1,]
-
-# Correlate this to pseudorank
-cur_df <- rbind(for.heatmap, prank[order(prank[,"rank"], decreasing = TRUE),"rank"])
-rownames(cur_df) <- c(rownames(for.heatmap), "pseudorank")
-
-null.dist <- correlateNull(ncells = ncol(sce.spermatids), iters = 100000)
-cors <- correlatePairs(cur_df, null.dist=null.dist, 
-                       pairings = list(c("pseudorank"), rownames(cur_df)))
-
-# Order correlations
-cors <- cors[order(cors$rho, decreasing = TRUE),]
-
-# Plot these genes over pseudotime
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_HistoneVariants.pdf", onefile = FALSE)
-pheatmap(for.heatmap[cors$gene2,], show_colnames = FALSE,
-         cluster_rows = FALSE, cluster_cols = FALSE, 
-         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
-         annotation_col = data.frame(row.names = colnames(for.heatmap),
-                  cell_type = colData(sce.spermatids)$AnnotatedClusters[order(prank[,"rank"],
-                      decreasing = TRUE)]),
-         labels_row = Hist.all[cors$gene2,"Gene.name"],
-         annotation_colors = list(cell_type = metadata(sce.spermatids)$color_vector), 
-         scale = "row",
-         annotation_row = data.frame(row.names = cors$gene2,
-                                     Testis_specific = Hist.all[cors$gene2,"X7"]))
-dev.off()
-```
-
-# Find transcriptional shutdown
 
 ```{r}
 PT <-  prank[,"rank"]
 
-number.genes <- apply(logcounts(sce.spermatids), 2, function(n){length(which(n>0))})
+set.seed(123)
+y = rnorm(length(PT), mean = 0, sd = 0.01)
+
+p.PT <- ggplot(data.frame(x = PT,
+                  y = y,
+                  group = colData(sce.spermatocytes)$AnnotatedClusters)) +
+  geom_point(aes(x, y , fill = group), shape = 21, size = 3) + 
+  scale_fill_manual(values = metadata(sce.spermatocytes)$color_vector) + ylim(c(-0.033,0.033)) +
+  theme(legend.position = "none", panel.background = element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), axis.title.y = element_blank(), 
+        axis.title.x = element_blank(), axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank(), axis.line.y = element_blank(),
+        axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+# Visualize number of genes expressed
+number.genes <- apply(logcounts(sce.spermatocytes), 2, function(n){length(which(n>0))})
 
 p.number.genes <- ggplot(
   data.frame(x = PT,
              y = number.genes,
-             group = colData(sce.spermatids)$AnnotatedClusters)) + 
+             group = colData(sce.spermatocytes)$AnnotatedClusters)) + 
   geom_point(aes(x, y , fill = group), shape = 21, size = 3) +
-  scale_x_reverse() + 
   geom_smooth(aes(x = x, y = y), colour = "black") + ylab("# genes expressed") +
-  scale_fill_manual(values = metadata(sce.spermatids)$color_vector) + 
+  scale_fill_manual(values = metadata(sce.spermatocytes)$color_vector) + 
   theme(legend.position = "none", panel.background = element_blank(), 
         panel.grid.major = element_line(colour="grey",size = rel(0.5)), 
         panel.grid.minor = element_blank(), axis.title.y = element_text(size = 15), 
         axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/NoGenes.pdf", 
-       p.number.genes, width = 12, height = 4)
+# Plot marker genes
+genes <- c("Hormad1", "Sycp3", "Pou5f2", "Tcte2")
+all.max <- max(logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID[match(genes, rowData(sce.spermatocytes)$Symbol)],])
+
+# Hormad1
+Hormad1.p <- ggplot(data.frame(x = PT,
+                  y = y,
+                  gene = logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID[match(genes[1],
+                                           rowData(sce.spermatocytes)$Symbol)],])) +
+  geom_point(aes(x, y , fill = gene), shape = 21, size = 3) + 
+  scale_fill_viridis(name = NULL) + ylim(c(-0.033,0.033)) + 
+  ylab(genes[1]) +
+  theme(panel.background = element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), axis.text.y = element_blank(), 
+        axis.title.x = element_blank(), axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank(), axis.line.y = element_blank(),
+        axis.title.y = element_text(size = 15, face = "bold"), axis.ticks.y = element_blank(),
+        axis.line.x = element_blank())
+
+# Sycp3
+Sycp3.p <- ggplot(data.frame(x = PT,
+                  y = y,
+                  gene = logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID[match(genes[2],
+                                           rowData(sce.spermatocytes)$Symbol)],])) +
+  geom_point(aes(x, y , fill = gene), shape = 21, size = 3) + 
+  scale_fill_viridis(name = NULL) + ylim(c(-0.033,0.033)) + 
+  ylab(genes[2]) +
+  theme(panel.background = element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), axis.text.y = element_blank(), 
+        axis.title.x = element_blank(), axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank(), axis.line.y = element_blank(),
+        axis.title.y = element_text(size = 15, face = "bold"), axis.ticks.y = element_blank(),
+        axis.line.x = element_blank())
+
+# Pou5f2
+Pou5f2.p <- ggplot(data.frame(x = PT,
+                  y = y,
+                  gene = logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID[match(genes[3],
+                                           rowData(sce.spermatocytes)$Symbol)],])) +
+  geom_point(aes(x, y , fill = gene), shape = 21, size = 3) + 
+  scale_fill_viridis(name = NULL) + ylim(c(-0.033,0.033)) + 
+  ylab(genes[3]) +
+  theme(panel.background = element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), axis.text.y = element_blank(), 
+        axis.title.x = element_blank(), axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank(), axis.line.y = element_blank(),
+        axis.title.y = element_text(size = 15, face = "bold"), axis.ticks.y = element_blank(),
+        axis.line.x = element_blank())
+
+# Tcte2
+Tcte2.p <- ggplot(data.frame(x = PT,
+                  y = y,
+                  gene = logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID[match(genes[4],
+                                           rowData(sce.spermatocytes)$Symbol)],])) +
+  geom_point(aes(x, y , fill = gene), shape = 21, size = 3) + 
+  scale_fill_viridis(name = NULL) + ylim(c(-0.033,0.033)) + 
+  ylab(genes[4]) +
+  theme(panel.background = element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), axis.text.y = element_blank(), 
+        axis.title.x = element_blank(), axis.text.x = element_blank(), 
+        axis.ticks.x = element_blank(), axis.line.y = element_blank(),
+        axis.title.y = element_text(size = 15, face = "bold"), axis.ticks.y = element_blank(),
+        axis.line.x = element_blank())
+
+spermatocytes.p <- plot_grid(p.number.genes, Hormad1.p, Sycp3.p, Pou5f2.p, Tcte2.p, ncol = 1, nrow = 5)
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3.pdf", 
+       spermatocytes.p, width = 6, height = 8)
 ```
 
-# Correlate genes to number of genes expressed
+# Correlation analysis to number of genes expressed
 
 ```{r}
-cur_mat <- rbind(logcounts(sce.spermatids), number.genes)
-cur_mat <- cur_mat[Matrix::rowMeans(cur_mat) > 0.1,]
+# Remove lowly expressed genes
+sce.spermatocytes <- sce.spermatocytes[Matrix::rowMeans(logcounts(sce.spermatocytes)) > 0.1,]
 
-null.dist <- correlateNull(ncells = ncol(sce.spermatids), iters = 100000)
-cors <- correlatePairs(cur_mat, null.dist=null.dist, 
-                       pairings = list(c("number.genes"), rownames(cur_mat)))
-cors$genename <- rowData(sce.spermatids)$Symbol[match(cors$gene2, rowData(sce.spermatids)$ID)]
+cur_mat <- rbind(logcounts(sce.spermatocytes), number.genes)
 
-# Visualize results
-# Calculate the Z score
-z.score <- t(apply(as.matrix(cur_mat)[rownames(cur_mat) != "number.genes",],
-                   1, function(n){(n-mean(n))/sd(n)}))
-cors <- cors[match(rownames(z.score), cors$gene2),]
+null.dist <- correlateNull(ncells = ncol(sce.spermatocytes), iters = 100000)
+cors <- correlatePairs(cur_mat, null.dist=null.dist, pairings = list(c("number.genes"), rownames(cur_mat)))
+cors$genename <- rowData(sce.spermatocytes)$Symbol[match(cors$gene2, rowData(sce.spermatocytes)$ID)]
 
-# Generate meta profiles 
-splits <- 10
-ran <- rev(seq(min(cors$rho) - 0.001, max(cors$rho) + 0.001, length.out = splits))
-mat <- matrix(data = NA, nrow = splits - 1, ncol = ncol(z.score))
 
-for(i in 1:(splits - 1)){
-  mat[i,] <- colMeans(z.score[cors$rho <= ran[i] & cors$rho > ran[i + 1],])
-}
+# Perform DE analysis between spermatocytes and spermatids
+sce.for.testing <- sce[match(rowData(sce.spermatocytes)$ID, 
+                             rowData(sce)$ID),
+                       !(colData(sce)$AnnotatedClusters %in% 
+                            c("Endothelial_cells", "Outliers",
+                              "Leydig", "Sertoli", paste("NA", 1:5, sep = "")))]
+sce.for.testing <- normalize(sce.for.testing)
+DE <- findMarkers(sce.for.testing, 
+    clusters = ifelse(colData(sce.for.testing)$AnnotatedClusters %in% 
+                            levels(colData(sce)$AnnotatedClusters)[2:9], "Spermatocytes", "Spermatids"))
 
-colnames(mat) <- paste(colData(sce.spermatids)$Barcode,
-                       colData(sce.spermatids)$Library)
+cors$FDR.DE <- DE$Spermatocytes$FDR[match(cors$gene2, 
+                                          rownames(DE$Spermatocytes))]
+cors$logFC.Spermatids <- DE$Spermatocytes$logFC.Spermatids[match(cors$gene2, 
+                                          rownames(DE$Spermatocytes))]
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_TranscriptionalShotdown.pdf", onefile = FALSE)
-pheatmap(mat[,order(PT, decreasing = TRUE)], breaks = seq(-2, 2, length.out = 100),
-         cluster_rows = FALSE, cluster_cols = FALSE, 
-         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
-         annotation_col = data.frame(row.names = colnames(mat)[order(PT, decreasing = TRUE)],
-                  cell_type = colData(sce.spermatids)$AnnotatedClusters[order(PT, decreasing = TRUE)]),
-         annotation_colors = list(cell_type = metadata(sce.spermatids)$color_vector), show_colnames = FALSE)
+write.xlsx(cors, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/CorrelationNumberGenesExpressed_Spermatoytes.xlsx")
+
+# Split gene list into correlated and not correlated with number of genes expressed
+# Focus on the genes that are spermatocytes specific
+pos.cor <- cors[cors$FDR < 0.1 & cors$rho > 0.3 & cors$logFC.Spermatids > 1,]
+neg.cor <- cors[cors$FDR < 0.1 & cors$rho < -0.3 &cors$logFC.Spermatids > 1,]
+
+# Visualize top 20 genes in heatmap
+for.heatmap <- logcounts(sce.spermatocytes)[pos.cor$gene2[1:20],order(prank[,"rank"])]
+colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_PosCorrelationHeatmap.pdf", onefile = FALSE)
+pheatmap(for.heatmap, show_colnames = FALSE,
+         cluster_rows = FALSE, cluster_cols = FALSE, color = viridis(100), 
+         labels_row = pos.cor$genename[1:20], 
+         annotation_col = data.frame(row.names = colnames(for.heatmap),
+                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])]),
+         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector),
+         annotation_row = data.frame(row.names = rownames(for.heatmap),
+                                     Rho = pos.cor$rho[1:20]))
 dev.off()
 
-groups <- vector(length = nrow(z.score))
-
-for(i in 1:(splits - 1)){
-  groups[cors$rho <= ran[i] & cors$rho > ran[i + 1]] <- paste("Group", i)
-}
-
-cors$group <- groups
-cors <- cors[order(cors$rho, decreasing = FALSE),]
-write.xlsx(cors, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/CorrrelationNoGenes.xlsx")
+for.heatmap <- logcounts(sce.spermatocytes)[neg.cor$gene2[1:20],order(prank[,"rank"])]
+colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_NegCorrelationHeatmap.pdf", onefile = FALSE)
+pheatmap(for.heatmap, show_colnames = FALSE,
+         cluster_rows = FALSE, cluster_cols = FALSE, color = viridis(100), 
+         labels_row = neg.cor$genename[1:20], 
+         annotation_col = data.frame(row.names = colnames(for.heatmap),
+                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])]),
+         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector),
+         annotation_row = data.frame(row.names = rownames(for.heatmap),
+                                     Rho = neg.cor$rho[1:20]))
+dev.off()
 
 ```
 
-# Visualize infertility genes
+# Visualize up-or downregaulated genes in GO categories
 
-```{r}
-# Read in the data from IMPC
-infertility <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/male_infertility.xlsx")
+```{r GO-visualization}
+# meiotic DNA double-strand break formation
+cur_GOs <- c("GO:0042138", "GO:0007130", "GO:0045132",
+             "GO:0000712", "GO:0007140")
+
+library(biomaRt)
+ensembl = useMart("ensembl",dataset="mmusculus_gene_ensembl") 
+gene.data <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name', 'go_id'),
+                   filters = 'go', values = cur_GOs, mart = ensembl)
+gene.data <- gene.data[gene.data$go_id %in% cur_GOs,]
+go.annot <- gene.data$go_id
+go.annot[go.annot == "GO:0042138"] <- "Meiotic DNA double-strand break formation"
+go.annot[go.annot == "GO:0007130"] <- "Synaptonemal complex assembly"
+go.annot[go.annot == "GO:0045132"] <- "Meiotic chromosome segregation"
+go.annot[go.annot == "GO:0000712"] <- "Resolution of meiotic recombination intermediates"
+go.annot[go.annot == "GO:0007140"] <- "Male meiotic nuclear division"
+gene.data$go.annot <- go.annot
+
+# Mark genes as expressed
+gene.data$expr <- ifelse(gene.data$ensembl_gene_id %in% rowData(sce.spermatocytes)$ID, "Expr",
+                         "Not-Expr")
+
+# Correlation value 
+gene.data$cor <- cors$rho[match(gene.data$ensembl_gene_id, cors$gene2)]
+
+# DE
+gene.data$DE <- cors$logFC.Spermatids[match(gene.data$ensembl_gene_id, cors$gene2)]
+
+# Select genes for visualization
+df.pos <- gene.data[gene.data$cor > 0.3,]
+df.pos <- df.pos[!is.na(df.pos$ensembl_gene_id),]
+
+df.neg <- gene.data[gene.data$cor < -0.3,]
+df.neg <- df.neg[!is.na(df.neg$ensembl_gene_id),]
+df.neg <- df.neg[order(df.neg$go.annot, decreasing = TRUE),]
+df.neg <- df.neg[match(unique(df.neg$ensembl_gene_id), df.neg$ensembl_gene_id),]
+
+GO_colour = c("Meiotic DNA double-strand break formation" = brewer.pal(n = 12, name = "Set3")[1],
+              "Synaptonemal complex assembly"= brewer.pal(n = 12, name = "Set3")[2],
+              "Meiotic chromosome segregation"= brewer.pal(n = 12, name = "Set3")[3],
+              "Resolution of meiotic recombination intermediates"= brewer.pal(n = 12, name = "Set3")[4],
+              "Male meiotic nuclear division"= brewer.pal(n = 12, name = "Set3")[5])
+
+# Visualize in form of heatmaps
+for.heatmap <- logcounts(sce.spermatocytes)[df.pos$ensembl_gene_id,order(prank[,"rank"])]
+colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
+
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_PosCorrelationHeatmap.pdf", onefile = FALSE)
+pheatmap(for.heatmap, show_colnames = FALSE,
+         cluster_rows = FALSE, cluster_cols = FALSE,
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100), 
+         labels_row = df.pos$external_gene_name, 
+         annotation_col = data.frame(row.names = colnames(for.heatmap),
+                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])]),
+         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector,
+                                  GO = GO_colour),
+         annotation_row = data.frame(row.names = rownames(for.heatmap),
+                                     GO = df.pos$go.annot), scale = "row",
+         gaps_row = 3)
+dev.off()
+
+for.heatmap <- logcounts(sce.spermatocytes)[df.neg$ensembl_gene_id,order(prank[,"rank"])]
+colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
+
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_NegCorrelationHeatmap.pdf", onefile = FALSE)
+pheatmap(for.heatmap, show_colnames = FALSE,
+         cluster_rows = FALSE, cluster_cols = FALSE,
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100), 
+         labels_row = df.neg$external_gene_name, 
+         annotation_col = data.frame(row.names = colnames(for.heatmap),
+                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])]),
+         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector,
+                                  GO = GO_colour),
+         annotation_row = data.frame(row.names = rownames(for.heatmap),
+                                     GO = df.neg$go.annot), scale = "row",
+         gaps_row = c(6, 8))
+dev.off()
+```
+
+# Tc1 and Tc0 analysis
+
+## Read in data
+
+```{r Tc1}
+# Read in Tc1 data
+# Single cell data
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+
+# Select spermatogonia and spermatocytes
+sce <- sce[,grepl("Tc1|Tc0", colData(sce)$Sample)]
+sce <- normalize(sce)
+```
+
+## Calculate proportions
+
+```{r proportions}
+df <- data.frame(sample = paste(colData(sce)$Sample, colData(sce)$Library, sep = "_"),
+                 group = colData(sce)$AnnotatedClusters,
+                 value = rep(1, ncol(sce)))
+
+proportions <- with(df, table(sample, group))/plyr::count(df = df, vars = "sample")$freq
+
+cur_df <- proportions[,1:23]
+cur_df.melt <- melt(cur_df)
+cur_df.melt$Genotype <- sapply(as.character(cur_df.melt$sample), function(n){
+  unlist(strsplit(n, "_"))[1]
+})
+levels(cur_df.melt$Genotype) <- c("Tc0", "Tc1")
+levels(cur_df.melt$sample) <- rev(rownames(cur_df))
+levels(cur_df.melt$group) <- levels(colData(sce)$AnnotatedClusters)
+
+proportions.p <- ggplot(cur_df.melt) + geom_point(aes(group, rev(sample), size = value, fill = group), shape = 22) +
+  scale_fill_manual(values = metadata(sce)$color_vector) + 
+  theme(panel.background = element_blank(), axis.title = element_blank(),
+        axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12))
+
+# Save plot
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/CellTypeProportion_Tc1.pdf",
+       proportions.p, width = 10, height = 5)
+
+# Sattistical testing between conditions
+sample.counts <- with(df, table(sample, group))
+sample.counts <- sample.counts[,1:23]
+overall.counts <- plyr::count(df = df, vars = "sample")$freq
+
+y <- DGEList(counts = t(sample.counts), lib.size = overall.counts, 
+               group = c(rep("Tc0", 3), rep("Tc1", 4)))
+design <- model.matrix(~0+y$samples$group)
+colnames(design) <- c("Tc0", "Tc1")
+y <- estimateDisp(y,design)
+fit <- glmQLFit(y,design, robust = TRUE)
+qlf <- glmQLFTest(fit,coef=2, 
+                  contrast = makeContrasts(Tc1 - Tc0, levels = design))
+res <- topTags(qlf, n = nrow(qlf$table))$table
+
+# Tc1 
+res[res$logFC > 0 & res$FDR < 0.1,]
+res[res$logFC < 0 & res$FDR < 0.1,]
 ```
