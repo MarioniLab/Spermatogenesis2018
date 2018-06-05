@@ -144,7 +144,68 @@ ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Ana
        K9.signal, width = 7, height = 4)
 ```
 
+# Analyse heterogeneity of K9 on X chromosome
 
+```{r}
+# Bin the genome in 1000Kb windows
+bins.K9 <- windowCounts(bam.files.K9, bin = TRUE, width = 1000, param=param)
+
+# Filter X chromosome bins
+bins.K9.X <- bins.K9[as.vector(seqnames(rowRanges(bins.K9)) == "X")]
+
+# Plot cumulative frequency
+df.K9.X <- data.frame(spermatocytes_1 =
+                      cumsum(assays(bins.K9.X)$counts[
+                        order(assays(bins.K9.X)$counts[,1], 
+                              decreasing = TRUE),1]),
+                      spermatocytes_2 =
+                      cumsum(assays(bins.K9.X)$counts[
+                        order(assays(bins.K9.X)$counts[,3], 
+                              decreasing = TRUE),3]),
+                      spermatids_1 =
+                      cumsum(assays(bins.K9.X)$counts[
+                        order(assays(bins.K9.X)$counts[,2], 
+                              decreasing = TRUE),2]),
+                      spermatids_2 =
+                      cumsum(assays(bins.K9.X)$counts[
+                        order(assays(bins.K9.X)$counts[,4], 
+                              decreasing = TRUE),4]))
+df.K9.X <- t(t(df.K9.X)/as.numeric(tail(df.K9.X, 1)))
+df.K9.X.melt <- melt(df.K9.X)
+
+cumsum.K9.X <- ggplot(df.K9.X.melt) + geom_line(aes(Var1, value, colour = Var2))
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Cumsum_K9_X.pdf", 
+       cumsum.K9.X, width = 7, height = 4)
+  
+# Compare to Chr9
+bins.K9.9 <- bins.K9[as.vector(seqnames(rowRanges(bins.K9)) == "9")]
+
+# Plot cumulative frequency
+df.K9.9 <- data.frame(spermatocytes_1 =
+                      cumsum(assays(bins.K9.9)$counts[
+                        order(assays(bins.K9.9)$counts[,1], 
+                              decreasing = TRUE),1]),
+                      spermatocytes_2 =
+                      cumsum(assays(bins.K9.9)$counts[
+                        order(assays(bins.K9.9)$counts[,3], 
+                              decreasing = TRUE),3]),
+                      spermatids_1 =
+                      cumsum(assays(bins.K9.9)$counts[
+                        order(assays(bins.K9.9)$counts[,2], 
+                              decreasing = TRUE),2]),
+                      spermatids_2 =
+                      cumsum(assays(bins.K9.9)$counts[
+                        order(assays(bins.K9.9)$counts[,4], 
+                              decreasing = TRUE),4]))
+df.K9.9 <- t(t(df.K9.9)/as.numeric(tail(df.K9.9, 1)))
+df.K9.9.melt <- melt(df.K9.9)
+
+cumsum.K9.9 <- ggplot(df.K9.9.melt) + geom_line(aes(Var1, value, colour = Var2))
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Cumsum_K9_9.pdf", 
+       cumsum.K9.9, width = 7, height = 4)
+ 
+
+```
 
 # X chromosome
 
