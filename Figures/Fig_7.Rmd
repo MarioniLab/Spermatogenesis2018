@@ -1,5 +1,5 @@
 ---
-title: "Figure 6"
+title: "Figure 7"
 author: "Nils Eling"
 date: "`r Sys.Date()`"
 output: 
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -25,7 +25,6 @@ library(EnrichedHeatmap)
 library(GenomicFeatures)
 library(EnsDb.Mmusculus.v79)
 library(TxDb.Mmusculus.UCSC.mm10.ensGene)
-library(scater)
 library(plyr)
 library(reshape2)
 library(pheatmap)
@@ -35,6 +34,8 @@ library(ggsci)
 library(cowplot)
 library(openxlsx)
 library(csaw)
+library(edgeR)
+library(Rsamtools)
 source("../Functions/auxiliary.R")
 
 # Generate feature annotation
@@ -45,138 +46,105 @@ prom.X <- prom[seqnames(prom) == "X"]
 prom.Y <- prom[seqnames(prom) == "Y"]
 prom.9 <- prom[seqnames(prom) == "9"]
 
-# Make TXDB for mus musculus
+# K9 files
+bam.files.K9 <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K9me3/", full.names = TRUE,
+                        pattern = paste(".+JP26.+bam$", sep = ""))
+
+# K4 files
+bam.files.K4 <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K4me3/", full.names = TRUE,
+                        pattern = paste(".+JP26.+bam$", sep = ""))
+
+# Define conditions
+batch <- gl(2, 2)
+treatment <- rep(c("spermatocytes", "spermatids"), 2)
+
+# Blacklisted regions
 black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
+seqlevels(black) <- sub("chr", "", seqlevels(black))
+seqnames(black) <- sub("chr", "", seqnames(black))
 
-# Read in sce data
-sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-sce <- sce[,grepl("B6", colData(sce)$Sample) & 
-             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
-sce <- normalize(sce)
-
-# Select XChr genes
-genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
-sce.XChr <- sce[rowData(sce)$ID %in% 
-                  prom.X$gene_id,]
-sce.XChr <- normalize(sce.XChr)
-
-# Bulk data
-bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
-
-# Meta info
-meta <- as.data.frame(read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/Bulk/sdrf.xlsx"))
+# Parameters for reading bam files
+param <- readParam(dedup=TRUE, minq=10, discard=black, pe="both", max.frag=1000)
 
 # Read in genelists
-retro <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/X_retrogenes.xlsx")
+retro <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/X_retrogenes.xlsx")
 retro <- retro[grepl("ENS", retro$Parental.Gene),]
 
-K27writers.Rnf8 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 1)
-K27writers.Scml2 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 2)
-```
+K27writers.Rnf8 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 1)
+K27writers.Scml2 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 2)
 
-# Visualize the inactivation and reactivation of X and Y
-
-```{r in-reactivation}
-# Remove lowly expressed genes
-genes <- rowData(sce)$ID[
-  apply(logcounts(sce)[,colData(sce)$AnnotatedClusters %in% 
-          c("Spermatogonia", paste("S", 1:14, sep = ""))], 1,
-              function(n){length(which(n > 0))}) >
-    0.3*sum(colData(sce)$AnnotatedClusters %in% 
-              c("Spermatogonia", paste("S", 1:14, sep = "")))]
-
-# Collect genes for some chromosomes
-genes.X <- genes[genes %in% genenames[genenames[,3] == "X",1]]
-genes.Y <- genes[genes %in% genenames[genenames[,3] == "Y",1]]
-genes.9 <- genes[genes %in% genenames[genenames[,3] == "9",1]]
-genes.A <- genes[genes %in% genenames[genenames[,3] != "X" & 
-                                        genenames[,3] != "Y" &
-                                        genenames[,3] != "MT",1]]
-
-# Calculate X:A ratio and 16:X ratio
-ratio.X.A <- colMeans(as.matrix(logcounts(sce)[genes.X,]))/
-  colMeans(as.matrix(logcounts(sce)[genes.A,]))
-ratio.X.A[is.nan(ratio.X.A)] <- 0
-
-ratio.Y.A <- colMeans(as.matrix(logcounts(sce)[genes.Y,]))/
-  colMeans(as.matrix(logcounts(sce)[genes.A,]))
-ratio.Y.A[is.nan(ratio.Y.A)] <- 0
-
-ratio.9.A <- colMeans(as.matrix(logcounts(sce)[genes.9,]))/
-  colMeans(as.matrix(logcounts(sce)[genes.A,]))
-ratio.9.A[is.nan(ratio.9.A)] <- 0
-
-# Build mean ratio matrix
-df <- data.frame(ratios = c(ratio.X.A, ratio.Y.A, ratio.9.A),
-                 groups = factor(c(as.character(colData(sce)$AnnotatedClusters), 
-                            as.character(colData(sce)$AnnotatedClusters),
-                            as.character(colData(sce)$AnnotatedClusters)), 
-                            levels = levels(colData(sce)$AnnotatedClusters)),
-                 chr = c(rep("X", length(ratio.X.A)), rep("Y", length(ratio.Y.A)),
-                         rep("9", length(ratio.9.A))))
-
-# visualize in form of boxplots
-x.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) + 
-  scale_fill_jama() + ylab("Chr:Autosome ratio") + 
-    theme(panel.background = element_blank(), axis.title.x = element_blank(),
-        axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
-        axis.text.y = element_text(size = 12))
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Xdynamics.pdf", 
-       x.inactivation, width = 12, height = 7)
+spermatid.specific <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/SpermatidSpecificGenes.xlsx")
 ```
 
 # Visualize the K9 and K4 signal coming from the different chromosomes
 
 ```{r}
-H3K4me3.normReads <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K4me3/H3K4me326_1000kb_bins_normReads.rds")
-H3K9me3.normReads <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/DB/H3K9me3/H3K9me326_1000kb_bins_normReads.rds")
+# Count reads per chromosome
+header <- scanBamHeader(bam.files.K9[1])
+sizes <- header$`../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K9me3//do18097_H3K9me3_spermatocytes_ab8898_mm10C57BL6_JP26_18_5374_CRI0sorted.bam`$targets
+sizes <- sizes[!grepl("JH|GL|MT", names(sizes))]
 
-# For K9 signal
-mat.K9 <- matrix(data = NA, ncol = length(seqlevels(H3K9me3.normReads$windows)), nrow = 2)
-rownames(mat.K9) <- c("Spermatocytes", "Spermatids")
-colnames(mat.K9) <- seqlevels(H3K9me3.normReads$windows)
-mat.K9 <- mat.K9[,!grepl("GL|JH", colnames(mat.K9))]
-mat.K9 <- mat.K9[,!(colnames(mat.K9) == "MT")]
+# Generate Chr ranges
+chr.ranges <- GRanges(seqnames = names(sizes), 
+                      ranges = IRanges(start = rep(1, length(sizes)),
+                                       end = sizes))
 
-# Loop trough the different chromosomes and find K4 enrichemnt for the whole chromosome
-for(i in colnames(mat.K9)){
-  cur_windows <- seqnames(H3K9me3.normReads$windows) == i
-  mat.K9[1,i] <- mean(rowMeans(H3K9me3.normReads$normReads[as.vector(cur_windows),c(1,3)]))
-  mat.K9[2,i] <- mean(rowMeans(H3K9me3.normReads$normReads[as.vector(cur_windows),c(2,3)]))
-}
+# Count reads per chromosome
+out.K9 <- regionCounts(bam.files.K9, regions = chr.ranges, param=param)
 
-cur_df <- melt(mat.K9)
-levels(cur_df$Var2) <- c(as.character(1:19), "X", "Y")
+# Calculate RPKM
+cur_data <- assays(out.K9)$counts
+rownames(cur_data) <- names(sizes)
+rpm <- t(t(cur_data)/(colSums(cur_data)/1000000))
+rpkm <- rpm/(sizes/1000)
+colnames(rpkm) <- paste(treatment, batch, sep = "_")
 
-K9.signal <- ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1), size = 2) + 
+cur_data.melt <- melt(rpkm)
+cur_data.melt$cell_type <- sapply(as.character(cur_data.melt$Var2), 
+                                  function(n){unlist(strsplit(n, "_"))[1]})
+cur_data.melt$replicate <- sapply(as.character(cur_data.melt$Var2), 
+                                  function(n){unlist(strsplit(n, "_"))[2]})
+levels(cur_data.melt$Var1) <- c(as.character(1:19), "X", "Y")
+
+K9.signal <- ggplot(cur_data.melt) + geom_point(aes(Var1, value, 
+                                                    colour = cell_type,
+                                                    shape = replicate), size = 2) + 
   ggtitle("H3K9me3") + scale_color_aaas(name = "Cell type") + 
-  ylab("Average log(CPM)") + xlab("")
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/K9signal.pdf", 
+  ylab("RPKM") + xlab("")
+
+
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/K9signal.pdf", 
        K9.signal, width = 7, height = 4)
 
 # For K4 signal
-mat.K4 <- matrix(data = NA, ncol = length(seqlevels(H3K4me3.normReads$windows)), nrow = 2)
-rownames(mat.K4) <- c("Spermatocytes", "Spermatids")
-colnames(mat.K4) <- seqlevels(H3K4me3.normReads$windows)
-mat.K4 <- mat.K4[,!grepl("GL|JH", colnames(mat.K4))]
-mat.K4 <- mat.K4[,!(colnames(mat.K4) == "MT")]
+# Count reads per chromosome
+out.K4 <- regionCounts(bam.files.K4, regions = chr.ranges, param=param)
 
-# Loop trough the different chromosomes and find K4 enrichemnt for the whole chromosome
-for(i in colnames(mat.K4)){
-  cur_windows <- seqnames(H3K4me3.normReads$windows) == i
-  mat.K4[1,i] <- mean(rowMeans(H3K4me3.normReads$normReads[as.vector(cur_windows),c(1,3)]))
-  mat.K4[2,i] <- mean(rowMeans(H3K4me3.normReads$normReads[as.vector(cur_windows),c(2,3)]))
-}
+# Calculate RPKM
+cur_data <- assays(out.K4)$counts
+rownames(cur_data) <- names(sizes)
+rpm <- t(t(cur_data)/(colSums(cur_data)/1000000))
+rpkm <- rpm/(sizes/1000)
+colnames(rpkm) <- paste(treatment, batch, sep = "_")
 
-cur_df <- melt(mat.K4)
-levels(cur_df$Var2) <- c(as.character(1:19), "X", "Y")
+cur_data.melt <- melt(rpkm)
+cur_data.melt$cell_type <- sapply(as.character(cur_data.melt$Var2), 
+                                  function(n){unlist(strsplit(n, "_"))[1]})
+cur_data.melt$replicate <- sapply(as.character(cur_data.melt$Var2), 
+                                  function(n){unlist(strsplit(n, "_"))[2]})
+levels(cur_data.melt$Var1) <- c(as.character(1:19), "X", "Y")
 
-K4.signal <- ggplot(cur_df) + geom_point(aes(Var2, value, colour = Var1), size = 2) + 
-  ggtitle("H3K4me3") + scale_color_aaas(name = "Cell type") + 
-  ylab("Average log(CPM)") + xlab("")
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/K4signal.pdf", 
+K4.signal <- ggplot(cur_data.melt) + geom_point(aes(Var1, value, 
+                                                    colour = cell_type,
+                                                    shape = replicate), size = 2) + 
+  ggtitle("H3K9me3") + scale_color_aaas(name = "Cell type") + 
+  ylab("RPKM") + xlab("")
+
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/K4signal.pdf", 
        K9.signal, width = 7, height = 4)
 ```
+
+
 
 # X chromosome
 
@@ -280,7 +248,7 @@ cur_df <- cur_df[order(as.numeric(cur_df$spermatid_specific), cur_df$K9.spermato
 cur_mat <- bulk.X[rownames(cur_df),]
 
 # Full heatmap
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Bulk_heatmap_X.pdf", 
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Bulk_heatmap_X.pdf", 
     width = 7, height = 12)
 pheatmap(log2(cur_mat + 1), 
          cluster_cols = FALSE, 
@@ -424,7 +392,7 @@ cur_df <- cur_df[order(as.numeric(cur_df$spermatid_specific), cur_df$K9.spermato
 cur_mat <- bulk.Y[rownames(cur_df),]
 
 # Full heatmap
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Bulk_heatmap_Y.pdf", 
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Bulk_heatmap_Y.pdf", 
     width = 7, height = 6)
 pheatmap(log2(cur_mat + 1), 
          cluster_cols = FALSE, 
@@ -592,7 +560,7 @@ mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = su
 rownames(mat.for.heatmap) <- mat.for.heatmap$variable
 mat.for.heatmap <- mat.for.heatmap[,-1]
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/SC_heatmap_spermatid_specific.pdf",   width = 7, height = 12)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/SC_heatmap_spermatid_specific.pdf",   width = 7, height = 12)
 pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE, 
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
          annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
