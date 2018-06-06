@@ -41,11 +41,15 @@ source("../Functions/auxiliary.R")
 
 # Generate feature annotation
 prom <- promoters(genes(EnsDb.Mmusculus.v79))
+gene.body <- genes(EnsDb.Mmusculus.v79)
 prom <- prom[seqnames(prom) %in% c(as.character(1:19), "X", "Y", "MT"),]
 seqlevels(prom) <- c(as.character(1:19), "X", "Y", "MT")
+gene.body <- gene.body[seqnames(gene.body) %in% c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(gene.body) <- c(as.character(1:19), "X", "Y", "MT")
 prom.X <- prom[seqnames(prom) == "X"]
 prom.Y <- prom[seqnames(prom) == "Y"]
 prom.9 <- prom[seqnames(prom) == "9"]
+gene.body.X <- gene.body[seqnames(gene.body) == "X"]
 
 # K9 files
 bam.files.K9 <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K9me3/", full.names = TRUE,
@@ -221,8 +225,10 @@ ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Ana
 ```{r}
 # Spermatocytes
 cur_high <- rowRanges(bins.K9.X)[order(assays(bins.K9.X)$counts[,1], decreasing = TRUE)]
-cur_high <- cur_high[1:1000]
-cur_high.merge <- mergeWindows(cur_high, tol = 500)
+cur_high <- cur_high[1:10000]
+cur_high.merge <- mergeWindows(cur_high, tol = 1500)
+length(cur_high.merge$region)
+sum(width(cur_high.merge$region) > 1000)
 
 # Order by size
 cur_high.merge <- cur_high.merge$region[order(cur_high.merge$region@ranges@width, 
@@ -236,8 +242,11 @@ export(cur_high.merge, "../../../Dropbox (Cambridge University)/SST_spermatocyte
 
 # Spermatids
 cur_high <- rowRanges(bins.K9.X)[order(assays(bins.K9.X)$counts[,2], decreasing = TRUE)]
-cur_high <- cur_high[1:1000]
-cur_high.merge <- mergeWindows(cur_high, tol = 500)
+cur_high <- cur_high[1:10000]
+cur_high.merge <- mergeWindows(cur_high, tol = 1500)
+nrow(cur_high.merge)
+length(cur_high.merge$region)
+sum(width(cur_high.merge$region) > 1000)
 
 # Order by size
 cur_high.merge <- cur_high.merge$region[order(cur_high.merge$region@ranges@width, 
@@ -361,4 +370,58 @@ for(i in 1:length(genes)){
 
 }
 
+```
+
+# Enrichment analysis of K9 in spermatids and spermatocytes
+
+```{r}
+# Count reads in promoters
+prom.X.K9 <- regionCounts(bam.files.K9, regions = prom.X, param=param)
+# Count reads in genebodies
+gene.X.K9 <- regionCounts(bam.files.K9, regions = gene.body.X, param=param)
+
+# Calculate the percentage of reads in gene bodies and promoters
+colSums(assays(gene.X.K9)$counts)/assays(out.K9)$counts[names(sizes) == "X",]
+colSums(assays(prom.X.K9)$counts)/assays(out.K9)$counts[names(sizes) == "X",]
+
+# Visualize the K9 signal in gene bodies
+# Generate RPM per promoter - each promoter is 2200bp wide
+cur_counts.K9 <- assays(gene.X.K9)$counts
+cur_rpm.K9 <- t(t(cur_counts.K9)/(colSums(assays(bins.K9)$counts)/1000000))
+
+# Compute average between spermatocytes and spermatids
+df <- data.frame(Spermatocytes.K9 = rowMeans(cur_rpm.K9[,c(1,3)]),
+                 Spermatids.K9 = rowMeans(cur_rpm.K9[,c(2,4)]),
+                 avg.K9 = rowMeans(cur_rpm.K9))
+df$Symbol <- genenames[rownames(df),2]
+
+# Order based on K9 signal in spermatocytes
+df <- df[order(df$Spermatids.K9, decreasing = TRUE),]
+
+# Annotate genenames
+df$spermatid_specific <- ifelse(rownames(df) %in% spermatid.specific$ID, TRUE, FALSE)
+
+# Plot results
+spermatid.spec.K9.genebody <- ggplot(df) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatids.K9 + 1),
+                            fill = spermatid_specific)) + 
+  scale_fill_jama()
+
+```
+
+# Find genes that are expressed
+
+```{r}
+# Read in sce
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- sce[,grepl("B6", colData(sce)$Sample) & 
+             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
+sce <- normalize(sce)
+
+# Save mean expression over spermatocytes and spermatids in df
+RM <- rep(NA, nrow(df))
+m <- match(rownames(df), rownames(logcounts(sce)))
+RM[!is.na(m)] <- Matrix::rowMeans(logcounts(sce)[m[!is.na(m)],colData(sce)$AnnotatedClusters %in% paste("S", 1:10, sep = "")])
+
+plot(RM, df$Spermatids.K9)
 ```
