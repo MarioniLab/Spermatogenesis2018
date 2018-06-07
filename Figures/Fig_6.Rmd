@@ -43,6 +43,10 @@ bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analy
 
 # Meta info
 meta <- as.data.frame(read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/Bulk/sdrf.xlsx"))
+
+# Read in gene annotation
+Rnf8 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 1)
+Scml2 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 2)
 ```
 
 # Visualize the inactivation and reactivation of X and Y
@@ -138,12 +142,22 @@ out.df$Genename <- genenames[rownames(out.df),2]
 out.df$Spermatid_specific <- ifelse(out.df$logFC > 5 & out.df$FDR < 0.1, TRUE, FALSE)
 out.df <- out.df[order(out.df$logFC, decreasing = TRUE),]
 
-write.xlsx(out.df, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
+#write.xlsx(out.df, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
 ```
 
 Visualize the heatmap
 
 ```{r, fig.height=30, fig.width=10}
+# Annotation for genes
+cur_df <- data.frame(row.names = rownames(bulk.X),
+                     spermatid_specific = as.factor(spermatid.spec),
+                     Rnf8_targets = ifelse(rownames(bulk.X) %in% 
+                                             rowData(sce)$ID[match(Rnf8$gene_id, rowData(sce)$Symbol)], 
+                                           "TRUE", "FALSE"),
+                     Scml2_targets = ifelse(rownames(bulk.X) %in% 
+                                              rowData(sce)$ID[match(Scml2$gene_id, rowData(sce)$Symbol)], 
+                                            "TRUE", "FALSE"))
+
 # Full heatmap
 pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Bulk_heatmap_X.pdf", 
     width = 7, height = 12)
@@ -153,13 +167,45 @@ pheatmap(log2(bulk.X + 1),
          color = viridis(100),
          border_color = NA,
          labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
-         annotation_row = data.frame(row.names = rownames(bulk.X),
-                                     spermatid_specific = 
-                                       as.factor(spermatid.spec)),       
+         annotation_row = cur_df,       
         cellheight = 0.5, cellwidth = 8, fontsize = 7,
         annotation_colors = list(spermatid_specific = c("TRUE" = "steelblue",
-                                                        "FALSE" = "coral")))
+                                                        "FALSE" = "coral"),
+                                 Rnf8_targets = c("TRUE" = "dark green",
+                                                        "FALSE" = "white"),
+                                 Scml2_targets = c("TRUE" = "dark blue",
+                                                        "FALSE" = "white")))
 dev.off()
+```
+
+# Statistical testing for enrichment 
+
+```{r}
+# Build contigency table
+# Rnf8
+cur_mat <- matrix(data = NA, 2, 2)
+rownames(cur_mat) <- c("Rnf8-targets", "Non-targets")
+colnames(cur_mat) <- c("Spermatid-spec", "Non-Spermatid-spec")
+cur_mat[1,1] <- sum(as.logical(cur_df$spermatid_specific) & as.logical(cur_df$Rnf8_targets))
+cur_mat[1,2] <- sum(!as.logical(cur_df$spermatid_specific) & as.logical(cur_df$Rnf8_targets))
+cur_mat[2,1] <- sum(as.logical(cur_df$spermatid_specific) & !as.logical(cur_df$Rnf8_targets))
+cur_mat[2,2] <- sum(!as.logical(cur_df$spermatid_specific) & !as.logical(cur_df$Rnf8_targets))
+# Odds ratio
+(cur_mat[1,1]/cur_mat[1,2])/(cur_mat[2,1]/cur_mat[2,2])
+fisher.test(cur_mat, alternative = "greater")
+
+# Scml2
+cur_mat <- matrix(data = NA, 2, 2)
+rownames(cur_mat) <- c("Scml2-targets", "Non-targets")
+colnames(cur_mat) <- c("Spermatid-spec", "Non-Spermatid-spec")
+cur_mat[1,1] <- sum(as.logical(cur_df$spermatid_specific) & as.logical(cur_df$Scml2_targets))
+cur_mat[1,2] <- sum(!as.logical(cur_df$spermatid_specific) & as.logical(cur_df$Scml2_targets))
+cur_mat[2,1] <- sum(as.logical(cur_df$spermatid_specific) & !as.logical(cur_df$Scml2_targets))
+cur_mat[2,2] <- sum(!as.logical(cur_df$spermatid_specific) & !as.logical(cur_df$Scml2_targets))
+# Odds ratio
+(cur_mat[1,1]/cur_mat[1,2])/(cur_mat[2,1]/cur_mat[2,2])
+fisher.test(cur_mat, alternative = "greater")
+
 ```
 
 # Visualize spermatid specific genes on X for single cells
