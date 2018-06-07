@@ -1,5 +1,5 @@
 ---
-title: "Figure 3"
+title: "Figure 4"
 author: "nils Eling"
 date: "`r Sys.Date()`"
 output: 
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -167,7 +167,7 @@ Tcte2.p <- ggplot(data.frame(x = PT,
         axis.line.x = element_blank())
 
 spermatocytes.p <- plot_grid(p.number.genes, Hormad1.p, Sycp3.p, Pou5f2.p, Tcte2.p, ncol = 1, nrow = 5)
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3.pdf", 
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4.pdf", 
        spermatocytes.p, width = 6, height = 8)
 ```
 
@@ -200,7 +200,10 @@ cors$FDR.DE <- DE$Spermatocytes$FDR[match(cors$gene2,
 cors$logFC.Spermatids <- DE$Spermatocytes$logFC.Spermatids[match(cors$gene2, 
                                           rownames(DE$Spermatocytes))]
 
-write.xlsx(cors, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/CorrelationNumberGenesExpressed_Spermatoytes.xlsx")
+cors.out <- cors[order(cors$rho, decreasing = TRUE),]
+cors.out <- cors.out[cors$FDR < 0.1 & (cors$rho > 0.3 | cors$rho < -0.3), ]
+
+write.xlsx(cors, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S6.xlsx")
 
 # Split gene list into correlated and not correlated with number of genes expressed
 # Focus on the genes that are spermatocytes specific
@@ -210,7 +213,7 @@ neg.cor <- cors[cors$FDR < 0.1 & cors$rho < -0.3 &cors$logFC.Spermatids > 1,]
 # Visualize top 20 genes in heatmap
 for.heatmap <- logcounts(sce.spermatocytes)[pos.cor$gene2[1:20],order(prank[,"rank"])]
 colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_PosCorrelationHeatmap.pdf", onefile = FALSE)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_PosCorrelationHeatmap.pdf", onefile = FALSE)
 pheatmap(for.heatmap, show_colnames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE, color = viridis(100), 
          labels_row = pos.cor$genename[1:20], 
@@ -223,7 +226,7 @@ dev.off()
 
 for.heatmap <- logcounts(sce.spermatocytes)[neg.cor$gene2[1:20],order(prank[,"rank"])]
 colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_NegCorrelationHeatmap.pdf", onefile = FALSE)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_NegCorrelationHeatmap.pdf", onefile = FALSE)
 pheatmap(for.heatmap, show_colnames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE, color = viridis(100), 
          labels_row = neg.cor$genename[1:20], 
@@ -285,7 +288,7 @@ GO_colour = c("Meiotic DNA double-strand break formation" = brewer.pal(n = 12, n
 for.heatmap <- logcounts(sce.spermatocytes)[df.pos$ensembl_gene_id,order(prank[,"rank"])]
 colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_PosCorrelationHeatmap.pdf", onefile = FALSE)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_PosCorrelationHeatmap.pdf", onefile = FALSE)
 pheatmap(for.heatmap, show_colnames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE,
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100), 
@@ -302,7 +305,7 @@ dev.off()
 for.heatmap <- logcounts(sce.spermatocytes)[df.neg$ensembl_gene_id,order(prank[,"rank"])]
 colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3_NegCorrelationHeatmap.pdf", onefile = FALSE)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_NegCorrelationHeatmap.pdf", onefile = FALSE)
 pheatmap(for.heatmap, show_colnames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE,
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100), 
@@ -356,7 +359,7 @@ proportions.p <- ggplot(cur_df.melt) + geom_point(aes(group, rev(sample), size =
         axis.text.y = element_text(size = 12))
 
 # Save plot
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/CellTypeProportion_Tc1.pdf",
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/CellTypeProportion_Tc1.pdf",
        proportions.p, width = 10, height = 5)
 
 # Sattistical testing between conditions
