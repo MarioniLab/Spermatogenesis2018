@@ -242,19 +242,28 @@ dev.off()
 # Visualize cluster specifc marker genes
 
 ```{r markers}
+# This list of marker genes consists of the top 15 markers per cell type
+# Based on a litereature search, they were annotated reagrding their fertility phenotype
+markers <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Spermatocytes_Top15.xlsx")
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_NegCorrelationHeatmap.pdf", onefile = FALSE)
-pheatmap(for.heatmap, show_colnames = FALSE,
+for.heatmap <- logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID[match(markers$GeneName,
+                                                                    rowData(sce.spermatocytes)$Symbol)],
+                                            order(prank[,"rank"])]
+colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
+
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_MarkerGenes.pdf", onefile = FALSE, height = 5, width = 5)
+pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE,
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100), 
-         labels_row = df.neg$external_gene_name, 
          annotation_col = data.frame(row.names = colnames(for.heatmap),
                   cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])]),
-         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector,
-                                  GO = GO_colour),
+         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector),
          annotation_row = data.frame(row.names = rownames(for.heatmap),
-                                     GO = df.neg$go.annot), scale = "row",
-         gaps_row = c(6, 8))
+                                     cell_type = markers$Cluster,
+                                     infertility = markers$Sterility_Phenotype,
+                                     label = markers$Label), 
+         scale = "row",
+         gaps_row = seq(15,120, 15), cellheight = 2)
 dev.off()
 ```
 
