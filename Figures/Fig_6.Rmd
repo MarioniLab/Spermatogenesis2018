@@ -162,50 +162,6 @@ pheatmap(log2(bulk.X + 1),
 dev.off()
 ```
 
-# Test for enrichment of spermatid specifc genes on X chromosome
-
-```{r}
-perc.mat <- matrix(data = NA, nrow = 1, ncol = 21)
-colnames(perc.mat) <- c(as.character(1:19), "X","Y")
-
-for(i in colnames(perc.mat)){
-  cur_bulk <- bulk[intersect(genenames[genenames$Chromosome.scaffold.name == i,1], 
-                             rownames(bulk)),]
-  cur_bulk <- cur_bulk[rowMeans(cur_bulk) > 10,]
-
-  # Collect day info on libraries
-  df <- data.frame(library = meta$Source.Name,
-                 day = meta$`Characteristics.[Age]`)
-  cur_bulk <- cur_bulk[,df$library]
-
-  # Order genes based on their logFC between spermatocytes (< P20)
-  # and spermatids (> P20)
-  # Perform differential expression testing
-  y <- DGEList(counts=cur_bulk,
-             group=ifelse(df$day < 20, "Spermatocytes", "Spermatids"))
-  y <- calcNormFactors(y)
-  design <- model.matrix(~0+y$samples$group)
-  colnames(design) <- c("Spermatids", "Spermatocytes")
-  y <- estimateDisp(y,design)
-  
-  fit <- glmQLFit(y,design, robust = TRUE)
-  qlf <- glmTreat(fit,coef=2, lfc = 2, 
-                contrast = makeContrasts(Spermatids - Spermatocytes, 
-                                         levels = design))
-  cur_markers <- topTags(qlf, n = nrow(qlf$table))$table
-
-  # Save info if gene is spermatid specifc or not
-  spermatid.spec <- ifelse(cur_markers$logFC > 5 & cur_markers$FDR < 0.1, TRUE, FALSE)
-  perc.mat[1,i] <- sum(spermatid.spec)/length(spermatid.spec)
-}
-
-spermatid.specific.p <- ggplot(melt(perc.mat)) + geom_point(aes(Var2, value)) + 
-  ylab("% spermatid-specific genes") + xlab("Chromosome")
-
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/SpermatidSpecificPercentage.pdf", 
-       spermatid.specific.p, width = 12, height = 7)
-```
-
 # Visualize spermatid specific genes on X for single cells
 
 ```{r}
