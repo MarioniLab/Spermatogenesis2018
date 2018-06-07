@@ -110,6 +110,36 @@ pheatmap(for.heatmap, cluster_rows = FALSE,
 dev.off()
 ```
 
+# PCA of spermatogonia with early spermatocytes
+
+```{r}
+# PCA on spermatogonia and earliest spermatocytes from P10 and P15
+sce.spg.p10.15 <- sce.P10.15[,
+          colData(sce.P10.15)$AnnotatedClusters == "Spermatogonia"]
+sce.sc1.p10.15 <- sce.P10.15[,
+          colData(sce.P10.15)$AnnotatedClusters == "Spermatocytes_1"]
+sce.spg.sc1 <- cbind(sce.spg.p10.15, sce.sc1.p10.15)
+sce.spg.sc1 <- normalize(sce.spg.sc1)
+
+HVgenes.spg.sc1 <- HVG(sce.spg.sc1)
+pca.spg.sc1 <- prcomp(t(logcounts(sce.spg.sc1)[HVgenes.spg.sc1,]))
+
+# Visalize PCA with marker genes
+
+Stra8.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
+                  PC2 = pca.spg.sc1$x[,2],
+                  Stra8 = logcounts(sce.spg.sc1)[
+                    rowData(sce.spg.sc1)$Symbol == "Stra8",])) +
+  geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
+
+H2afx.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
+                  PC2 = pca.spg.sc1$x[,2],
+                  H2afx = logcounts(sce.spg.sc1)[
+                    rowData(sce.spg.sc1)$Symbol == "H2afx",])) +
+  geom_point(aes(PC1, PC2, colour = H2afx)) + scale_colour_viridis()
+
+```
+
 # Save final figure
 
 ```{r final}
