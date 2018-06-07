@@ -239,71 +239,9 @@ dev.off()
 
 ```
 
-# Visualize up-or downregaulated genes in GO categories
+# Visualize cluster specifc marker genes
 
-```{r GO-visualization}
-# meiotic DNA double-strand break formation
-cur_GOs <- c("GO:0042138", "GO:0007130", "GO:0045132",
-             "GO:0000712", "GO:0007140")
-
-library(biomaRt)
-ensembl = useMart("ensembl",dataset="mmusculus_gene_ensembl") 
-gene.data <- getBM(attributes=c('ensembl_gene_id', 'external_gene_name', 'go_id'),
-                   filters = 'go', values = cur_GOs, mart = ensembl)
-gene.data <- gene.data[gene.data$go_id %in% cur_GOs,]
-go.annot <- gene.data$go_id
-go.annot[go.annot == "GO:0042138"] <- "Meiotic DNA double-strand break formation"
-go.annot[go.annot == "GO:0007130"] <- "Synaptonemal complex assembly"
-go.annot[go.annot == "GO:0045132"] <- "Meiotic chromosome segregation"
-go.annot[go.annot == "GO:0000712"] <- "Resolution of meiotic recombination intermediates"
-go.annot[go.annot == "GO:0007140"] <- "Male meiotic nuclear division"
-gene.data$go.annot <- go.annot
-
-# Mark genes as expressed
-gene.data$expr <- ifelse(gene.data$ensembl_gene_id %in% rowData(sce.spermatocytes)$ID, "Expr",
-                         "Not-Expr")
-
-# Correlation value 
-gene.data$cor <- cors$rho[match(gene.data$ensembl_gene_id, cors$gene2)]
-
-# DE
-gene.data$DE <- cors$logFC.Spermatids[match(gene.data$ensembl_gene_id, cors$gene2)]
-
-# Select genes for visualization
-df.pos <- gene.data[gene.data$cor > 0.3,]
-df.pos <- df.pos[!is.na(df.pos$ensembl_gene_id),]
-
-df.neg <- gene.data[gene.data$cor < -0.3,]
-df.neg <- df.neg[!is.na(df.neg$ensembl_gene_id),]
-df.neg <- df.neg[order(df.neg$go.annot, decreasing = TRUE),]
-df.neg <- df.neg[match(unique(df.neg$ensembl_gene_id), df.neg$ensembl_gene_id),]
-
-GO_colour = c("Meiotic DNA double-strand break formation" = brewer.pal(n = 12, name = "Set3")[1],
-              "Synaptonemal complex assembly"= brewer.pal(n = 12, name = "Set3")[2],
-              "Meiotic chromosome segregation"= brewer.pal(n = 12, name = "Set3")[3],
-              "Resolution of meiotic recombination intermediates"= brewer.pal(n = 12, name = "Set3")[4],
-              "Male meiotic nuclear division"= brewer.pal(n = 12, name = "Set3")[5])
-
-# Visualize in form of heatmaps
-for.heatmap <- logcounts(sce.spermatocytes)[df.pos$ensembl_gene_id,order(prank[,"rank"])]
-colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
-
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_PosCorrelationHeatmap.pdf", onefile = FALSE)
-pheatmap(for.heatmap, show_colnames = FALSE,
-         cluster_rows = FALSE, cluster_cols = FALSE,
-         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100), 
-         labels_row = df.pos$external_gene_name, 
-         annotation_col = data.frame(row.names = colnames(for.heatmap),
-                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])]),
-         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector,
-                                  GO = GO_colour),
-         annotation_row = data.frame(row.names = rownames(for.heatmap),
-                                     GO = df.pos$go.annot), scale = "row",
-         gaps_row = 3)
-dev.off()
-
-for.heatmap <- logcounts(sce.spermatocytes)[df.neg$ensembl_gene_id,order(prank[,"rank"])]
-colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
+```{r markers}
 
 pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_NegCorrelationHeatmap.pdf", onefile = FALSE)
 pheatmap(for.heatmap, show_colnames = FALSE,
