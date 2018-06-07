@@ -1,5 +1,5 @@
 ---
-title: "Figure 4"
+title: "Figure 5"
 author: "nils Eling"
 date: "`r Sys.Date()`"
 output: 
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Fig_5.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -69,7 +69,7 @@ Here, we visualize the histone variants taken from Kennani et al. Epigenetics & 
 
 ```{r hist-var}
 # Read in histone variants
-Hist.all <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Mouse_histones.xlsx")
+Hist.all <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Mouse_histones.xlsx")
 Hist.all <- Hist.all[match(unique(Hist.all$Ensembl.Gene.ID),
                            Hist.all$Ensembl.Gene.ID),]
 rownames(Hist.all) <- Hist.all$Ensembl.Gene.ID
@@ -96,7 +96,7 @@ cors <- correlatePairs(cur_df, null.dist=null.dist,
 cors <- cors[order(cors$rho, decreasing = TRUE),]
 
 # Plot these genes over pseudotime
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_HistoneVariants.pdf", onefile = FALSE)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Fig_5_HistoneVariants.pdf", onefile = FALSE)
 pheatmap(for.heatmap[cors$gene2,], show_colnames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE, 
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
@@ -131,7 +131,7 @@ p.number.genes <- ggplot(
         panel.grid.minor = element_blank(), axis.title.y = element_text(size = 15), 
         axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/NoGenes.pdf", 
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/NoGenes.pdf", 
        p.number.genes, width = 12, height = 4)
 ```
 
@@ -163,8 +163,9 @@ for(i in 1:(splits - 1)){
 
 colnames(mat) <- paste(colData(sce.spermatids)$Barcode,
                        colData(sce.spermatids)$Library)
+rownames(mat) <- paste("GeneSet", 1:nrow(mat))
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_TranscriptionalShotdown.pdf", onefile = FALSE)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Fig_5_TranscriptionalShotdown.pdf", onefile = FALSE)
 pheatmap(mat[,order(PT, decreasing = TRUE)], breaks = seq(-2, 2, length.out = 100),
          cluster_rows = FALSE, cluster_cols = FALSE, 
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
@@ -176,18 +177,17 @@ dev.off()
 groups <- vector(length = nrow(z.score))
 
 for(i in 1:(splits - 1)){
-  groups[cors$rho <= ran[i] & cors$rho > ran[i + 1]] <- paste("Group", i)
+  groups[cors$rho <= ran[i] & cors$rho > ran[i + 1]] <- paste("GeneSet", i)
 }
 
 cors$group <- groups
-cors <- cors[order(cors$rho, decreasing = FALSE),]
-write.xlsx(cors, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/CorrrelationNoGenes.xlsx")
-
+cors <- cors[order(cors$rho, decreasing = TRUE),]
+write.xlsx(cors, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S7.xlsx")
 ```
 
 # Visualize infertility genes
 
 ```{r}
 # Read in the data from IMPC
-infertility <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/male_infertility.xlsx")
+infertility <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/male_infertility.xlsx")
 ```
