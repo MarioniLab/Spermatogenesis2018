@@ -1,0 +1,87 @@
+---
+title: "Figure 6"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load data and libraries
+
+```{r data, message=FALSE}
+library(scater)
+library(plyr)
+library(reshape2)
+library(pheatmap)
+library(viridis)
+library(plot3D)
+library(ggsci)
+library(cowplot)
+library(openxlsx)
+library(VennDiagram)
+source("../Functions/auxiliary.R")
+
+# Read in sce data
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- sce[,grepl("B6", colData(sce)$Sample) & 
+             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
+sce <- normalize(sce)
+
+# Read in gene annotations
+genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+rownames(genenames) <- genenames$Gene.stable.ID
+
+# Read in gene annotations
+spermatid.spec <- read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
+```
+
+# Visualize spermatid specific genes on X for single cells
+
+```{r}
+# Collect expression of spermatic specific genes in heatmap
+m <- match(as.character(spermatid.spec.df$ID), rownames(logcounts(sce)))
+for.heatmap <- logcounts(sce)[as.character(spermatid.spec.df$ID)[!is.na(m)],]
+for.heatmap <- for.heatmap[Matrix::rowMeans(for.heatmap) > 0.1,]
+rownames(for.heatmap) <- rowData(sce)$Symbol[match(rownames(for.heatmap),
+                                                   rowData(sce)$ID)]
+
+# Include only annotated genes
+for.heatmap <- for.heatmap[!grepl("Rik|-ps|Gm", rownames(for.heatmap)),]
+
+# Build mean expression matrix
+df <- as.data.frame(t(as.matrix(for.heatmap)))
+df$groups <- colData(sce)$AnnotatedClusters
+df.melt <- melt(df, id.vars = "groups")
+
+# Collect mean expression for each gene in each group
+mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
+mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
+rownames(mat.for.heatmap) <- mat.for.heatmap$variable
+mat.for.heatmap <- mat.for.heatmap[,-1]
+
+# Order by peak expression
+mat.for.heatmap <- mat.for.heatmap[order(apply(mat.for.heatmap, 1, which.max),
+                                         decreasing = FALSE),]
+
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/SC_heatmap_spermatid_specific.pdf",   width = 7, height = 12)
+pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE, 
+         cluster_rows = FALSE,
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
+                  cell_type = colnames(mat.for.heatmap)),
+         annotation_colors = list(cell_type = metadata(sce)$color_vector), 
+         scale = "row", border_color = NA, cellheight = 8, fontsize = 7)
+dev.off()
+
+```
+
+
+
