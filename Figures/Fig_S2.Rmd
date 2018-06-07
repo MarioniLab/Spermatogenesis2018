@@ -1,5 +1,5 @@
 ---
-title: "Figure S2"
+title: "Figure S3"
 author: "Nils Eling"
 date: "`r Sys.Date()`"
 output: 
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -38,84 +38,30 @@ sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0")) &
                      !(colData(sce.all)$AnnotatedClusters %in% c(paste("NA", 1:5, sep = ""), "Outliers"))]
 ```
 
-# Visualize all juvenile and adult cells
+# Visualize the different juvenile samples and adult cells
 
 ```{r}
-cur_df <- data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
-                     tsne2 = reducedDims(sce.all)$TSNE[,2],
-                     samples = colData(sce.all)$Sample,
-                     clusters = colData(sce.all)$AnnotatedClusters) 
-
-juvenile.mapping <- ggplot(cur_df) +
-  geom_point(aes(tsne1, tsne2, colour = samples), size = 0.5) + scale_color_brewer(palette = "Set3") + 
-  ylab("tSNE 2") + xlab("tSNE 1")
-
-juvenile.mapping.clusters <- ggplot(cur_df) +
-  geom_point(aes(tsne1, tsne2, colour = clusters), size = 0.5) + scale_color_manual(values = metadata(sce.all)$color_vector) + 
-  ylab("tSNE 2") + xlab("tSNE 1")
-
+plot.list <- list()
+for(i in paste("P", c(10, 15, 20, 25, 30, 35), sep = "")){
+  select <- grepl(paste(i, "|B6", sep = ""), colData(sce.all)$Sample)
+  cur_df <- data.frame(tsne1 = reducedDims(sce.all)$TSNE[select,1],
+                     tsne2 = reducedDims(sce.all)$TSNE[select,2],
+                     clusters = ifelse(grepl("B6", colData(sce.all)$Sample[select]),
+                                       "B6",
+                       as.character(colData(sce.all)$AnnotatedClusters)[select])) 
+  
+  plot.list[[i]] <- ggplot(cur_df) +
+  geom_point(aes(tsne1, tsne2, colour = clusters), size = 0.5) + scale_color_manual(values = c(metadata(sce.all)$color_vector, "B6" = "light grey")) + 
+  ylab("tSNE 2") + xlab("tSNE 1") 
+}
 ```
 
-# Visualize P10 sample
-
-```{r}
-cur_df <- data.frame(tsne1 = reducedDims(sce.all)$TSNE[grepl("P10", colData(sce.all)$Sample) ,1],
-                     tsne2 = reducedDims(sce.all)$TSNE[grepl("P10", colData(sce.all)$Sample),2],
-                     cell_type = colData(sce.all)$AnnotatedClusters[grepl("P10", colData(sce.all)$Sample)]) 
-
-P10 <- ggplot(cur_df) +
-  geom_point(aes(tsne1, tsne2, colour = cell_type), size = 0.5) + 
-  ylab("tSNE 2") + xlab("tSNE 1") + scale_color_manual(values = metadata(sce.all)$color_vector)
-```
-
-# Visualize marker genes for P10
-
-```{r}
-# Calculate highly variable genes across P10
-sce.P10 <- sce.all[,grepl("P10", colData(sce.all)$Sample)]
-sce.P10 <- normalize(sce.P10)
-
-# Calculate HVG
-HVgenes <- HVG(sce.P10)
-
-# Create distance metric
-cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(sce.P10)[HVgenes,]), 
-                                  method = "spearman"))/2))
-
-# Genes to visualize
-genes <- c("Cst12", "Sycp1", "Dmrt1", "Dlk1", "Col4a3", "Tm4sf1", "Insl3", "Cd14")
-
-# Heatmap
-# Visualize in heatmap
-for.heatmap <- logcounts(sce.P10)[match(genes, rowData(sce.P10)$Symbol),]
-rownames(for.heatmap) <- genes
-colnames(for.heatmap) <- colData(sce.P10)$Barcode 
-
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S2/P10_heatmap.pdf", 
-    onefile = FALSE, width = 15, height = 5)
-pheatmap(for.heatmap, cluster_rows = FALSE,
-         clustering_distance_cols = cur_dist,
-         scale = "row", 
-         annotation_col = 
-           data.frame(row.names = colnames(for.heatmap),
-                        cell_type = colData(sce.P10)$AnnotatedClusters),
-         color = colorRampPalette(c("#053061", "#4393c3", 
-                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
-         show_colnames = FALSE, 
-         annotation_colors = list(cell_type = 
-      metadata(sce.P10)$color_vector[names(metadata(sce.P10)$color_vector) %in%
-                                       unique(colData(sce.P10)$AnnotatedClusters)]),
-      clustering_method = "ward.D2",
-      cellheight = 8, fontsize = 7)
-dev.off()
-```
 
 # Save final figure
 
 ```{r final}
-final <- plot_grid(juvenile.mapping,
-                   juvenile.mapping.clusters,
-                   P10, NULL, ncol = 2, nrow = 2)
+final <- plot_grid(plot.list[[1]], plot.list[[2]], plot.list[[3]],
+                   plot.list[[4]], plot.list[[5]], plot.list[[6]], ncol = 3, nrow = 4)
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S2/Fig_S2.pdf", 
-       final, width = 15, height = 8)
+       final, width = 15, height = 15)
 ```
