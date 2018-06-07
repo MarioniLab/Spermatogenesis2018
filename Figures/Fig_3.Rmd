@@ -161,7 +161,7 @@ colnames(for.heatmap) <- paste(colData(sce.spermatogonia.p10.15)$Library[
   order(prank[,"rank"], decreasing = TRUE)], sep = "_")
 
 # Visualize top genes in form of heatmap
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Spermatogonia_heatmap_P10_P15.pdf", onefile = FALSE, width = 10, height = 7)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Spermatogonia_heatmap_P10_P15.pdf", onefile = FALSE, width = 10, height = 15)
 pheatmap(for.heatmap, 
          cluster_rows = FALSE, cluster_cols = FALSE,
          scale = "row",
@@ -179,50 +179,13 @@ pheatmap(for.heatmap,
          annotation_colors = list(cell_type = col_vector,
                                   gene_list = col_vector))
 dev.off()
-
-
-# PCA on spermatogonia and earliest spermatocytes from P10 and P15
-sce.spg.p10.15 <- sce.P10.15[,
-          colData(sce.P10.15)$AnnotatedClusters == "Spermatogonia"]
-sce.sc1.p10.15 <- sce.P10.15[,
-          colData(sce.P10.15)$AnnotatedClusters == "Spermatocytes_1"]
-sce.spg.sc1 <- cbind(sce.spg.p10.15, sce.sc1.p10.15)
-sce.spg.sc1 <- normalize(sce.spg.sc1)
-
-HVgenes.spg.sc1 <- HVG(sce.spg.sc1)
-pca.spg.sc1 <- prcomp(t(logcounts(sce.spg.sc1)[HVgenes.spg.sc1,]))
-
-# Visalize PCA with marker genes
-
-Stra8.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
-                  PC2 = pca.spg.sc1$x[,2],
-                  Stra8 = logcounts(sce.spg.sc1)[
-                    rowData(sce.spg.sc1)$Symbol == "Stra8",])) +
-  geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
-
-H2afx.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
-                  PC2 = pca.spg.sc1$x[,2],
-                  H2afx = logcounts(sce.spg.sc1)[
-                    rowData(sce.spg.sc1)$Symbol == "H2afx",])) +
-  geom_point(aes(PC1, PC2, colour = H2afx)) + scale_colour_viridis()
-
-
 ```
 
 # Save final figure
 
 ```{r save}
-B <- plot_grid(Nanos3, Stra8, Rhox13, ncol = 3, nrow = 1, 
-               labels = c("B", NULL, NULL))
-C <- plot_grid(emptyDrops, emptyDrops.P20, NULL, ncol = 3, nrow = 1, 
-               labels = c("C", NULL, NULL))
-D <- plot_grid(emptyDrops.Sycp1, emptyDrops.H2afx, emptyDrops.Hormad1, ncol = 3, nrow = 1, 
-               labels = c("D", NULL, NULL))
-E <- plot_grid(emptyDrops.no.genes, NULL, NULL, ncol = 3, nrow = 1, 
-               labels = c("E", NULL, NULL))
-final <- plot_grid(B, C, D, E,
-                   ncol = 1, nrow = 4)
+B <- plot_grid(Nanos3.P10.15, Stra8.P10.15, Ccnd1.P10.15, p.clusters, ncol = 4, nrow = 1)
 
-ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Fig_S3.pdf",
-       width = 15, height = 15)
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3.pdf",
+       B, width = 20, height = 5)
 ```
