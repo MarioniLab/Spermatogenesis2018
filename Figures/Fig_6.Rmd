@@ -92,8 +92,8 @@ x.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) +
     theme(panel.background = element_blank(), axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12))
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Xdynamics.pdf", 
-       x.inactivation, width = 12, height = 7)
+#ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Xdynamics.pdf", 
+#       x.inactivation, width = 12, height = 7)
 ```
 
 # Find spermatid-specific genes on X chromosome
@@ -133,9 +133,12 @@ cur_markers.X <- cur_markers.X[rownames(bulk.X),]
 spermatid.spec <- ifelse(cur_markers.X$logFC > 5 & cur_markers.X$FDR < 0.1, TRUE, FALSE)
 
 # Save spermermatid-specifc list
-spermatid.spec.df <- data.frame(ID = rownames(cur_markers.X)[cur_markers.X$logFC > 5 & cur_markers.X$FDR < 0.1],
-                 Symbol = genenames[rownames(cur_markers.X)[cur_markers.X$logFC > 5 & cur_markers.X$FDR < 0.1],"Gene.name"])
-write.xlsx(spermatid.spec.df, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/SpermatidSpecificGenes.xlsx")
+out.df <- cur_markers.X
+out.df$Genename <- genenames[rownames(out.df),2]
+out.df$Spermatid_specific <- ifelse(out.df$logFC > 5 & out.df$FDR < 0.1, TRUE, FALSE)
+out.df <- out.df[order(out.df$logFC, decreasing = TRUE),]
+
+write.xlsx(out.df, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
 ```
 
 Visualize the heatmap
@@ -203,7 +206,7 @@ ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Ana
        spermatid.specific.p, width = 12, height = 7)
 ```
 
-# Visualize spermatid spceific genes on X for single cells
+# Visualize spermatid specific genes on X for single cells
 
 ```{r}
 # Collect expression of spermatic specific genes in heatmap
@@ -240,6 +243,12 @@ pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE,
          annotation_colors = list(cell_type = metadata(sce)$color_vector), 
          scale = "row", border_color = NA, cellheight = 8, fontsize = 7)
 dev.off()
+
+```
+
+# Visualize multicopy genes
+
+```{r}
 
 ```
 
