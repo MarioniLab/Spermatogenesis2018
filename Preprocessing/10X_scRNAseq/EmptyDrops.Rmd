@@ -343,13 +343,13 @@ corrected <- batch.correction(sce.single)
 # Save batch corrected matrix in sce object
 metadata(sce.all)$corrected <- corrected
 
-saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
 
 # Mark the cells that were labeled before
 
 ```{r}
-sce.old <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.old <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 
 annotatedclust <- rep("NewCell", ncol(sce.all))
 m <- match(colData(sce.old)$Barcode, colData(sce.all)$Barcode)
@@ -364,14 +364,15 @@ col_vector <- c(col_vector, "NewCell" = "black")
 metadata(sce.all)$color_vector <- col_vector
 
 rm(sce.old)
-saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
 
 # Compute tSNE
 
 ```{r}
+sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 set.seed(111)
-tsne <- Rtsne(t(metadata(sce.all)$corrected), perplexity = 60)
+tsne <- Rtsne(t(metadata(sce.all)$corrected), perplexity = 300)
 reducedDims(sce.all)$TSNE <- tsne$Y
 
 saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
