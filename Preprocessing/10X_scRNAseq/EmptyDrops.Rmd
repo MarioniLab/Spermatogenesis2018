@@ -309,6 +309,20 @@ sce.all <- sce.all[,Matrix::colSums(counts(sce.all)[mt$Gene.stable.ID,])/colData
 # Remove genes that are not expressed
 sce.all <- sce.all[Matrix::rowSums(counts(sce.all)) > 0,]
 
+# Save stats on filtered cells
+cur_stats <- melt(table(colData(sce.all)$Sample, colData(sce.all)$Library))
+cur_stats <- cur_stats[cur_stats$value > 0,]
+cur_stats <- cur_stats[order(cur_stats$Var1),]
+stats.df <- data.frame(row.names = cur_stats$Var2,
+                       Sample = cur_stats$Var1,
+                       Library = cur_stats$Var2,
+                       CellRanger_filter = cur_stats$value)
+
+# Save dataframe
+write.table(stats.df, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/CellRangerFiltering_emptyDrops_stats_afterQC.txt", 
+            sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE)
+
+
 saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
