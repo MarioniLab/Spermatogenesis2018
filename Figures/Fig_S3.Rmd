@@ -35,31 +35,30 @@ source("../Functions/auxiliary.R")
 # Single cell data
 sce.all <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 cur_meta <- metadata(sce.all)$corrected[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0"))
-                                        & !(colData(sce.all)$AnnotatedClusters %in% c(paste("NA", 1:5, sep = ""), "Outliers"))]
+                          & colData(sce.all)$AnnotatedClusters != "Outliers"]
 
 sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0")) & 
-                     !(colData(sce.all)$AnnotatedClusters %in% c(paste("NA", 1:5, sep = ""), "Outliers"))]
+                     colData(sce.all)$AnnotatedClusters != "Outliers"]
 ```
 
-# Visualize P10 and P15 sample
+# Visualize P10 sample
 
 ```{r}
-select <- grepl("P10|P15", colData(sce.all)$Sample)
+select <- grepl("P10", colData(sce.all)$Sample)
 cur_df <- data.frame(tsne1 = reducedDims(sce.all)$TSNE[select,1],
                      tsne2 = reducedDims(sce.all)$TSNE[select,2],
                      cell_type = colData(sce.all)$AnnotatedClusters[select]) 
 
-P10_P15 <- ggplot(cur_df) +
+P10.tsne <- ggplot(cur_df) +
   geom_point(aes(tsne1, tsne2, colour = cell_type), size = 0.5) + 
   ylab("tSNE 2") + xlab("tSNE 1") + scale_color_manual(values = metadata(sce.all)$color_vector)
 ```
 
-# Collect marker genes for somatic cells in P10 and P15
+# Collect marker genes for somatic cells in P10 
 
 ```{r}
-cur_sce <- sce.all[,select & !(grepl("Spermatocytes", colData(sce.all)$AnnotatedClusters))]
+cur_sce <- sce.all[,select]
 cur_sce <- normalize(cur_sce)
-
 # Find marker genes
 somatic.markers <- marker.detection(cur_sce,
                                     as.character(colData(cur_sce)$AnnotatedClusters))
@@ -79,8 +78,11 @@ HVgenes <- HVG(cur_sce)
 cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(cur_sce)[HVgenes,]), 
                                   method = "spearman"))/2))
 
+top.markers <- unlist(lapply(somatic.markers, function(n){n$GeneName[1:5]}))
+
 # Genes to visualize
-genes <- c("Cst12", "Sycp1", "Dmrt1", "Dlk1", "Col4a3", "Tm4sf1", "Insl3", "Cd14",
+genes <- c("Cst12", top.markers[1:5],  
+           "Sycp1", top.markers[6:10] "Dmrt1", "Dlk1", "Col4a3", "Tm4sf1", "Insl3", "Cd14",
            "Sbno1", "H2-D1")
 
 # Heatmap
@@ -143,7 +145,7 @@ H2afx.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
 # Save final figure
 
 ```{r final}
-final <- plot_grid(juvenile.mapping,
+final <- plot_grid(P10.tsne,
                    juvenile.mapping.clusters,
                    P10, NULL, ncol = 2, nrow = 2)
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S2/Fig_S2.pdf", 
