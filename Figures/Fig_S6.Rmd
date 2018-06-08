@@ -43,21 +43,58 @@ rownames(genenames) <- genenames$Gene.stable.ID
 spermatid.spec <- read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
 ```
 
-# Visualize spermatid specific genes on X for single cells
+# Read in the BLAST hits for the different multicopy genes
 
 ```{r}
-# Collect expression of spermatic specific genes in heatmap
-m <- match(as.character(spermatid.spec.df$ID), rownames(logcounts(sce)))
-for.heatmap <- logcounts(sce)[as.character(spermatid.spec.df$ID)[!is.na(m)],]
-for.heatmap <- for.heatmap[Matrix::rowMeans(for.heatmap) > 0.1,]
+files <- as.list(list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Multicopy/Mapping", full.names = TRUE))
+names(files) <- sapply(list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Multicopy/Mapping"), function(n){unlist(strsplit(n, "\\."))[1]})
+
+# Filter genes that lay on chromosome X
+mc_gene_table <- lapply(files, function(n){
+  cur_file <- read.csv(n, stringsAsFactors = FALSE)
+  cur_file <- cur_file[sapply(cur_file[,"Genomic.Location"], function(n){unlist(strsplit(n, "\\:"))[1]}) == "X",]
+  cur_file
+})
+
+# Return gene names
+mc_genes <- lapply(mc_gene_table, function(n){
+  cur_genes <- n$Overlapping.Gene.s.
+  cur_genes <- cur_genes[cur_genes != ""]
+  unique(cur_genes)
+})
+
+df.multi <- data.frame(gene_group = rep(names(mc_genes), as.numeric(sapply(mc_genes, length))),
+                 genes = as.character(unlist(sapply(mc_genes, function(n){n}))), 
+                 stringsAsFactors = FALSE)
+```
+
+# Visualize metagenes of multicopy genes
+
+```{r}
+# Collect normalized expression counts of multicopy genes
+m <- match(as.character(df.multi$genes), rowData(sce)$Symbol)
+df.multi <- df.multi[!is.na(m),]
+for.heatmap <- logcounts(sce)[m[!is.na(m)],]
 rownames(for.heatmap) <- rowData(sce)$Symbol[match(rownames(for.heatmap),
                                                    rowData(sce)$ID)]
 
-# Include only annotated genes
-for.heatmap <- for.heatmap[!grepl("Rik|-ps|Gm", rownames(for.heatmap)),]
+mat.meta <- matrix(data = NA, ncol = ncol(for.heatmap), nrow = length(unique(df.multi$gene_group)))
+colnames(mat.meta) <- paste(colData(sce)$Library, colData(sce)$Barcode, sep = "")
+rownames(mat.meta) <- unique(df.multi$gene_group)
+
+for(i in unique(df.multi$gene_group)){
+  if(sum(df.multi$gene_group == i) > 1){
+    mat.meta[i,] <- Matrix::colSums(2^((for.heatmap)[df.multi$gene_group == i,]) - 1)
+  }
+  else{
+    mat.meta[i,] <- 2^((for.heatmap)[df.multi$gene_group == i,]) - 1
+  }
+}
+
+# Average this per cell type
 
 # Build mean expression matrix
-df <- as.data.frame(t(as.matrix(for.heatmap)))
+df <- as.data.frame(t(as.matrix(mat.meta)))
 df$groups <- colData(sce)$AnnotatedClusters
 df.melt <- melt(df, id.vars = "groups")
 
@@ -67,18 +104,15 @@ mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = su
 rownames(mat.for.heatmap) <- mat.for.heatmap$variable
 mat.for.heatmap <- mat.for.heatmap[,-1]
 
-# Order by peak expression
-mat.for.heatmap <- mat.for.heatmap[order(apply(mat.for.heatmap, 1, which.max),
-                                         decreasing = FALSE),]
-
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/SC_heatmap_spermatid_specific.pdf",   width = 7, height = 12)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S6/MultiCopy_meta.pdf",   width = 7, height = 5)
 pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE, 
          cluster_rows = FALSE,
-         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         color = viridis(100),
          annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
                   cell_type = colnames(mat.for.heatmap)),
-         annotation_colors = list(cell_type = metadata(sce)$color_vector), 
-         scale = "row", border_color = NA, cellheight = 8, fontsize = 7)
+         annotation_colors = list(cell_type = metadata(sce)$color_vector),
+         #scale = "row", 
+         border_color = NA, cellheight = 8, fontsize = 7)
 dev.off()
 
 ```
