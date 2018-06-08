@@ -78,12 +78,18 @@ HVgenes <- HVG(cur_sce)
 cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(cur_sce)[HVgenes,]), 
                                   method = "spearman"))/2))
 
-top.markers <- unlist(lapply(somatic.markers, function(n){n$GeneName[1:5]}))
+top.markers <- as.character(unlist(lapply(somatic.markers,
+                                          function(n){n$GeneName[1:5]})))
 
 # Genes to visualize
-genes <- c("Cst12", top.markers[1:5],  
-           "Sycp1", top.markers[6:10] "Dmrt1", "Dlk1", "Col4a3", "Tm4sf1", "Insl3", "Cd14",
-           "Sbno1", "H2-D1")
+genes <- c("Cst12", top.markers[26:29],  
+           "Sycp1", top.markers[32:35],
+           "Dmrt1", top.markers[c(36,38:40)],
+           "Dlk1", top.markers[6:9],
+           "Col4a3", top.markers[21:24],
+           "Tm4sf1", top.markers[1:4],
+           "Insl3", top.markers[c(16:17, 19,20)],
+           "Cd14", top.markers[11:14])
 
 # Heatmap
 # Visualize in heatmap
@@ -92,8 +98,8 @@ rownames(for.heatmap) <- genes
 colnames(for.heatmap) <- paste(colData(cur_sce)$Barcode, 
                                colData(cur_sce)$Library, sep = "")
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S2/P10_heatmap.pdf", 
-    onefile = FALSE, width = 15, height = 5)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/P10_heatmap.pdf", 
+    onefile = FALSE, width = 7, height = 10)
 pheatmap(for.heatmap, cluster_rows = FALSE,
          clustering_distance_cols = cur_dist,
          scale = "row", 
