@@ -20,6 +20,9 @@ knitr::opts_chunk$set(echo = TRUE)
 # Load reads
 raw_counts <- read.table("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/raw/1st_wave_bulk_all_reverse-stranded.txt", sep = "\t")
 
+# Remove aged samples
+raw_counts <- raw_counts[,!grepl("do18174|do18175", colnames(raw_counts))]
+
 # Load library
 library(DESeq2)
 
@@ -42,6 +45,8 @@ plot(log10(as.numeric(colSums(raw_counts[!grepl("__", rownames(raw_counts)),])))
 
 raw_counts <- raw_counts[rowSums(raw_counts) > 0,]
 raw_counts <- raw_counts[!grepl("__", rownames(raw_counts)),]
+
+write.table(raw_counts, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/raw_reads/All_raw_selected.txt", sep = "\t")
 ```
 
 # Normalize
@@ -56,6 +61,7 @@ dds <- estimateSizeFactors(dds)
 norm <- counts(dds, normalized = TRUE)
 
 saveRDS(norm, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+write.table(norm, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/normalized.txt", sep = "\t")
 ```
 
 # Save information of this data as supllementary table S1

@@ -373,24 +373,24 @@ new.clusters[new.clusters == 1] <- "S6"
 new.clusters[new.clusters == 2] <- "S5"
 new.clusters[new.clusters == 3] <- "Meiosis"
 new.clusters[new.clusters == 4] <- "S9"
-new.clusters[new.clusters == 5] <- "NA1"
+new.clusters[new.clusters == 5] <- "Outliers"
 new.clusters[new.clusters == 6] <- "S11"
-new.clusters[new.clusters == 7] <- "NA2"
-new.clusters[new.clusters == 8] <- "NA3"
-new.clusters[new.clusters == 9] <- "NA4"
+new.clusters[new.clusters == 7] <- "Outliers"
+new.clusters[new.clusters == 8] <- "Outliers"
+new.clusters[new.clusters == 9] <- "Outliers"
 new.clusters[new.clusters == 10] <- "Spermatogonia"
 new.clusters[new.clusters == 11] <- "Immature_Leydig"
 new.clusters[new.clusters == 12] <- "Leydig"
 new.clusters[new.clusters == 13] <- "Endothelial_cells"
 new.clusters[new.clusters == 14] <- "Interstitial_tMg"
 new.clusters[new.clusters == 15] <- "Sertoli"
-new.clusters[new.clusters == 16] <- "Peritubular_tMg"
+new.clusters[new.clusters == 16] <- "Outliers"
 new.clusters[new.clusters == 17] <- "Spermatocytes_2"
 new.clusters[new.clusters == 18] <- "Spermatocytes_5"
 new.clusters[new.clusters == 19] <- "S1"
 new.clusters[new.clusters == 20] <- "Spermatocytes_6"
 new.clusters[new.clusters == 21] <- "S2"
-new.clusters[new.clusters == 22] <- "NA5"
+new.clusters[new.clusters == 22] <- "Outliers"
 new.clusters[new.clusters == 23] <- "Spermatocytes_3"
 new.clusters[new.clusters == 24] <- "PTM"
 new.clusters[new.clusters == 25] <- "Spermatocytes_7"
@@ -413,8 +413,7 @@ colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
                  "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9",
                  "S10", "S11", "S12", "S13", "S14", "Sertoli", "Leydig", 
                  "Immature_Leydig", "PTM", "Endothelial_cells", 
-                 "Interstitial_tMg", "Peritubular_tMg", "NA1", "NA2", 
-                 "NA3","NA4","NA5","NA6","Outliers"))
+                 "Interstitial_tMg", "Outliers"))
 
 # Add number of properly annotated cells to dataframe
 cur_stats <- melt(table(colData(sce.all)$Sample[!(colData(sce.all)$AnnotatedClusters %in% 
@@ -423,6 +422,8 @@ cur_stats <- melt(table(colData(sce.all)$Sample[!(colData(sce.all)$AnnotatedClus
                                   c(paste("NA", 1:5, sep = ""), "Outliers"))]))
 cur_stats <- cur_stats[cur_stats$value > 0,]
 cur_stats <- cur_stats[order(cur_stats$Var1),]
+stats.df <- read.table("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/CellRangerFiltering_stats.txt", 
+            sep = "\t")
 stats.df$ProperlyAnnotated <- cur_stats$value
 
 # Save dataframe
@@ -458,13 +459,6 @@ colour_vector <- c("Spermatogonia" = "#046735",
                    "PTM" = "#C48C58", 
                    "Endothelial_cells" = "#FFDFB2",
                    "Interstitial_tMg" = "#F36E20",
-                   "Peritubular_tMg" = "#FC9460",
-                   "NA1" = "#056D6A",
-                   "NA2" = "#056D6A",
-                   "NA3" = "#056D6A",
-                   "NA4" = "#056D6A",
-                   "NA5" = "#056D6A",
-                   "NA6" = "#056D6A",
                    "Outliers" = "#067277")
 
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
@@ -474,6 +468,13 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
   scale_color_manual(values = colour_vector)
 
 metadata(sce.all)$color_vector <- colour_vector
+```
+
+# Save normalized and raw counts for ArrayExpress
+
+```{r}
+writeMM(counts(sce.all), "../../../../Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/10X/raw_counts.mtx")
+write.table(colData(sce.all), "../../../../Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/10X/cell_metadata.txt")
 ```
 
 ```{r}
