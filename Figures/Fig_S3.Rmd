@@ -124,7 +124,7 @@ First we batch correct the counts.
 sce.spg.sc1 <- sce.all[,grepl("P1", colData(sce.all)$Sample) &
                             grepl("Spermatogonia|Spermatocytes_1",
                                   colData(sce.all)$AnnotatedClusters)]
-sce.spg.sc1 <- normalize(sce.spermatogonia.p10.15)
+sce.spg.sc1 <- normalize(sce.spg.sc1)
 rm(sce.all)
 
 sce.single <- split.sce(sce = sce.spg.sc1, 
@@ -154,18 +154,17 @@ H2afx.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
 
 p.clusters <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
                   PC2 = pca.spg.sc1$x[,2],
-                  clusters = colData(sce.spermatogonia.p10.15)$AnnotatedClusters)) +
+                  clusters = colData(sce.spg.sc1)$AnnotatedClusters)) +
   geom_point(aes(PC1, PC2, colour = clusters)) + 
-  scale_colour_manual(values = metadata(sce.spermatogonia.p10.15)$color_vector)
+  scale_colour_manual(values = metadata(sce.spg.sc1)$color_vector)
 
 ```
 
 # Save final figure
 
 ```{r final}
-final <- plot_grid(P10.tsne,
-                   juvenile.mapping.clusters,
-                   P10, NULL, ncol = 2, nrow = 2)
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S2/Fig_S2.pdf", 
-       final, width = 15, height = 8)
+final <- plot_grid(P10.tsne, NULL,
+                   p.clusters, ncol = 2, nrow = 2)
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Fig_S3.pdf", 
+       final, width = 15, height = 10)
 ```

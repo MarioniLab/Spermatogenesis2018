@@ -167,8 +167,8 @@ Tcte2.p <- ggplot(data.frame(x = PT,
         axis.line.x = element_blank())
 
 spermatocytes.p <- plot_grid(p.number.genes, Hormad1.p, Sycp3.p, Pou5f2.p, Tcte2.p, ncol = 1, nrow = 5)
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4.pdf", 
-       spermatocytes.p, width = 6, height = 8)
+#ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4.pdf", 
+#       spermatocytes.p, width = 6, height = 8)
 ```
 
 # Correlation analysis to number of genes expressed
@@ -203,40 +203,7 @@ cors$logFC.Spermatids <- DE$Spermatocytes$logFC.Spermatids[match(cors$gene2,
 cors.out <- cors[order(cors$rho, decreasing = TRUE),]
 cors.out <- cors.out[cors$FDR < 0.1 & (cors$rho > 0.3 | cors$rho < -0.3), ]
 
-write.xlsx(cors, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S6.xlsx")
-
-# Split gene list into correlated and not correlated with number of genes expressed
-# Focus on the genes that are spermatocytes specific
-pos.cor <- cors[cors$FDR < 0.1 & cors$rho > 0.3 & cors$logFC.Spermatids > 1,]
-neg.cor <- cors[cors$FDR < 0.1 & cors$rho < -0.3 &cors$logFC.Spermatids > 1,]
-
-# Visualize top 20 genes in heatmap
-for.heatmap <- logcounts(sce.spermatocytes)[pos.cor$gene2[1:20],order(prank[,"rank"])]
-colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_PosCorrelationHeatmap.pdf", onefile = FALSE)
-pheatmap(for.heatmap, show_colnames = FALSE,
-         cluster_rows = FALSE, cluster_cols = FALSE, color = viridis(100), 
-         labels_row = pos.cor$genename[1:20], 
-         annotation_col = data.frame(row.names = colnames(for.heatmap),
-                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])]),
-         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector),
-         annotation_row = data.frame(row.names = rownames(for.heatmap),
-                                     Rho = pos.cor$rho[1:20]))
-dev.off()
-
-for.heatmap <- logcounts(sce.spermatocytes)[neg.cor$gene2[1:20],order(prank[,"rank"])]
-colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_NegCorrelationHeatmap.pdf", onefile = FALSE)
-pheatmap(for.heatmap, show_colnames = FALSE,
-         cluster_rows = FALSE, cluster_cols = FALSE, color = viridis(100), 
-         labels_row = neg.cor$genename[1:20], 
-         annotation_col = data.frame(row.names = colnames(for.heatmap),
-                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])]),
-         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector),
-         annotation_row = data.frame(row.names = rownames(for.heatmap),
-                                     Rho = neg.cor$rho[1:20]))
-dev.off()
-
+#write.xlsx(cors, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S6.xlsx")
 ```
 
 # Visualize cluster specifc marker genes
@@ -256,7 +223,8 @@ pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE,
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100), 
          annotation_col = data.frame(row.names = colnames(for.heatmap),
-                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])]),
+                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])],
+                  infertility = brewer.pal(n=8, "Set1")),
          annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector),
          annotation_row = data.frame(row.names = rownames(for.heatmap),
                                      cell_type = markers$Cluster,
