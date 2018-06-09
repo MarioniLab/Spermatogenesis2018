@@ -1,5 +1,5 @@
 ---
-title: "Figure S3"
+title: "Figure S4"
 author: "Nils Eling"
 date: "`r Sys.Date()`"
 output: 
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Fig_S3.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/Fig_S4.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -29,225 +29,6 @@ source("../Functions/auxiliary.R")
 
 # Single cell data
 sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-```
-
-# Heatmap of P10 cells
-
-```{r P10}
-# Read in marker genes
-P10.markers <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_P10.rds")
-
-# Calculate highly variable genes across P10
-sce.P10 <- sce[,grepl("P10", colData(sce)$Sample)]
-sce.P10 <- normalize(sce.P10)
-
-# Calculate HVG
-HVgenes <- HVG(sce.P10)
-
-# Create distance metric
-cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(sce.P10)[HVgenes,]), 
-                                  method = "spearman"))/2))
-
-# Collect top 10 genes per group
-genes <- as.character(unlist(lapply(P10.markers, function(n){rownames(n)[1:10]})))
-
-# Visualize in heatmap
-for.heatmap <- logcounts(sce.P10)[genes,]
-rownames(for.heatmap) <- rowData(sce.P10)$Symbol[match(genes, rowData(sce.P10)$ID)]
-colnames(for.heatmap) <- colData(sce.P10)$Barcode 
-
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/P10_heatmap.pdf", 
-    onefile = FALSE, width = 15, height = 10)
-pheatmap(for.heatmap, cluster_rows = FALSE,
-         clustering_distance_cols = cur_dist,
-         scale = "row", 
-         annotation_col = 
-           data.frame(row.names = colnames(for.heatmap),
-                        cell_type = colData(sce.P10)$AnnotatedClusters),
-         color = colorRampPalette(c("#053061", "#4393c3", 
-                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
-         show_colnames = FALSE, 
-         annotation_colors = list(cell_type = 
-      metadata(sce.P10)$color_vector[names(metadata(sce.P10)$color_vector) %in%
-                                       unique(colData(sce.P10)$AnnotatedClusters)]),
-      clustering_method = "ward.D2", gaps_row = c(10, 20, 30, 40, 50, 60, 70),
-      annotation_row = data.frame(row.names = rownames(for.heatmap),
-                                  cell_type = rep(names(P10.markers), each = 10)),
-      cellheight = 8, fontsize = 7)
-dev.off()
-```
-
-# Visualize spermatogonia
-
-```{r spermatogonia}
-sce.spermatogonia <- sce.P10[,
-          colData(sce.P10)$AnnotatedClusters == "Spermatogonia"]
-sce.spermatogonia <- normalize(sce.spermatogonia)
-
-# Calculate HVG
-HVgenes <- HVG(sce.spermatogonia)
-
-# PCA
-pca <- prcomp(t(logcounts(sce.spermatogonia)[HVgenes,]))
-
-# Visualize PCA with marker genes
-Nanos3 <- ggplot(data.frame(PC1 = pca$x[,1],
-                  PC2 = pca$x[,2],
-                  Nanos3 = logcounts(sce.spermatogonia)[
-                    rowData(sce.spermatogonia)$Symbol == "Nanos3",])) +
-  geom_point(aes(PC1, PC2, colour = Nanos3)) + scale_colour_viridis()
-
-Stra8 <- ggplot(data.frame(PC1 = pca$x[,1],
-                  PC2 = pca$x[,2],
-                  Stra8 = logcounts(sce.spermatogonia)[
-                    rowData(sce.spermatogonia)$Symbol == "Stra8",])) +
-  geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
-
-Rhox13 <- ggplot(data.frame(PC1 = pca$x[,1],
-                  PC2 = pca$x[,2],
-                  Rhox13 = logcounts(sce.spermatogonia)[
-                    rowData(sce.spermatogonia)$Symbol == "Rhox13",])) +
-  geom_point(aes(PC1, PC2, colour = Rhox13)) + scale_colour_viridis()
-
-# Save rotations of PC1
-rots.PC1 <- data.frame(row.names = rownames(pca$rotation),
-                       rot.PC1 = pca$rotation[,1],
-                       genename = rowData(sce.spermatogonia)$Symbol[
-                         match(rownames(pca$rotation),
-                               rowData(sce.spermatogonia)$ID)])
-rots.PC1 <- rots.PC1[order(rots.PC1$rot.PC1, decreasing = TRUE),]
-write.xlsx(rots.PC1, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Rotations_PC1_spermatogonia.xlsx")
-
-# Visualize top genes in form of heatmap
-pdf("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Spermatogonia_heatmap.pdf", 
-    onefile = FALSE, width = 10, height = 7)
-pheatmap(logcounts(sce.spermatogonia)[c(rownames(head(rots.PC1, 20)),
-                                        rownames(tail(rots.PC1, 20))),
-                                      order(pca$x[,1], 
-                                            decreasing = TRUE)], 
-         cluster_rows = FALSE, cluster_cols = FALSE,
-         scale = "row",
-         show_colnames = FALSE, gaps_row = 20,
-         cellheight = 8, fontsize = 7,
-         color = colorRampPalette(c("#053061", "#4393c3", 
-                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
-         labels_row = c(as.character(head(rots.PC1, 20)$genename), 
-                        as.character(tail(rots.PC1, 20)$genename)))
-dev.off()
-```
-
-# Visualize spermatogonia from P10 and P15
-
-```{r, spermatogonia_p10_p15}
-sce.P10.15 <- sce[,grepl("P1", colData(sce)$Sample)]
-sce.P10.15 <- normalize(sce.P10.15)
-
-sce.spermatogonia.p10.15 <- sce.P10.15[,
-          colData(sce.P10.15)$AnnotatedClusters == "Spermatogonia"]
-sce.spermatogonia.p10.15 <- normalize(sce.spermatogonia.p10.15)
-
-# Calculate HVG
-HVgenes.P10.15 <- HVG(sce.spermatogonia.p10.15)
-
-# PCA
-pca.P10.15 <- prcomp(t(logcounts(sce.spermatogonia.p10.15)[HVgenes.P10.15,]))
-
-# Visualize PCA with marker genes
-
-#Nanos3 marker for undifferentiated spermatogonia
-Nanos3.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Nanos3 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Nanos3",])) +
-  geom_point(aes(PC1, PC2, colour = Nanos3)) + scale_colour_viridis()
-
-#NZbtb16/PLZF marker for undifferentiated spemratogonia but was also found in spermatogonia alreadt expressing Stra8
-Zbtb16.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Zbtb16 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Zbtb16",])) +
-  geom_point(aes(PC1, PC2, colour = Zbtb16)) + scale_colour_viridis()
-
-# Induced by RA and upregulated during spermatogonial differentiation and again later on in preleptotene spermatocytes
-Stra8.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Stra8 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Stra8",])) +
-  geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
-
-# Ccnd2 for spermatogonial differentiation and Ccnd1 in proliferating spermatogonia
-Ccnd2.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Ccnd2 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Ccnd2",])) +
-  geom_point(aes(PC1, PC2, colour = Ccnd2)) + scale_colour_viridis()
-
-Ccnd1.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Ccnd1 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Ccnd1",])) +
-  geom_point(aes(PC1, PC2, colour = Ccnd1)) + scale_colour_viridis()
-
-# Rhox13 higher in differentiating spermatogonia
-Rhox13.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Rhox13 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Rhox13",])) +
-  geom_point(aes(PC1, PC2, colour = Rhox13)) + scale_colour_viridis()
-
-
-# Save rotations of PC1
-rots.PC1 <- data.frame(row.names = rownames(pca.P10.15$rotation),
-                       rot.PC1 = pca.P10.15$rotation[,1],
-                       genename = rowData(sce.spermatogonia.p10.15)$Symbol[
-                         match(rownames(pca.P10.15$rotation),
-                               rowData(sce.spermatogonia.p10.15)$ID)])
-rots.PC1 <- rots.PC1[order(rots.PC1$rot.PC1, decreasing = TRUE),]
-write.xlsx(rots.PC1, "/Users/ernst01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Rotations_PC1_spermatogonia_P10_P15.xlsx")
-
-# Visualize top genes in form of heatmap
-pdf("/Users/ernst01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Spermatogonia_heatmap_P10_P15.pdf", onefile = FALSE, width = 10, height = 7)
-pheatmap(logcounts(sce.spermatogonia.p10.15)[c(rownames(head(rots.PC1, 50)),
-                                        rownames(tail(rots.PC1, 50))),
-                                      order(pca.P10.15$x[,1], 
-                                            decreasing = TRUE)], 
-         cluster_rows = FALSE, cluster_cols = FALSE,
-         scale = "row",
-         show_colnames = FALSE, gaps_row = 50,
-         cellheight = 8, fontsize = 7,
-         color = colorRampPalette(c("#053061", "#4393c3", 
-                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
-         labels_row = c(as.character(head(rots.PC1, 50)$genename), 
-                        as.character(tail(rots.PC1, 50)$genename)))
-dev.off()
-
-
-# PCA on spermatogonia and earliest spermatocytes from P10 and P15
-sce.spg.p10.15 <- sce.P10.15[,
-          colData(sce.P10.15)$AnnotatedClusters == "Spermatogonia"]
-sce.sc1.p10.15 <- sce.P10.15[,
-          colData(sce.P10.15)$AnnotatedClusters == "Spermatocytes_1"]
-sce.spg.sc1 <- cbind(sce.spg.p10.15, sce.sc1.p10.15)
-sce.spg.sc1 <- normalize(sce.spg.sc1)
-
-HVgenes.spg.sc1 <- HVG(sce.spg.sc1)
-pca.spg.sc1 <- prcomp(t(logcounts(sce.spg.sc1)[HVgenes.spg.sc1,]))
-
-# Visalize PCA with marker genes
-
-Stra8.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
-                  PC2 = pca.spg.sc1$x[,2],
-                  Stra8 = logcounts(sce.spg.sc1)[
-                    rowData(sce.spg.sc1)$Symbol == "Stra8",])) +
-  geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
-
-H2afx.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
-                  PC2 = pca.spg.sc1$x[,2],
-                  H2afx = logcounts(sce.spg.sc1)[
-                    rowData(sce.spg.sc1)$Symbol == "H2afx",])) +
-  geom_point(aes(PC1, PC2, colour = H2afx)) + scale_colour_viridis()
-
-
 ```
 
 # Visualize emptyDrops
@@ -346,6 +127,6 @@ E <- plot_grid(emptyDrops.no.genes, NULL, NULL, ncol = 3, nrow = 1,
 final <- plot_grid(B, C, D, E,
                    ncol = 1, nrow = 4)
 
-ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Fig_S3.pdf",
+ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/Fig_S4.pdf",
        width = 15, height = 15)
 ```
