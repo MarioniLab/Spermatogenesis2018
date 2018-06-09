@@ -29,6 +29,9 @@ source("../Functions/auxiliary.R")
 
 # Single cell data
 sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+
+# Read in markers for spermatogonia
+sperm.markers <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Spermatogonia_Top15.xlsx")
 ```
 
 # Visualize spermatogonia from P10 and P15
@@ -114,19 +117,19 @@ g <- buildSNNGraph(corrected, k = 15, pc.approx = TRUE)
 clusters <- igraph::cluster_louvain(g)$membership
 
 # Change cluster labels
-clusters[clusters == 1] <- "Trans_2"
-clusters[clusters == 2] <- "Trans_3"
-clusters[clusters == 3] <- "Undifferentiated_SPG"
-clusters[clusters == 4] <- "Unknown"
-clusters[clusters == 5] <- "Trans_1"
+clusters[clusters == 1] <- "Diff_2"
+clusters[clusters == 2] <- "Diff_3"
+clusters[clusters == 3] <- "Undiff_1"
+clusters[clusters == 4] <- "Undiff_2"
+clusters[clusters == 5] <- "Diff_1"
 clusters[clusters == 6] <- "Preleptotene"
 
-col_vector <- c("Undifferentiated_SPG" = "#00441b",
-                "Trans_1" = "#238b45",
-                "Trans_2" = "#66c2a4",
-                "Trans_3" = "#ccece6",
-                "Preleptotene" = "#d4b9da",
-                "Unknown" = "#ccebc5")
+col_vector <- c("Undiff_1" = "#00441b",
+                "Undiff_2" = "#006d2c",
+                "Diff_1" = "#238b45",
+                "Diff_2" = "#41ae76",
+                "Diff_3" = "#66c2a4",
+                "Preleptotene" = "#d4b9da")
 
 p.clusters <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
                   PC2 = pca.P10.15$x[,2],
@@ -150,10 +153,8 @@ write.xlsx(spermatogonia.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silen
 prank <- PT(rd = pca.P10.15$x[,1:3], clusters = clusters, col_vector = col_vector)
 
 # Collect count for heatmap
-cur_markers <- spermatogonia.markers[c("Undifferentiated_SPG", "Unknown", "Trans_1",
-                                       "Trans_2", "Trans_3", "Preleptotene")]
-genes <- as.character(unlist(lapply(cur_markers, function(n){rownames(n)[1:10]})))
-for.heatmap <- logcounts(sce.spermatogonia.p10.15)[genes,
+for.heatmap <- logcounts(sce.spermatogonia.p10.15)[match(sperm.markers$GeneName, 
+                                                         rowData(sce.spermatogonia.p10.15)$Symbol),
                                       order(prank[,"rank"], decreasing = TRUE)]
 colnames(for.heatmap) <- paste(colData(sce.spermatogonia.p10.15)$Library[
   order(prank[,"rank"], decreasing = TRUE)],
@@ -164,20 +165,19 @@ colnames(for.heatmap) <- paste(colData(sce.spermatogonia.p10.15)$Library[
 pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Spermatogonia_heatmap_P10_P15.pdf", onefile = FALSE, width = 10, height = 15)
 pheatmap(for.heatmap, 
          cluster_rows = FALSE, cluster_cols = FALSE,
-         scale = "row",
-         show_colnames = FALSE, gaps_row = seq(10,50, 10),
+         scale = "row", show_rownames = FALSE,
+         show_colnames = FALSE, gaps_row = seq(15,90, 15),
          cellheight = 8, fontsize = 7,
          color = colorRampPalette(c("#053061", "#4393c3", 
                                     "#f7f7f7", "#d6604d", "#67001f"))(100),
-         labels_row = rowData(sce.spermatogonia.p10.15)$Symbol[match(rownames(for.heatmap),
-                                                                     rowData(sce.spermatogonia.p10.15)$ID)],
          annotation_col = data.frame(row.names = colnames(for.heatmap),
                                      cell_type = clusters[order(prank[,"rank"], decreasing = TRUE)]),
          annotation_row = data.frame(row.names = rownames(for.heatmap),
-                                     gene_list = rep(c("Undifferentiated_SPG", "Unknown", "Trans_1",
-                                       "Trans_2", "Trans_3", "Preleptotene"), each = 10)),
+                                     gene_list = sperm.markers$Cluster,
+                                     label = sperm.markers$Label),
          annotation_colors = list(cell_type = col_vector,
-                                  gene_list = col_vector))
+                                  gene_list = col_vector,
+                                  label = c("NA" = "white", "label" = "black")))
 dev.off()
 ```
 
