@@ -366,7 +366,8 @@ saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/A
 sce.old <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 
 annotatedclust <- rep("NewCell", ncol(sce.all))
-m <- match(colData(sce.old)$Barcode, colData(sce.all)$Barcode)
+m <- match(paste(colData(sce.old)$Barcode, colData(sce.old)$Library), 
+             paste(colData(sce.all)$Barcode, colData(sce.all)$Library))
 annotatedclust[m[!is.na(m)]] <- as.character(colData(sce.old)$AnnotatedClusters)[!is.na(m)]
 
 colData(sce.all)$AnnotatedClusters <- factor(annotatedclust,
@@ -389,7 +390,7 @@ set.seed(111)
 tsne <- Rtsne(t(metadata(sce.all)$corrected), perplexity = 300)
 reducedDims(sce.all)$TSNE <- tsne$Y
 
-saveRDS(sce.all, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
 
 # Visualize results
@@ -399,56 +400,20 @@ df1 <- data.frame(tsne1 =reducedDims(sce.all)$TSNE[
                       colData(sce.all)$AnnotatedClusters != "NewCell",1],
                   tsne2 = reducedDims(sce.all)$TSNE[
                     colData(sce.all)$AnnotatedClusters != "NewCell",2],
-                  batch = colData(sce.all)$AnnotatedClusters[
+                  cluster = colData(sce.all)$AnnotatedClusters[
                     colData(sce.all)$AnnotatedClusters != "NewCell"
-                  ],
-                  Dazl = logcounts(sce.all)[rowData(sce.all)$Symbol == "Dazl",
-                  colData(sce.all)$AnnotatedClusters != "NewCell"],
-                  Prm1 = logcounts(sce.all)[rowData(sce.all)$Symbol == "Prm1",
-                  colData(sce.all)$AnnotatedClusters != "NewCell"])
+                  ])
 df2 <- data.frame(tsne1 =reducedDims(sce.all)$TSNE[
                       colData(sce.all)$AnnotatedClusters == "NewCell",1],
                   tsne2 = reducedDims(sce.all)$TSNE[
                     colData(sce.all)$AnnotatedClusters == "NewCell",2],
-                  batch = colData(sce.all)$AnnotatedClusters[
+                  cluster = colData(sce.all)$AnnotatedClusters[
                     colData(sce.all)$AnnotatedClusters == "NewCell"
-                  ],
-                  Dazl = logcounts(sce.all)[rowData(sce.all)$Symbol == "Dazl",
-                  colData(sce.all)$AnnotatedClusters == "NewCell"],
-                  Prm1 = logcounts(sce.all)[rowData(sce.all)$Symbol == "Prm1",
-                  colData(sce.all)$AnnotatedClusters == "NewCell"])
+                  ])
   
-emptyDrops <- ggplot() +
-  geom_point(data = df2, aes(tsne1, tsne2, colour = batch)) +
-  geom_point(data = df1, aes(tsne1, tsne2, colour = batch)) +
+ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = cluster)) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = cluster)) +
   scale_color_manual(values = metadata(sce.all)$color_vector)
-ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/emptyDrops.pdf", emptyDrops, 
-       width = 12, height = 8)
-
-emptyDrops.Dazl <- ggplot() +
-  geom_point(data = df2, aes(tsne1, tsne2, colour = Dazl)) +
-  geom_point(data = df1, aes(tsne1, tsne2, colour = Dazl)) +
-  scale_color_viridis()
-ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/emptyDrops_Dazl.pdf", emptyDrops.Dazl,
-       width = 12, height = 8)
-
-emptyDrops.Prm1 <- ggplot() +
-  geom_point(data = df2, aes(tsne1, tsne2, colour = Prm1)) +
-  geom_point(data = df1, aes(tsne1, tsne2, colour = Prm1)) +
-  scale_color_viridis()
-ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/emptyDrops_Prm1.pdf", emptyDrops.Prm1,
-       width = 12, height = 8)
-
-# Only P10 sample
-emptyDrops.P10 <- ggplot(data.frame(tsne1 =reducedDims(sce.all)$TSNE[
-                      grepl("P10", colData(sce.all)$Sample),1],
-                  tsne2 = reducedDims(sce.all)$TSNE[
-                    grepl("P10", colData(sce.all)$Sample),2],
-                  batch = colData(sce.all)$AnnotatedClusters[
-                    grepl("P10", colData(sce.all)$Sample)
-                  ])) + geom_point(aes(tsne1, tsne2, colour = batch)) +
-    scale_color_manual(values = metadata(sce.all)$color_vector)
-ggsave("/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/emptyDrops_P10.pdf", emptyDrops.P10,
-       width = 12, height = 8)
 ```
 
