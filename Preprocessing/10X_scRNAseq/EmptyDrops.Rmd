@@ -28,6 +28,7 @@ library(scater)
 library(reshape2)
 library(viridis)
 library(RColorBrewer)
+library(irlba)
 source("../../Functions/auxiliary.R")
 
 # Read in data - Single cell experiment object per batch
@@ -386,8 +387,11 @@ saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/A
 
 ```{r}
 sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
-set.seed(111)
-tsne <- Rtsne(t(metadata(sce.all)$corrected), perplexity = 300)
+set.seed(12345)
+pca <- prcomp_irlba(t(metadata(sce.all)$corrected), n = 50)
+set.seed(12345)
+tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 600)
+
 reducedDims(sce.all)$TSNE <- tsne$Y
 
 saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
