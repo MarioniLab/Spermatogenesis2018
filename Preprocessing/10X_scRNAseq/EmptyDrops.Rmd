@@ -256,19 +256,10 @@ load("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data
 
 ```{r filtering}
 # Merge datasets
-sce.all.1 <- cbind(sce.do17815, sce.do17816, sce.do15984, sce.do17622, sce.do18199,
-                 sce.do15983, sce.do17623)
+sce.all.1 <- cbind(sce.do17815, sce.do17816, sce.do17821, sce.do18195)
+sce.all.2 <- cbind(sce.do17824, sce.do18196, sce.do17825, sce.do17827)
 rm("sce.do17815")
 rm("sce.do17816")
-rm("sce.do15984")
-rm("sce.do17622")
-rm("sce.do18199")
-rm("sce.do15983")
-rm("sce.do17623")
-sce.all.2 <- cbind(sce.do18197, sce.do18198, sce.do17821,
-                 sce.do18195, sce.do17824, sce.do18196, sce.do17825, sce.do17827)
-rm("sce.do18197")
-rm("sce.do18198")
 rm("sce.do17821")
 rm("sce.do18195")
 rm("sce.do17824")
