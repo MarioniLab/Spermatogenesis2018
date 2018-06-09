@@ -29,6 +29,7 @@ library(reshape2)
 library(viridis)
 library(RColorBrewer)
 library(irlba)
+library(openxlsx)
 source("../../Functions/auxiliary.R")
 
 # Read in data - Single cell experiment object per batch
@@ -419,5 +420,85 @@ ggplot() +
   geom_point(data = df2, aes(tsne1, tsne2, colour = cluster)) +
   geom_point(data = df1, aes(tsne1, tsne2, colour = cluster)) +
   scale_color_manual(values = metadata(sce.all)$color_vector)
+```
+
+# Clustering of P15 cells
+
+```{r}
+sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+sce.P15 <- sce.all[,colData(sce.all)$Sample == "P15"]
+sce.P15 <- normalize(sce.P15)
+rm(sce.all)
+
+# HVG
+HVgenes <- HVG(sce.P15)
+
+g <- buildSNNGraph(logcounts(sce.P15)[HVgenes,], k = 10, pc.approx = TRUE)
+
+clusters <- igraph::cluster_louvain(g)$membership
+
+ggplot(data.frame(tsne1 = reducedDims(sce.P15)$TSNE[,1],
+                  tsne2 = reducedDims(sce.P15)$TSNE[,2],
+                  cluster = as.factor(clusters))) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) + 
+  scale_colour_manual(values = c(brewer.pal(n = 8, "Set1"), 
+                                 brewer.pal(n = 8, "Set3")))
+
+ggplot(data.frame(tsne1 = reducedDims(sce.P15)$TSNE[,1],
+                  tsne2 = reducedDims(sce.P15)$TSNE[,2],
+                  gene = logcounts(sce.P15)[rowData(sce.P15)$ID[rowData(sce.P15)$Symbol == "Lgals1"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+annotatedCluster <- clusters
+annotatedCluster[annotatedCluster == 1] <- "Immature_Leydig"
+annotatedCluster[annotatedCluster == 2] <- "Sertoli_1"
+annotatedCluster[annotatedCluster == 3] <- "Leptotene"
+annotatedCluster[annotatedCluster == 4] <- "PTM"
+annotatedCluster[annotatedCluster == 5] <- "Spermatocytes"
+annotatedCluster[annotatedCluster == 6] <- "Interstitial_tMg_1"
+annotatedCluster[annotatedCluster == 7] <- "Undifferentiated_Spermatogonia"
+annotatedCluster[annotatedCluster == 8] <- "Endothelial_cells"
+annotatedCluster[annotatedCluster == 9] <- "Sertoli_2"
+annotatedCluster[annotatedCluster == 10] <- "Interstitial_tMg_2"
+annotatedCluster[annotatedCluster == 11] <- "Leydig"
+annotatedCluster[annotatedCluster == 12] <- "Zygotene"
+annotatedCluster[annotatedCluster == 13] <- "Differentiating_Spermatogonia"
+
+
+colData(sce.P15)$AnnotatedClusters <- factor(annotatedCluster,
+      levels = c("Undifferentiated_Spermatogonia", "Differentiating_Spermatogonia",
+                 "Leptotene","Zygotene","Spermatocytes",
+                 "Immature_Leydig","Leydig","Sertoli_1","Sertoli_2", 
+                 "PTM", "Interstitial_tMg_1", "Interstitial_tMg_2", "Endothelial_cells"))
+
+colour_vector <- c("Undifferentiated_Spermatogonia" = "#00441b", 
+                   "Differentiating_Spermatogonia" = "#238b45",
+                   "Leptotene" = "#d4b9da",
+                   "Zygotene" = "#FBDCEA",
+                   "Spermatocytes" = "#F2B2D1",
+                   "Sertoli_1" = "#643F18",
+                   "Sertoli_2" = "sienna4",
+                   "Leydig" = "#985D25",
+                   "Immature_Leydig" = "#A58D81",
+                   "PTM" = "#C48C58", 
+                   "Endothelial_cells" = "#FFDFB2",
+                   "Interstitial_tMg_1" = "#F36E20",
+                   "Interstitial_tMg_2" = "darkorange3")
+
+ggplot(data.frame(tsne1 = reducedDims(sce.P15)$TSNE[,1],
+                  tsne2 = reducedDims(sce.P15)$TSNE[,2],
+                  cluster = colData(sce.P15)$AnnotatedClusters)) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) + 
+  scale_colour_manual(values = colour_vector)
+```
+
+# P15 marker genes
+
+```{r}
+Lep.Zygot.markers <- marker.detection(sce.P15, 
+                                  as.character(colData(sce.P15)$AnnotatedClusters))
+
+# Save this list as Table S1
+write.xlsx(Lep.Zygot.markers, "../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S5.xlsx")
 ```
 
