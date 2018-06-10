@@ -218,17 +218,22 @@ for.heatmap <- logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID[match(
                                             order(prank[,"rank"])]
 colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_MarkerGenes.pdf", onefile = FALSE, height = 5, width = 5)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4_MarkerGenes.pdf", onefile = FALSE, height = 5, width = 10)
 pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE,
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100), 
          annotation_col = data.frame(row.names = colnames(for.heatmap),
-                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])],
-                  infertility = brewer.pal(n=8, "Set1")),
-         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector),
+                  cell_type = colData(sce.spermatocytes)$AnnotatedClusters[order(prank[,"rank"])]),
+         annotation_colors = list(cell_type = metadata(sce.spermatocytes)$color_vector,
+                                  infertility = c("B" = "darkolivegreen3",
+                                                  "f" = "indianred1",
+                                                  "F" = "indianred4",
+                                                  "m" = "royalblue1",
+                                                  "M" = "royalblue4",
+                                                  "Mf" = "springgreen")),
          annotation_row = data.frame(row.names = rownames(for.heatmap),
                                      cell_type = markers$Cluster,
-                                     infertility = markers$Sterility_Phenotype,
+                                     infertility = factor(markers$Sterility_Phenotype),
                                      label = markers$Label), 
          scale = "row",
          gaps_row = seq(15,120, 15), cellheight = 2)
