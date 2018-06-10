@@ -442,30 +442,29 @@ ggplot(data.frame(tsne1 = reducedDims(sce.P15)$TSNE[,1],
 annotatedCluster <- clusters
 annotatedCluster[annotatedCluster == 1] <- "Immature_Leydig"
 annotatedCluster[annotatedCluster == 2] <- "Sertoli_1"
-annotatedCluster[annotatedCluster == 3] <- "Leptotene"
+annotatedCluster[annotatedCluster == 3] <- "Leptotene/Zygotene"
 annotatedCluster[annotatedCluster == 4] <- "PTM"
-annotatedCluster[annotatedCluster == 5] <- "Spermatocytes"
+annotatedCluster[annotatedCluster == 5] <- "Pachytene_Spermatocytes"
 annotatedCluster[annotatedCluster == 6] <- "Interstitial_tMg_1"
 annotatedCluster[annotatedCluster == 7] <- "Undifferentiated_Spermatogonia"
 annotatedCluster[annotatedCluster == 8] <- "Endothelial_cells"
 annotatedCluster[annotatedCluster == 9] <- "Sertoli_2"
 annotatedCluster[annotatedCluster == 10] <- "Interstitial_tMg_2"
 annotatedCluster[annotatedCluster == 11] <- "Leydig"
-annotatedCluster[annotatedCluster == 12] <- "Zygotene"
+annotatedCluster[annotatedCluster == 12] <- "Pachytene_Spermatocytes"
 annotatedCluster[annotatedCluster == 13] <- "Differentiating_Spermatogonia"
 
 
 colData(sce.P15)$AnnotatedClusters <- factor(annotatedCluster,
       levels = c("Undifferentiated_Spermatogonia", "Differentiating_Spermatogonia",
-                 "Leptotene","Zygotene","Spermatocytes",
+                 "Leptotene/Zygotene", "Pachytene_Spermatocytes",
                  "Immature_Leydig","Leydig","Sertoli_1","Sertoli_2", 
                  "PTM", "Interstitial_tMg_1", "Interstitial_tMg_2", "Endothelial_cells"))
 
 colour_vector.P15 <- c("Undifferentiated_Spermatogonia" = "#00441b", 
                    "Differentiating_Spermatogonia" = "#238b45",
-                   "Leptotene" = "#d4b9da",
-                   "Zygotene" = "#FBDCEA",
-                   "Spermatocytes" = "#F2B2D1",
+                   "Leptotene/Zygotene" = "#FBDCEA",
+                   "Pachytene_Spermatocytes" = "#F2B2D1",
                    "Sertoli_1" = "#643F18",
                    "Sertoli_2" = "sienna4",
                    "Leydig" = "#985D25",
@@ -479,14 +478,14 @@ ggplot(data.frame(tsne1 = reducedDims(sce.P15)$TSNE[,1],
                   tsne2 = reducedDims(sce.P15)$TSNE[,2],
                   cluster = colData(sce.P15)$AnnotatedClusters)) +
   geom_point(aes(tsne1, tsne2, colour = cluster)) + 
-  scale_colour_manual(values = colour_vector)
+  scale_colour_manual(values = colour_vector.P15)
 
 P15.clusters <- rep(NA, ncol(sce.all))
 P15.clusters[colData(sce.all)$Sample == "P15"] <- annotatedCluster
 
 colData(sce.all)$P15Clusters <- factor(P15.clusters,
       levels = c("Undifferentiated_Spermatogonia", "Differentiating_Spermatogonia",
-                 "Leptotene","Zygotene","Spermatocytes",
+                 "Leptotene/Zygotene", "Pachytene_Spermatocytes",
                  "Immature_Leydig","Leydig","Sertoli_1","Sertoli_2", 
                  "PTM", "Interstitial_tMg_1", "Interstitial_tMg_2", "Endothelial_cells", NA))
 metadata(sce.all)$colour_vector.P15 <- colour_vector.P15
