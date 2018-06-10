@@ -42,7 +42,7 @@ rownames(genenames) <- genenames$Gene.stable.ID
 bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
 
 # Meta info
-meta <- as.data.frame(read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/Bulk/sdrf.xlsx"))
+meta <- as.data.frame(read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S1.xlsx", sheet = 2))
 
 # Read in gene annotation
 Rnf8 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 1)
@@ -54,11 +54,15 @@ Scml2 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/An
 ```{r in-reactivation}
 # Remove lowly expressed genes
 genes <- rowData(sce)$ID[
-  apply(logcounts(sce)[,colData(sce)$AnnotatedClusters %in% 
-          c("Spermatogonia", paste("S", 1:14, sep = ""))], 1,
+  apply(logcounts(sce)[,colData(sce)$AnnotatedClusters == "Spermatogonia"], 1,
+              function(n){length(which(n > 0))}) >
+    0.3*sum(colData(sce)$AnnotatedClusters == "Spermatogonia") |
+    apply(logcounts(sce)[,colData(sce)$AnnotatedClusters %in% 
+          paste("S", 1:14, sep = "")], 1,
               function(n){length(which(n > 0))}) >
     0.3*sum(colData(sce)$AnnotatedClusters %in% 
-              c("Spermatogonia", paste("S", 1:14, sep = "")))]
+              paste("S", 1:14, sep = ""))]
+
 
 # Collect genes for some chromosomes
 genes.X <- genes[genes %in% genenames[genenames[,3] == "X",1]]
@@ -96,8 +100,8 @@ x.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) +
     theme(panel.background = element_blank(), axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12))
-#ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Xdynamics.pdf", 
-#       x.inactivation, width = 12, height = 7)
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Xdynamics.pdf", 
+       x.inactivation, width = 12, height = 7)
 ```
 
 # Find spermatid-specific genes on X chromosome
@@ -109,15 +113,16 @@ bulk.X <- bulk[intersect(genenames[genenames$Chromosome.scaffold.name == "X",1],
 bulk.X <- bulk.X[rowMeans(bulk.X) > 10,]
 
 # Collect day info on libraries
-df <- data.frame(library = meta$Source.Name,
-                 day = meta$`Characteristics.[Age]`)
-bulk.X <- bulk.X[,df$library]
+df <- data.frame(library = meta$Library,
+                 day = sub(" days", "", meta$Age),
+                 stringsAsFactors = FALSE)
+bulk.X <- bulk.X[,as.character(df$library)]
 
-# Order genes based on their logFC between spermatocytes (< P20)
+# Order genes based on their logFC between spermatocytes (<= P20)
 # and spermatids (> P20)
 # Perform differential expression testing
 y <- DGEList(counts=bulk.X,
-             group=ifelse(df$day < 20, "Spermatocytes", "Spermatids"))
+             group=ifelse(as.numeric(df$day) < 20, "Spermatocytes", "Spermatids"))
 y <- calcNormFactors(y)
 design <- model.matrix(~0+y$samples$group)
 colnames(design) <- c("Spermatids", "Spermatocytes")
@@ -166,7 +171,7 @@ pheatmap(log2(bulk.X + 1),
          cluster_rows = FALSE, show_rownames = FALSE,
          color = viridis(100),
          border_color = NA,
-         labels_col = paste("P", meta$`Characteristics.[Age]`, sep = ""),
+         labels_col = paste("P", df$day, sep = ""),
          annotation_row = cur_df,       
         cellheight = 0.5, cellwidth = 8, fontsize = 7,
         annotation_colors = list(spermatid_specific = c("TRUE" = "steelblue",
@@ -212,14 +217,16 @@ fisher.test(cur_mat, alternative = "greater")
 
 ```{r}
 # Collect expression of spermatic specific genes in heatmap
-m <- match(as.character(spermatid.spec.df$ID), rownames(logcounts(sce)))
-for.heatmap <- logcounts(sce)[as.character(spermatid.spec.df$ID)[!is.na(m)],]
+m <- match(as.character(rownames(out.df)[out.df$Spermatid_specific == TRUE]),
+           rownames(logcounts(sce)))
+for.heatmap <- logcounts(sce)[as.character(rownames(out.df)[out.df$Spermatid_specific == TRUE])[!is.na(m)],]
 for.heatmap <- for.heatmap[Matrix::rowMeans(for.heatmap) > 0.1,]
 rownames(for.heatmap) <- rowData(sce)$Symbol[match(rownames(for.heatmap),
                                                    rowData(sce)$ID)]
 
-# Include only annotated genes
-for.heatmap <- for.heatmap[!grepl("Rik|-ps|Gm", rownames(for.heatmap)),]
+# Label only annotated genes
+cur_df <- data.frame(row.names = rownames(for.heatmap),
+                     label = !grepl("Rik|-ps|Gm", rownames(for.heatmap)))
 
 # Build mean expression matrix
 df <- as.data.frame(t(as.matrix(for.heatmap)))
@@ -236,16 +243,22 @@ mat.for.heatmap <- mat.for.heatmap[,-1]
 mat.for.heatmap <- mat.for.heatmap[order(apply(mat.for.heatmap, 1, which.max),
                                          decreasing = FALSE),]
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/SC_heatmap_spermatid_specific.pdf",   width = 7, height = 12)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/SC_heatmap_spermatid_specific.pdf",   width = 7, height = 15)
 pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE, 
-         cluster_rows = FALSE,
+         cluster_rows = FALSE, show_rownames = FALSE,
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
          annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
                   cell_type = colnames(mat.for.heatmap)),
-         annotation_colors = list(cell_type = metadata(sce)$color_vector), 
-         scale = "row", border_color = NA, cellheight = 8, fontsize = 7)
+         annotation_row = data.frame(row.names = rownames(mat.for.heatmap),
+                                     label = as.factor(cur_df[rownames(mat.for.heatmap),"label"])),
+         annotation_colors = list(cell_type = metadata(sce)$color_vector,
+                                  label = c("TRUE" = "black",
+                            "FALSE" = "white")), 
+         scale = "row", border_color = NA, cellheight = 4, fontsize = 7)
 dev.off()
 
+data.frame(names = rownames(mat.for.heatmap),
+           label = as.factor(cur_df[rownames(mat.for.heatmap),"label"]))
 ```
 
 # Visualize multicopy genes
