@@ -95,7 +95,7 @@ for(i in cur_groups){
     geom_hline(yintercept = -0.5, lty = 2) +
     scale_colour_manual(values = c("Chr21" = "coral4", 
                                    "Mouse" = "steelblue")) +
-    guides(colour = FALSE)
+    guides(colour = FALSE) + ggtitle(i)
   p.list[[i]] <- cur_p
   
 }
@@ -109,8 +109,8 @@ final <- plot_grid(p.list[[1]], p.list[[2]], p.list[[3]], p.list[[4]],
                    p.list[[9]], p.list[[10]], p.list[[11]], p.list[[12]],
                    p.list[[13]], p.list[[14]], p.list[[15]], p.list[[16]],
                    p.list[[17]], p.list[[18]], p.list[[19]], p.list[[20]],
-                   p.list[[21]], p.list[[22]], ncol = 4, nrow = 5)
+                   p.list[[21]], p.list[[22]], ncol = 4, nrow = 6)
 
 ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S5/Fig_S5.pdf", final,
-       height = 15, width = 15)
+       height = 18, width = 15)
 ```
