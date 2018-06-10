@@ -91,10 +91,11 @@ for(i in cur_groups){
                                                       "Mouse"), 
                                                levels = c("Chr21", "Mouse")))) + 
     geom_point(aes(logCPM, logFC, colour = Tc1_Tc0), size = 3) + 
-    ylim(c(-10, 10)) + xlim(c(0, 8)) + geom_hline(yintercept = 0.5, lty = 2) + 
+    ylim(c(-22, 22)) + xlim(c(0, 8)) + geom_hline(yintercept = 0.5, lty = 2) + 
     geom_hline(yintercept = -0.5, lty = 2) +
     scale_colour_manual(values = c("Chr21" = "coral4", 
-                                   "Mouse" = "steelblue"))
+                                   "Mouse" = "steelblue")) +
+    guides(colour = FALSE)
   p.list[[i]] <- cur_p
   
 }
@@ -110,4 +111,6 @@ final <- plot_grid(p.list[[1]], p.list[[2]], p.list[[3]], p.list[[4]],
                    p.list[[17]], p.list[[18]], p.list[[19]], p.list[[20]],
                    p.list[[21]], p.list[[22]], ncol = 4, nrow = 5)
 
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S5/Fig_S5.pdf", final,
+       height = 15, width = 15)
 ```
