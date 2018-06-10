@@ -55,6 +55,10 @@ df1 <- data.frame(tsne1 =reducedDims(sce)$TSNE[
                   colData(sce)$AnnotatedClusters != "NewCell"],
                   Hormad1 =  logcounts(sce)[rowData(sce)$Symbol == "Hormad1",
                   colData(sce)$AnnotatedClusters != "NewCell"],
+                  Scml2 =  logcounts(sce)[rowData(sce)$Symbol == "Scml2",
+                  colData(sce)$AnnotatedClusters != "NewCell"],
+                  Piwil1 =  logcounts(sce)[rowData(sce)$Symbol == "Piwil1",
+                  colData(sce)$AnnotatedClusters != "NewCell"],
                   no.genes = no.genes[
                   colData(sce)$AnnotatedClusters != "NewCell"])
 df2 <- data.frame(tsne1 =reducedDims(sce)$TSNE[
@@ -75,6 +79,10 @@ df2 <- data.frame(tsne1 =reducedDims(sce)$TSNE[
                   H2afx  = logcounts(sce)[rowData(sce)$Symbol == "H2afx",
                   colData(sce)$AnnotatedClusters == "NewCell"],
                   Hormad1 =  logcounts(sce)[rowData(sce)$Symbol == "Hormad1",
+                  colData(sce)$AnnotatedClusters == "NewCell"],
+                  Scml2 =  logcounts(sce)[rowData(sce)$Symbol == "Scml2",
+                  colData(sce)$AnnotatedClusters == "NewCell"],
+                  Piwil1 =  logcounts(sce)[rowData(sce)$Symbol == "Piwil1",
                   colData(sce)$AnnotatedClusters == "NewCell"],
                   no.genes = no.genes[
                   colData(sce)$AnnotatedClusters == "NewCell"])
@@ -108,6 +116,16 @@ emptyDrops.H2afx <- ggplot() +
 emptyDrops.Hormad1 <- ggplot() +
   geom_point(data = df2, aes(tsne1, tsne2, colour = Hormad1), size = 0.5) +
   geom_point(data = df1, aes(tsne1, tsne2, colour = Hormad1), size = 0.5) +
+  scale_color_viridis()
+
+emptyDrops.Scml2 <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = Scml2), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = Scml2), size = 0.5) +
+  scale_color_viridis()
+
+emptyDrops.Piwil1 <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = Piwil1), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = Piwil1), size = 0.5) +
   scale_color_viridis()
 
 # Number of genes expressed
