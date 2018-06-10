@@ -494,13 +494,3 @@ metadata(sce.all)$colour_vector.P15 <- colour_vector.P15
 saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
 
-# P15 marker genes
-
-```{r}
-Lep.Zygot.markers <- marker.detection(sce.P15, 
-                                  as.character(colData(sce.P15)$AnnotatedClusters))
-
-# Save this list as Table S1
-write.xlsx(Lep.Zygot.markers, "../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S5.xlsx")
-```
-
