@@ -69,45 +69,43 @@ Here, we visualize the histone variants taken from Kennani et al. Epigenetics & 
 
 ```{r hist-var}
 # Read in histone variants
-Hist.all <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Mouse_histones.xlsx")
-Hist.all <- Hist.all[match(unique(Hist.all$Ensembl.Gene.ID),
-                           Hist.all$Ensembl.Gene.ID),]
+Hist.all <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Mouse_histones_annotated.xlsx")
 rownames(Hist.all) <- Hist.all$Ensembl.Gene.ID
 
 # Collect data for heatmap plotting
-for.heatmap <- logcounts(sce.spermatids)[rowData(sce.spermatids)$ID %in% Hist.all$Ensembl.Gene.ID,
+for.heatmap <- logcounts(sce.spermatids)[rownames(Hist.all),
                   order(prank[,"rank"], decreasing = TRUE)]
 colnames(for.heatmap) <- paste(colData(sce.spermatids)$Barcode[order(prank[,"rank"],
                                                                decreasing = TRUE)],
                                colData(sce.spermatids)$Library[order(prank[,"rank"],
                                                                decreasing = TRUE)],
                                sep = "_")
-for.heatmap <- for.heatmap[Matrix::rowMeans(for.heatmap) > 0.1,]
-
-# Correlate this to pseudorank
-cur_df <- rbind(for.heatmap, prank[order(prank[,"rank"], decreasing = TRUE),"rank"])
-rownames(cur_df) <- c(rownames(for.heatmap), "pseudorank")
-
-null.dist <- correlateNull(ncells = ncol(sce.spermatids), iters = 100000)
-cors <- correlatePairs(cur_df, null.dist=null.dist, 
-                       pairings = list(c("pseudorank"), rownames(cur_df)))
-
-# Order correlations
-cors <- cors[order(cors$rho, decreasing = TRUE),]
 
 # Plot these genes over pseudotime
 pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Fig_5_HistoneVariants.pdf", onefile = FALSE)
-pheatmap(for.heatmap[cors$gene2,], show_colnames = FALSE,
+pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE, 
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
          annotation_col = data.frame(row.names = colnames(for.heatmap),
                   cell_type = colData(sce.spermatids)$AnnotatedClusters[order(prank[,"rank"],
                       decreasing = TRUE)]),
-         labels_row = Hist.all[cors$gene2,"Gene.name"],
-         annotation_colors = list(cell_type = metadata(sce.spermatids)$color_vector), 
+         annotation_colors = list(cell_type = metadata(sce.spermatids)$color_vector,
+                                  label = c("NA" = "white",
+                                            "label" = "black"),
+                                  Histone = c("H2A_variant" = "springgreen",
+                                              "H2B_variant" = "springgreen3",
+                                              "H3_variant" = "seagreen",
+                                              "H1_variant" = "lightseagreen",
+                                              "Canonical" = "indianred3",
+                                              "Transition_protein" = "darkorange4",
+                                              "Protamine" = "burlywood4"),
+                                  Testis_specific = c("Testis-specific" = "sienna1",
+                                                      "NA" = "white")), 
          scale = "row",
-         annotation_row = data.frame(row.names = cors$gene2,
-                                     Testis_specific = Hist.all[cors$gene2,"X7"]))
+         annotation_row = data.frame(row.names = rownames(for.heatmap),
+                                     Testis_specific = Hist.all$`Testis-specific`,
+                                     Histone = Hist.all$Label,
+                                     label = Hist.all$Gene_name))
 dev.off()
 ```
 
