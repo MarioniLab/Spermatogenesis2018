@@ -144,7 +144,7 @@ sce.P15 <- normalize(sce.P15)
 Lep.Zygot.markers <- marker.detection(sce.P15, 
                                   as.character(colData(sce.P15)$P15Clusters))
 
-write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S5.xlsx")
+#write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S5.xlsx")
 
 # PCA of P15 germ cells
 cur_sce <- sce.P15[,grepl("Leptotene|Zygotene|Sperm", colData(sce.P15)$P15Clusters)]
@@ -176,6 +176,28 @@ C <- plot_grid(emptyDrops.no.genes, NULL, NULL, ncol = 3, nrow = 1,
 final <- plot_grid(A, B, C,
                    ncol = 1, nrow = 3)
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/Fig_S4.pdf",
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/Fig_S4.pdf", final,
        width = 15, height = 15)
+```
+
+# Save versions of the plots that have figure legends
+
+```{r}
+emptyDrops <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = batch), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = batch), size = 0.5) +
+  scale_color_manual(values = metadata(sce)$color_vector)
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/emptyDrops_labels.pdf", emptyDrops,
+       width = 7, height = 7)
+
+emptyDrops.P15 <- ggplot() +
+  geom_point(data = df2[grepl("P15", df2$sample),], 
+             aes(tsne1, tsne2, colour = P15), size = 0.5) +
+  geom_point(data = df1[grepl("P15", df1$sample),], 
+             aes(tsne1, tsne2, colour = P15), size = 0.5) +
+  scale_color_manual(values = metadata(sce)$colour_vector.P15) 
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/emptyDrops.P15_labels.pdf", emptyDrops.P15,
+       width = 7, height = 7)
 ```
