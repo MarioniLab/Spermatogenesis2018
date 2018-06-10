@@ -28,15 +28,13 @@ library(pheatmap)
 source("../Functions/auxiliary.R")
 
 # Single cell data
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+no.genes <- nexprs(sce, detection_limit = 0)
 ```
 
 # Visualize emptyDrops
 
 ```{r emptyDrops}
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
-no.genes <- nexprs(sce, detection_limit = 0)
-
 # Collect marker genes expression in correct order
 df1 <- data.frame(tsne1 =reducedDims(sce)$TSNE[
                       colData(sce)$AnnotatedClusters != "NewCell",1],
@@ -46,6 +44,9 @@ df1 <- data.frame(tsne1 =reducedDims(sce)$TSNE[
                     colData(sce)$AnnotatedClusters != "NewCell"
                   ],
                   sample = colData(sce)$Sample[
+                    colData(sce)$AnnotatedClusters != "NewCell"
+                  ],
+                  P15 = colData(sce)$P15Clusters[
                     colData(sce)$AnnotatedClusters != "NewCell"
                   ],
                   Sycp1 = logcounts(sce)[rowData(sce)$Symbol == "Sycp1",
@@ -66,6 +67,9 @@ df2 <- data.frame(tsne1 =reducedDims(sce)$TSNE[
                   sample = colData(sce)$Sample[
                     colData(sce)$AnnotatedClusters == "NewCell"
                   ],
+                  P15 = colData(sce)$P15Clusters[
+                    colData(sce)$AnnotatedClusters == "NewCell"
+                  ],
                   Sycp1 = logcounts(sce)[rowData(sce)$Symbol == "Sycp1",
                   colData(sce)$AnnotatedClusters == "NewCell"],
                   H2afx  = logcounts(sce)[rowData(sce)$Symbol == "H2afx",
@@ -82,13 +86,13 @@ emptyDrops <- ggplot() +
   scale_color_manual(values = metadata(sce)$color_vector) +
   guides(colour = FALSE)
 
-# Only P20
-emptyDrops.P20 <- ggplot() +
-  geom_point(data = df2[grepl("P20", df2$sample),], 
-             aes(tsne1, tsne2, colour = batch), size = 0.5) +
-  geom_point(data = df1[grepl("P20", df1$sample),], 
-             aes(tsne1, tsne2, colour = batch), size = 0.5) +
-  scale_color_manual(values = metadata(sce)$color_vector) +
+# Only P15
+emptyDrops.P15 <- ggplot() +
+  geom_point(data = df2[grepl("P15", df2$sample),], 
+             aes(tsne1, tsne2, colour = P15), size = 0.5) +
+  geom_point(data = df1[grepl("P15", df1$sample),], 
+             aes(tsne1, tsne2, colour = P15), size = 0.5) +
+  scale_color_manual(values = metadata(sce)$colour_vector.P15) +
   guides(colour = FALSE)
 
 emptyDrops.Sycp1 <- ggplot() +
@@ -113,20 +117,47 @@ emptyDrops.no.genes <- ggplot() +
   scale_color_gradientn(colours = inferno(100))
 ```
 
+# Marker genes and PCA at P15
+
+```{r}
+sce.P15 <- sce[,colData(sce)$Sample == "P15"]
+sce.P15 <- normalize(sce.P15)
+
+Lep.Zygot.markers <- marker.detection(sce.P15, 
+                                  as.character(colData(sce.P15)$P15Clusters))
+
+write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S5.xlsx")
+
+# PCA of P15 germ cells
+cur_sce <- sce.P15[,grepl("Leptotene|Zygotene|Sperm", colData(sce.P15)$P15Clusters)]
+cur_sce <- normalize(cur_sce)
+
+HVgenes <- HVG(cur_sce)
+
+pca  <- prcomp(t(logcounts(cur_sce)[HVgenes,]))
+
+p.clusters <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  clusters = colData(cur_sce)$P15Clusters)) +
+  geom_point(aes(PC1, PC2, colour = clusters)) + 
+  scale_colour_manual(values = metadata(cur_sce)$colour_vector.P15) +
+  guides(colour = FALSE)
+```
+
 # Save final figure
 
 ```{r save}
-B <- plot_grid(Nanos3, Stra8, Rhox13, ncol = 3, nrow = 1, 
-               labels = c("B", NULL, NULL))
-C <- plot_grid(emptyDrops, emptyDrops.P20, NULL, ncol = 3, nrow = 1, 
-               labels = c("C", NULL, NULL))
-D <- plot_grid(emptyDrops.Sycp1, emptyDrops.H2afx, emptyDrops.Hormad1, ncol = 3, nrow = 1, 
+A <- plot_grid(emptyDrops, emptyDrops.P15, p.clusters, 
+               ncol = 3, nrow = 1, 
+               labels = c("A", "B", "C"))
+B <- plot_grid(emptyDrops.Sycp1, emptyDrops.H2afx, emptyDrops.Hormad1, 
+               ncol = 3, nrow = 1, 
                labels = c("D", NULL, NULL))
-E <- plot_grid(emptyDrops.no.genes, NULL, NULL, ncol = 3, nrow = 1, 
+C <- plot_grid(emptyDrops.no.genes, NULL, NULL, ncol = 3, nrow = 1, 
                labels = c("E", NULL, NULL))
-final <- plot_grid(B, C, D, E,
-                   ncol = 1, nrow = 4)
+final <- plot_grid(A, B, C,
+                   ncol = 1, nrow = 3)
 
-ggsave("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/Fig_S4.pdf",
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/Fig_S4.pdf",
        width = 15, height = 15)
 ```
