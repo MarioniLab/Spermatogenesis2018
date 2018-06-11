@@ -473,8 +473,8 @@ metadata(sce.all)$color_vector <- colour_vector
 # Save normalized and raw counts for ArrayExpress
 
 ```{r}
-writeMM(counts(sce.all), "../../../../Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/10X/raw_counts.mtx")
-write.table(colData(sce.all), "../../../../Dropbox (Cambridge University)/SST_spermatocytes/ArrayExpress/10X/cell_metadata.txt")
+writeMM(counts(sce.all), "../../../../Desktop/raw_counts.mtx")
+write.table(colData(sce.all), "../../../../Desktop/cell_metadata.txt")
 ```
 
 ```{r}

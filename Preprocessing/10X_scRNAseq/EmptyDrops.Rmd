@@ -493,3 +493,10 @@ metadata(sce.all)$colour_vector.P15 <- colour_vector.P15
 saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
 
+# Write expression counts and metadata for ArrayExpress
+
+```{r}
+writeMM(counts(sce.all), "../../../../Desktop/raw_counts_emptyDropts.mtx")
+write.table(colData(sce.all), "../../../../Desktop/cell_metadata_emptyDrops.txt")
+```
+
