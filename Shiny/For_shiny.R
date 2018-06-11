@@ -10,11 +10,11 @@ library(RColorBrewer)
 # Read in data
 # Adult
 sce <- readRDS("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-sce <- sce[,!(colData(sce)$AnnotatedClusters %in% c(paste("NA", 1:5, sep = ""), "Outliers"))]
+sce <- sce[,!grepl("Tc0|Tc1", colData(sce)$Sample) & colData(sce)$AnnotatedClusters != "Outliers"]
 sce <- normalize(sce)
 
 # Read in genanames
-mouse.genes <- read.table("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/Mouse_genes.txt",
+mouse.genes <- read.table("GitHub/Spermatogenesis2018/Data/Mouse_genes.txt",
                           sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 mouse.genes <- mouse.genes[!grepl("CHR", mouse.genes$Chromosome.scaffold.name) &
                              !grepl("GL", mouse.genes$Chromosome.scaffold.name) &
