@@ -185,36 +185,37 @@ df$Symbol <- genenames[rownames(df),2]
 df <- df[order(df$Spermatocytes.K9, decreasing = TRUE),]
 
 # Annotate genenames
-df$spermatid_specific <- ifelse(rownames(df) %in% spermatid.specific$ID, TRUE, FALSE)
-df$Rnf8 <- ifelse(df$Symbol %in% K27writers.Rnf8, TRUE, FALSE)
-df$Scml2 <- ifelse(df$Symbol %in% K27writers.Scml2, TRUE, FALSE)
+df$spermatid_specific <- df$Symbol %in%
+  spermatid.specific$Genename[spermatid.specific$Spermatid_specific]
+df$Rnf8 <- df$Symbol %in% K27writers.Rnf8$gene_id
+df$Scml2 <- df$Symbol %in% K27writers.Scml2$gene_id
 
 # Plot results
 spermatid.spec.K9.spermatocytes <- ggplot(df) + geom_boxplot(aes(spermatid_specific,
                             log2(Spermatocytes.K9 + 1),
                             fill = spermatid_specific)) + 
-  scale_fill_jama()
+  scale_fill_jama() + ylim(c(0,5))
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/K9_spermatocytes_X_promoters.pdf", 
        spermatid.spec.K9.spermatocytes, width = 4, height = 4)
 
 spermatid.spec.K9.spermatids <- ggplot(df) + geom_boxplot(aes(spermatid_specific,
                             log2(Spermatids.K9 + 1),
                             fill = spermatid_specific)) + 
-  scale_fill_jama()
+  scale_fill_jama()+ ylim(c(0,5))
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/K9_spermatids_X_promoters.pdf", 
        spermatid.spec.K9.spermatids, width = 4, height = 4)
 
 spermatid.spec.K4.spermatocytes <- ggplot(df) + geom_boxplot(aes(spermatid_specific,
                             log2(Spermatocytes.K4 + 1),
                             fill = spermatid_specific)) + 
-  scale_fill_jama()
+  scale_fill_jama() + ylim(c(0,5))
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/K4_spermatocytes_X_promoters.pdf", 
        spermatid.spec.K4.spermatocytes, width = 4, height = 4)
 
 spermatid.spec.K4.spermatids <- ggplot(df) + geom_boxplot(aes(spermatid_specific,
                             log2(Spermatids.K4 + 1),
                             fill = spermatid_specific)) + 
-  scale_fill_jama()
+  scale_fill_jama() + ylim(c(0,5))
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/K4_spermatids_X_promoters.pdf", 
        spermatid.spec.K4.spermatids, width = 4, height = 4)
 
@@ -231,6 +232,11 @@ wilcox.test(df$Spermatocytes.K4[df$spermatid_specific == TRUE],
 wilcox.test(df$Spermatids.K4[df$spermatid_specific == TRUE],
             df$Spermatids.K4[df$spermatid_specific == FALSE])
 
+# Write table
+df.out <- df
+df.out <- df.out[order(df.out$spermatid_specific, decreasing = TRUE),]
+
+write.xlsx(df.out, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
 ```
 
 # Visualize genes with high K9
