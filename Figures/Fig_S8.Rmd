@@ -1,0 +1,213 @@
+---
+title: "Figure S8"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S8/Fig_S8.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load data and libraries
+
+```{r data, message=FALSE}
+library(rtracklayer)
+library(EnrichedHeatmap)
+library(GenomicFeatures)
+library(EnsDb.Mmusculus.v79)
+library(TxDb.Mmusculus.UCSC.mm10.ensGene)
+library(plyr)
+library(reshape2)
+library(pheatmap)
+library(viridis)
+library(plot3D)
+library(ggsci)
+library(cowplot)
+library(openxlsx)
+library(csaw)
+library(edgeR)
+library(Rsamtools)
+library(Gviz)
+source("../Functions/auxiliary.R")
+
+# Generate feature annotation
+prom <- promoters(genes(EnsDb.Mmusculus.v79))
+gene.body <- genes(EnsDb.Mmusculus.v79)
+prom <- prom[seqnames(prom) %in% c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(prom) <- c(as.character(1:19), "X", "Y", "MT")
+gene.body <- gene.body[seqnames(gene.body) %in% c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(gene.body) <- c(as.character(1:19), "X", "Y", "MT")
+prom.X <- prom[seqnames(prom) == "X"]
+prom.Y <- prom[seqnames(prom) == "Y"]
+prom.9 <- prom[seqnames(prom) == "9"]
+gene.body.X <- gene.body[seqnames(gene.body) == "X"]
+
+# K9 files
+bam.files.K9 <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K9me3/", full.names = TRUE,
+                        pattern = paste(".+JP26.+bam$", sep = ""))
+
+# K4 files
+bam.files.K4 <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K4me3/", full.names = TRUE,
+                        pattern = paste(".+JP26.+bam$", sep = ""))
+
+# Define conditions
+batch <- gl(2, 2)
+treatment <- rep(c("spermatocytes", "spermatids"), 2)
+
+# Blacklisted regions
+black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
+seqlevels(black) <- sub("chr", "", seqlevels(black))
+seqnames(black) <- sub("chr", "", seqnames(black))
+
+# Parameters for reading bam files
+param <- readParam(dedup=TRUE, minq=10, discard=black, pe="both", max.frag=1000)
+
+# Read in genelists
+spermatid.specific <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/SpermatidSpecificGenes.xlsx")
+
+# Read in gene annotations
+genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+rownames(genenames) <- genenames$Gene.stable.ID
+```
+
+# Analyse heterogeneity of K9 on X chromosome
+
+```{r}
+# Bin the genome in 1000Kb windows
+bins.K9 <- windowCounts(bam.files.K9, bin = TRUE, width = 1000, param=param)
+bins.K4 <- windowCounts(bam.files.K4, bin = TRUE, width = 1000, param=param)
+
+# Filter X chromosome bins
+bins.K9.X <- bins.K9[as.vector(seqnames(rowRanges(bins.K9)) == "X")]
+
+# Plot cumulative frequency
+df.K9.X <- data.frame(spermatocytes_1 =
+                      cumsum(assays(bins.K9.X)$counts[
+                        order(assays(bins.K9.X)$counts[,1], 
+                              decreasing = TRUE),1]),
+                      spermatocytes_2 =
+                      cumsum(assays(bins.K9.X)$counts[
+                        order(assays(bins.K9.X)$counts[,3], 
+                              decreasing = TRUE),3]),
+                      spermatids_1 =
+                      cumsum(assays(bins.K9.X)$counts[
+                        order(assays(bins.K9.X)$counts[,2], 
+                              decreasing = TRUE),2]),
+                      spermatids_2 =
+                      cumsum(assays(bins.K9.X)$counts[
+                        order(assays(bins.K9.X)$counts[,4], 
+                              decreasing = TRUE),4]))
+df.K9.X <- t(t(df.K9.X)/as.numeric(tail(df.K9.X, 1)))
+# Sample 10000 windows 
+set.seed(1234)
+sam <- sample(1:nrow(df.K9.X), 10000)
+sam <- sam[order(sam)]
+
+df.K9.X.melt <- melt(df.K9.X[c(1,sam),])
+
+# Compare to Chr9
+bins.K9.9 <- bins.K9[as.vector(seqnames(rowRanges(bins.K9)) == "9")]
+
+# Plot cumulative frequency
+df.K9.9 <- data.frame(spermatocytes_1 =
+                      cumsum(assays(bins.K9.9)$counts[
+                        order(assays(bins.K9.9)$counts[,1], 
+                              decreasing = TRUE),1]),
+                      spermatocytes_2 =
+                      cumsum(assays(bins.K9.9)$counts[
+                        order(assays(bins.K9.9)$counts[,3], 
+                              decreasing = TRUE),3]),
+                      spermatids_1 =
+                      cumsum(assays(bins.K9.9)$counts[
+                        order(assays(bins.K9.9)$counts[,2], 
+                              decreasing = TRUE),2]),
+                      spermatids_2 =
+                      cumsum(assays(bins.K9.9)$counts[
+                        order(assays(bins.K9.9)$counts[,4], 
+                              decreasing = TRUE),4]))
+df.K9.9 <- t(t(df.K9.9)/as.numeric(tail(df.K9.9, 1)))
+set.seed(1234)
+sam <- sample(1:nrow(df.K9.9), 10000)
+sam <- sam[order(sam)]
+df.K9.9.melt <- melt(df.K9.9[c(1,sam),])
+
+cumsum.all <- ggplot() + 
+  geom_line(data = df.K9.9.melt, aes(Var1, value, colour = Var2), lty = 3) +
+  geom_line(data = df.K9.X.melt, aes(Var1, value, colour = Var2)) + 
+  scale_color_manual(values = c("red", "dark red", "blue", "dark blue"))
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S8/Cumsum_all.pdf", 
+       cumsum.all, width = 7, height = 4)
+```
+
+# Find regions with highest K9
+
+```{r}
+# Spermatocytes
+cur_high <- rowRanges(bins.K9.X)[order(assays(bins.K9.X)$counts[,1], decreasing = TRUE)]
+cur_high <- cur_high[1:1000]
+cur_high.merge <- mergeWindows(cur_high, tol = 1500)
+length(cur_high.merge$region)
+sum(width(cur_high.merge$region) > 1000)
+
+# Order by size
+cur_high.merge <- cur_high.merge$region[order(cur_high.merge$region@ranges@width, 
+                                              decreasing = TRUE)]
+cur_high.merge
+
+# The second hit is right next to Akap4. Number 8 is close to Tsga8 and on Dmd.
+
+# Save as bedgraph
+export(cur_high.merge, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S8/Spermatocytes_1_highK9regions.bed")
+
+# Spermatids
+cur_high <- rowRanges(bins.K9.X)[order(assays(bins.K9.X)$counts[,2], decreasing = TRUE)]
+cur_high <- cur_high[1:1000]
+cur_high.merge <- mergeWindows(cur_high, tol = 1500)
+nrow(cur_high.merge)
+length(cur_high.merge$region)
+sum(width(cur_high.merge$region) > 1000)
+
+# Order by size
+cur_high.merge <- cur_high.merge$region[order(cur_high.merge$region@ranges@width, 
+                                              decreasing = TRUE)]
+cur_high.merge
+
+# Save as bedgraph
+export(cur_high.merge, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S8/Spermatids_1_highK9regions.bed")
+```
+
+# Fold change in K4 signal
+
+```{r}
+prom.X.K9 <- regionCounts(bam.files.K9, regions = prom.X, param=param)
+prom.X.K4 <- regionCounts(bam.files.K4, regions = prom.X, param=param)
+
+# Generate RPM per promoter - each promoter is 2200bp wide
+cur_counts.K9 <- assays(prom.X.K9)$counts
+cur_rpm.K9 <- t(t(cur_counts.K9)/(colSums(assays(bins.K9)$counts)/1000000))
+
+cur_counts.K4 <- assays(prom.X.K4)$counts
+cur_rpm.K4 <- t(t(cur_counts.K4)/(colSums(assays(bins.K4)$counts)/1000000))
+
+# Compute average between spermatocytes and spermatids
+df <- data.frame(Spermatocytes.K9 = rowMeans(cur_rpm.K9[,c(1,3)]),
+                 Spermatids.K9 = rowMeans(cur_rpm.K9[,c(2,4)]),
+                 avg.K9 = rowMeans(cur_rpm.K9),
+                 Spermatocytes.K4 = rowMeans(cur_rpm.K4[,c(1,3)]),
+                 Spermatids.K4 = rowMeans(cur_rpm.K4[,c(2,4)]),
+                 avg.K4 = rowMeans(cur_rpm.K4))
+df$Symbol <- genenames[rownames(df),2]
+
+# Order based on K9 signal in spermatocytes
+df <- df[order(df$Spermatocytes.K9, decreasing = TRUE),]
+
+# Annotate genenames
+df$spermatid_specific <- ifelse(rownames(df) %in% spermatid.specific$ID, TRUE, FALSE)
+
+```
