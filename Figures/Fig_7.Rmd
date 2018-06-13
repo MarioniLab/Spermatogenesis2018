@@ -186,7 +186,7 @@ df <- df[order(df$Spermatocytes.K9, decreasing = TRUE),]
 
 # Annotate genenames
 df$spermatid_specific <- df$Symbol %in%
-  spermatid.specific$Genename[spermatid.specific$Spermatid_specific]
+  spermatid.specific$Symbol[spermatid.specific$spermatid_specific]
 df$Rnf8 <- df$Symbol %in% K27writers.Rnf8$gene_id
 df$Scml2 <- df$Symbol %in% K27writers.Scml2$gene_id
 
@@ -236,7 +236,7 @@ wilcox.test(df$Spermatids.K4[df$spermatid_specific == TRUE],
 df.out <- df
 df.out <- df.out[order(df.out$spermatid_specific, decreasing = TRUE),]
 
-write.xlsx(df.out, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
+#write.xlsx(df.out, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
 ```
 
 # Visualize genes with high K9
@@ -300,58 +300,4 @@ for(i in 1:length(genes)){
 
 }
 
-```
-
-# Enrichment analysis of K9 in spermatids and spermatocytes
-
-```{r}
-# Count reads in promoters
-prom.X.K9 <- regionCounts(bam.files.K9, regions = prom.X, param=param)
-# Count reads in genebodies
-gene.X.K9 <- regionCounts(bam.files.K9, regions = gene.body.X, param=param)
-
-# Calculate the percentage of reads in gene bodies and promoters
-colSums(assays(gene.X.K9)$counts)/assays(out.K9)$counts[names(sizes) == "X",]
-colSums(assays(prom.X.K9)$counts)/assays(out.K9)$counts[names(sizes) == "X",]
-
-# Visualize the K9 signal in gene bodies
-# Generate RPM per promoter - each promoter is 2200bp wide
-cur_counts.K9 <- assays(gene.X.K9)$counts
-cur_rpm.K9 <- t(t(cur_counts.K9)/(colSums(assays(bins.K9)$counts)/1000000))
-
-# Compute average between spermatocytes and spermatids
-df <- data.frame(Spermatocytes.K9 = rowMeans(cur_rpm.K9[,c(1,3)]),
-                 Spermatids.K9 = rowMeans(cur_rpm.K9[,c(2,4)]),
-                 avg.K9 = rowMeans(cur_rpm.K9))
-df$Symbol <- genenames[rownames(df),2]
-
-# Order based on K9 signal in spermatocytes
-df <- df[order(df$Spermatids.K9, decreasing = TRUE),]
-
-# Annotate genenames
-df$spermatid_specific <- ifelse(rownames(df) %in% spermatid.specific$ID, TRUE, FALSE)
-
-# Plot results
-spermatid.spec.K9.genebody <- ggplot(df) + geom_boxplot(aes(spermatid_specific,
-                            log2(Spermatids.K9 + 1),
-                            fill = spermatid_specific)) + 
-  scale_fill_jama()
-
-```
-
-# Find genes that are expressed
-
-```{r}
-# Read in sce
-sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-sce <- sce[,grepl("B6", colData(sce)$Sample) & 
-             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
-sce <- normalize(sce)
-
-# Save mean expression over spermatocytes and spermatids in df
-RM <- rep(NA, nrow(df))
-m <- match(rownames(df), rownames(logcounts(sce)))
-RM[!is.na(m)] <- Matrix::rowMeans(logcounts(sce)[m[!is.na(m)],colData(sce)$AnnotatedClusters %in% paste("S", 1:10, sep = "")])
-
-plot(RM, df$Spermatids.K9)
 ```
