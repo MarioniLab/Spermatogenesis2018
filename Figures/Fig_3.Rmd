@@ -106,6 +106,13 @@ Rhox13.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
                     rowData(sce.spermatogonia.p10.15)$Symbol == "Rhox13",])) +
   geom_point(aes(PC1, PC2, colour = Rhox13)) + scale_colour_viridis()
 
+
+#Dmrtb1 mediates mitosis-to-meiosis 
+Dmrtb1.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
+                  PC2 = pca.P10.15$x[,2],
+                  Dmrtb1 = logcounts(sce.spermatogonia.p10.15)[
+                    rowData(sce.spermatogonia.p10.15)$Symbol == "Dmrtb1",])) +
+  geom_point(aes(PC1, PC2, colour = Dmrtb1)) + scale_colour_viridis()
 ```
 
 # Clustering of spermatogonia for P10 and P15
@@ -184,7 +191,7 @@ dev.off()
 # Save final figure
 
 ```{r save}
-B <- plot_grid(Nanos3.P10.15, Stra8.P10.15, Ccnd1.P10.15, p.clusters, ncol = 4, nrow = 1)
+B <- plot_grid(Nanos3.P10.15, Stra8.P10.15, Dmrtb1.P10.15, p.clusters, ncol = 4, nrow = 1)
 
 ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3.pdf",
        B, width = 20, height = 5)
