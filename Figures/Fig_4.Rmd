@@ -39,9 +39,6 @@ sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analys
 # Select spermatogonia and spermatocytes
 sce <- sce[,colData(sce)$Sample == "B6"]
 sce <- normalize(sce)
-
-# Read in length of genes
-genelength <- read.table("../Data/Genelength.txt", header = TRUE, sep = "\t")
 ```
 
 # Spermatocytes
