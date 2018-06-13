@@ -3,7 +3,6 @@ library(Matrix)
 library(ggplot2)
 library(RColorBrewer)
 library(viridis)
-library(ggsci)
 library(scater)
 load(paste("/Users/", 
                      system("whoami", intern=TRUE),
@@ -18,8 +17,8 @@ shinyServer(function(input, output, session) {
                        choices = c(rowData(sce)$Symbol, unique(mouse.genes$Chromosome.scaffold.name)), 
                        server = TRUE)
   updateSelectInput(session, 'group', 
-                       choices = levels(colData(sce)$AnnotatedClusters), 
-                       selected = levels(colData(sce)$AnnotatedClusters))
+                       choices = levels(colData(sce)$AnnotatedClusters)[levels(colData(sce)$AnnotatedClusters) != "Outliers"], 
+                       selected = levels(colData(sce)$AnnotatedClusters)[levels(colData(sce)$AnnotatedClusters) != "Outliers"])
   
   #### Visualize gene expression on tSNE
   createPlot.tsne <- eventReactive(input$goButton, {
@@ -44,7 +43,8 @@ shinyServer(function(input, output, session) {
                                             colData(sce)$AnnotatedClusters %in% input$group,
                                           "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = Gene, alpha = shown)) + theme_minimal() + 
-      scale_color_viridis() + scale_alpha_manual(values = to.show) + 
+      scale_color_viridis(name = paste("log2(", input$gene, " Expr)", sep = "")) + 
+      scale_alpha_manual(values = to.show) + 
       guides(alpha=FALSE)
     })
   
@@ -62,7 +62,7 @@ shinyServer(function(input, output, session) {
                                               colData(sce)$AnnotatedClusters %in% input$group,
                                             "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = sample, alpha = shown)) + theme_minimal() + 
-      scale_color_manual(values = cur_color_vector) + scale_alpha_manual(values = to.show) + 
+      scale_color_manual(values = cur_color_vector, name = "Cell type") + scale_alpha_manual(values = to.show) + 
       guides(alpha=FALSE)
   })
   
@@ -80,7 +80,7 @@ shinyServer(function(input, output, session) {
                                                      colData(sce)$AnnotatedClusters %in% input$group,
                                                    "Included", "Excluded"), levels = c("Excluded", "Included")))) +
       geom_point(aes(tSNE1, tSNE2, colour = group, alpha = shown)) +
-      scale_color_manual(values = color_vector) + theme_minimal() + 
+      scale_color_manual(values = color_vector, name = "Sample") + theme_minimal() + 
       scale_alpha_manual(values = to.show) + 
       guides(alpha=FALSE)
     })
@@ -118,7 +118,7 @@ shinyServer(function(input, output, session) {
                       sample = factor(paste(Sample, Library)))) +
       geom_boxplot(aes(x = cluster, y = value, fill = cluster, 
                        group = interaction(cluster, sample))) + 
-      scale_fill_manual(values = color_vector) + 
+      scale_fill_manual(values = color_vector) + ylab(paste("log2(", input$gene, " Expr)", sep = "")) +
       theme(axis.text.x = element_text(angle = 45, hjust = 1),
             panel.background = element_blank()) 
   })
