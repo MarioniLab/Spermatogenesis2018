@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/Fig_S4.html') })
+        encoding = encoding, output_file = '../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/Fig_S4.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -28,7 +28,7 @@ library(pheatmap)
 source("../Functions/auxiliary.R")
 
 # Single cell data
-sce <- readRDS("/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 no.genes <- nexprs(sce, detection_limit = 0)
 ```
 
