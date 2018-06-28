@@ -18,4 +18,4 @@ This repository contains scripts for data processing, analysis and figure genera
 
 The preprint can be found at:
 
-[]()
+[Staged developmental mapping and X chromosome transcriptional dynamics during mouse spermatogenesis](https://www.biorxiv.org/content/early/2018/06/20/350868)
