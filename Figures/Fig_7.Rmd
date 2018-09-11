@@ -75,7 +75,7 @@ retro <- retro[grepl("ENS", retro$Parental.Gene),]
 K27writers.Rnf8 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 1)
 K27writers.Scml2 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 2)
 
-spermatid.specific <- read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
+spermatid.specific <- read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8_bulkDetection.xlsx")
 
 # Read in gene annotations
 genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
@@ -185,34 +185,36 @@ df$Symbol <- genenames[rownames(df),2]
 df <- df[order(df$Spermatocytes.K9, decreasing = TRUE),]
 
 # Annotate genenames
-df$spermatid_specific <- df$Symbol %in%
-  spermatid.specific$Genename[spermatid.specific$Spermatid_specific]
+df$spermatid_specific <- ifelse(df$Symbol %in% spermatid.specific$Genename, ifelse(
+  df$Symbol %in% spermatid.specific$Genename[spermatid.specific$Spermatid_specific == TRUE],
+TRUE, FALSE), NA)
 df$Rnf8 <- df$Symbol %in% K27writers.Rnf8$gene_id
 df$Scml2 <- df$Symbol %in% K27writers.Scml2$gene_id
 
 # Plot results
-spermatid.spec.K9.spermatocytes <- ggplot(df) + geom_boxplot(aes(spermatid_specific,
+for.plot <- df[!is.na(df$spermatid_specific),]
+spermatid.spec.K9.spermatocytes <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
                             log2(Spermatocytes.K9 + 1),
                             fill = spermatid_specific)) + 
   scale_fill_jama() + ylim(c(0,5))
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/K9_spermatocytes_X_promoters.pdf", 
        spermatid.spec.K9.spermatocytes, width = 4, height = 4)
 
-spermatid.spec.K9.spermatids <- ggplot(df) + geom_boxplot(aes(spermatid_specific,
+spermatid.spec.K9.spermatids <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
                             log2(Spermatids.K9 + 1),
                             fill = spermatid_specific)) + 
   scale_fill_jama()+ ylim(c(0,5))
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/K9_spermatids_X_promoters.pdf", 
        spermatid.spec.K9.spermatids, width = 4, height = 4)
 
-spermatid.spec.K4.spermatocytes <- ggplot(df) + geom_boxplot(aes(spermatid_specific,
+spermatid.spec.K4.spermatocytes <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
                             log2(Spermatocytes.K4 + 1),
                             fill = spermatid_specific)) + 
   scale_fill_jama() + ylim(c(0,5))
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/K4_spermatocytes_X_promoters.pdf", 
        spermatid.spec.K4.spermatocytes, width = 4, height = 4)
 
-spermatid.spec.K4.spermatids <- ggplot(df) + geom_boxplot(aes(spermatid_specific,
+spermatid.spec.K4.spermatids <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
                             log2(Spermatids.K4 + 1),
                             fill = spermatid_specific)) + 
   scale_fill_jama() + ylim(c(0,5))
@@ -220,17 +222,17 @@ ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Ana
        spermatid.spec.K4.spermatids, width = 4, height = 4)
 
 # Wilcoxon test
-wilcox.test(df$Spermatocytes.K9[df$spermatid_specific == TRUE],
-            df$Spermatocytes.K9[df$spermatid_specific == FALSE])
+wilcox.test(for.plot$Spermatocytes.K9[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatocytes.K9[for.plot$spermatid_specific == FALSE])
 
-wilcox.test(df$Spermatids.K9[df$spermatid_specific == TRUE],
-            df$Spermatids.K9[df$spermatid_specific == FALSE])
+wilcox.test(for.plot$Spermatids.K9[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatids.K9[for.plot$spermatid_specific == FALSE])
 
-wilcox.test(df$Spermatocytes.K4[df$spermatid_specific == TRUE],
-            df$Spermatocytes.K4[df$spermatid_specific == FALSE])
+wilcox.test(for.plot$Spermatocytes.K4[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatocytes.K4[for.plot$spermatid_specific == FALSE])
 
-wilcox.test(df$Spermatids.K4[df$spermatid_specific == TRUE],
-            df$Spermatids.K4[df$spermatid_specific == FALSE])
+wilcox.test(for.plot$Spermatids.K4[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatids.K4[for.plot$spermatid_specific == FALSE])
 
 # Write table
 df.out <- df

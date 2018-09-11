@@ -144,7 +144,7 @@ sce.P15 <- normalize(sce.P15)
 Lep.Zygot.markers <- marker.detection(sce.P15, 
                                   as.character(colData(sce.P15)$P15Clusters))
 
-#write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S5.xlsx")
+write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S5.xlsx")
 
 # PCA of P15 germ cells
 cur_sce <- sce.P15[,grepl("Leptotene|Zygotene|Sperm", colData(sce.P15)$P15Clusters)]

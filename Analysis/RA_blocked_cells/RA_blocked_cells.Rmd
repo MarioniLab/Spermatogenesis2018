@@ -1,0 +1,43 @@
+---
+title: "RA blocked cells"
+author: "Nils Eling"
+date: "11/09/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script overlays germ cells isolated after RA blocking with the continuum of germ cells that we discovered. 
+RA blocked cells can be downloaded from: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE107644
+
+# Load data
+
+```{r data}
+library(scran)
+library(scater)
+library(Matrix)
+
+# Data from Chen et al, Cell Research
+files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Chen_CellResearch/GSE107644_RAW/", full.names = TRUE)
+
+all_cells <- lapply(as.list(files), function(n){
+  cur_file <- read.table(n, sep = "\t", header = TRUE)
+  rownames(cur_file) <- cur_file[,1]
+  cur_file <- cur_file[,-1]
+})
+
+all_cells <- do.call("cbind", all_cells)
+
+# Form a sce 
+sce_RA <- SingleCellExperiment(assays=list(counts=Matrix::Matrix(as.matrix(all_cells), sparse = TRUE)))
+colData(sce_RA)$time_point <- as.character(sapply(colnames(sce_RA), function(n){unlist(strsplit(n, "_"))[1]})) 
+colData(sce_RA)$cell_type <- as.character(sapply(colnames(sce_RA), function(n){unlist(strsplit(n, "_"))[2]})) 
+
+# Juvenile and adult data
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+```
+
+## Simple quality checks
+
