@@ -18,6 +18,7 @@ RA blocked cells can be downloaded from: https://www.ncbi.nlm.nih.gov/geo/query/
 library(scran)
 library(scater)
 library(Matrix)
+library(ggplot2)
 
 # Data from Chen et al, Cell Research
 files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Chen_CellResearch/GSE107644_RAW/", full.names = TRUE)
@@ -37,7 +38,18 @@ colData(sce_RA)$cell_type <- as.character(sapply(colnames(sce_RA), function(n){u
 
 # Juvenile and adult data
 sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- sce[,grepl("B6|P10|P15", colData(sce)$Sample)]
 ```
 
-## Simple quality checks
+## Simple quality checks for Chen et al data
+
+```{r QC}
+sce_RA <- calculateQCMetrics(sce_RA)
+
+ggplot(as.data.frame(colData(sce_RA))) + 
+  geom_point(aes(total_features_by_counts, log10_total_counts, colour = time_point))
+
+# Remove 2 cells with few features detected
+sce_RA <- sce_RA[,colData(sce_RA)$total_features_by_counts > 1250]
+```
 
