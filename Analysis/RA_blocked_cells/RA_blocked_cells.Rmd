@@ -33,7 +33,9 @@ all_cells <- do.call("cbind", all_cells)
 
 # Form a sce 
 sce_RA <- SingleCellExperiment(assays=list(counts=Matrix::Matrix(as.matrix(all_cells), sparse = TRUE)))
-colData(sce_RA)$time_point <- as.character(sapply(colnames(sce_RA), function(n){unlist(strsplit(n, "_"))[1]})) 
+colData(sce_RA)$time_point <- factor(as.character(sapply(colnames(sce_RA), 
+                                                         function(n){unlist(strsplit(n, "_"))[1]})),
+                                        levels = paste("SpSC", c(0, 2:37), sep = "")) 
 colData(sce_RA)$cell_type <- as.character(sapply(colnames(sce_RA), function(n){unlist(strsplit(n, "_"))[2]})) 
 
 # Juvenile and adult data
@@ -51,5 +53,32 @@ ggplot(as.data.frame(colData(sce_RA))) +
 
 # Remove 2 cells with few features detected
 sce_RA <- sce_RA[,colData(sce_RA)$total_features_by_counts > 1250]
+```
+
+## Normalization
+
+```{r norm}
+clusters <- quickCluster(sce_RA, method = "igraph", irlba.args = c("work" = 100), 
+                         max.size = 2000)
+
+sce_RA <- computeSumFactors(sce_RA, clusters=clusters)
+
+sce_RA <- normalize(sce_RA, return_log = TRUE)
+
+# Visaulize as tSNE
+set.seed(12345)
+sce_RA <- runTSNE(sce_RA)
+
+ggplot(data.frame(tSNE1 = reducedDims(sce_RA)$TSNE[,1],
+                  tSNE2 = reducedDims(sce_RA)$TSNE[,2],
+                  time_point = colData(sce_RA)$time_point,
+                  cell_type = colData(sce_RA)$cell_type)) +
+  geom_point(aes(tSNE1, tSNE2, colour = time_point))
+
+ggplot(data.frame(tSNE1 = reducedDims(sce_RA)$TSNE[,1],
+                  tSNE2 = reducedDims(sce_RA)$TSNE[,2],
+                  time_point = colData(sce_RA)$time_point,
+                  cell_type = colData(sce_RA)$cell_type)) +
+  geom_point(aes(tSNE1, tSNE2, colour = cell_type))
 ```
 
