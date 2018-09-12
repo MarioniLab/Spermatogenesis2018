@@ -121,3 +121,113 @@ ggplot() +
              aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
   scale_color_manual(values = col_vector)
 ```
+
+# RA blocked cells mapped to P15 emptyDrops
+
+```{r P15}
+sce.P15 <- sce[,grepl("P15", colData(sce)$Sample)]
+
+# Select only the germ cells
+sce.P15 <- sce.P15[,grepl("Pachytene_Spermatocytes|Undifferentiated_Spermatogonia|Differentiating_Spermatogonia", colData(sce.P15)$P15Clusters) | colData(sce.P15)$P15Clusters == "Leptotene/Zygotene"]
+sce.P15 <- normalize(sce.P15)
+
+# Select Early germ cells from RA blocked cells
+sce_early_RA <- sce_RA[,grepl("A1|ePL|G1|mPL|eP|mP|lPL|Z|L|ln|Spo11KOL1", colData(sce_RA)$cell_type)]
+sce_early_RA <- normalize(sce_early_RA)
+
+# Batch correction
+corrected <- batch.correction(list(sce.P15, sce_early_RA))
+
+# Visualization
+set.seed(1111)
+pca <- prcomp_irlba(t(corrected), n = 50)
+tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
+
+# Create new colour vector
+new_vector <- c(brewer.pal(n = 8, name = "Set1"), brewer.pal(n = 8, name = "Set2"))
+names(new_vector) <- unique(colData(sce_early_RA)$cell_type)
+col_vector <- c(metadata(sce)$colour_vector.P15, new_vector)
+
+ggplot() +
+  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
+                  tSNE2 = tsne$Y[1:ncol(sce.P15),2],
+                  cluster = colData(sce.P15)$P15Clusters),
+             aes(tSNE1, tSNE2, colour = cluster)) + 
+    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
+                  cell_type = colData(sce_early_RA)$cell_type),
+             aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = col_vector)
+
+# CellRanger filter cluster
+# Create new colour vector
+new_vector <- c(brewer.pal(n = 8, name = "Set1"), brewer.pal(n = 8, name = "Set2"))
+names(new_vector) <- unique(colData(sce_early_RA)$cell_type)
+col_vector <- c(metadata(sce)$color_vector, new_vector)
+
+ggplot() +
+  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
+                  tSNE2 = tsne$Y[1:ncol(sce.P15),2],
+                  cluster = colData(sce.P15)$AnnotatedClusters),
+             aes(tSNE1, tSNE2, colour = cluster)) + 
+    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
+                  cell_type = colData(sce_early_RA)$cell_type),
+             aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = col_vector)
+```
+
+# RA blocked cells mapped to P15, P20 and P25 cellRanger
+
+```{r P15_P20_P25}
+sce.P15 <- sce[,grepl("P15", colData(sce)$Sample)]
+
+# Select only the germ cells
+sce.P15 <- sce.P15[,grepl("Pachytene_Spermatocytes|Undifferentiated_Spermatogonia|Differentiating_Spermatogonia", colData(sce.P15)$P15Clusters) | colData(sce.P15)$P15Clusters == "Leptotene/Zygotene"]
+sce.P15 <- normalize(sce.P15)
+
+# Select Early germ cells from RA blocked cells
+sce_early_RA <- sce_RA[,grepl("A1|ePL|G1|mPL|eP|mP|lPL|Z|L|ln|Spo11KOL1", colData(sce_RA)$cell_type)]
+sce_early_RA <- normalize(sce_early_RA)
+
+# Batch correction
+corrected <- batch.correction(list(sce.P15, sce_early_RA))
+
+# Visualization
+set.seed(1111)
+pca <- prcomp_irlba(t(corrected), n = 50)
+tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
+
+# Create new colour vector
+new_vector <- c(brewer.pal(n = 8, name = "Set1"), brewer.pal(n = 8, name = "Set2"))
+names(new_vector) <- unique(colData(sce_early_RA)$cell_type)
+col_vector <- c(metadata(sce)$colour_vector.P15, new_vector)
+
+ggplot() +
+  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
+                  tSNE2 = tsne$Y[1:ncol(sce.P15),2],
+                  cluster = colData(sce.P15)$P15Clusters),
+             aes(tSNE1, tSNE2, colour = cluster)) + 
+    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
+                  cell_type = colData(sce_early_RA)$cell_type),
+             aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = col_vector)
+
+# CellRanger filter cluster
+# Create new colour vector
+new_vector <- c(brewer.pal(n = 8, name = "Set1"), brewer.pal(n = 8, name = "Set2"))
+names(new_vector) <- unique(colData(sce_early_RA)$cell_type)
+col_vector <- c(metadata(sce)$color_vector, new_vector)
+
+ggplot() +
+  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
+                  tSNE2 = tsne$Y[1:ncol(sce.P15),2],
+                  cluster = colData(sce.P15)$AnnotatedClusters),
+             aes(tSNE1, tSNE2, colour = cluster)) + 
+    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
+                  cell_type = colData(sce_early_RA)$cell_type),
+             aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = col_vector)
+```
