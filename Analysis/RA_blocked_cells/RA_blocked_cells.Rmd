@@ -19,6 +19,10 @@ library(scran)
 library(scater)
 library(Matrix)
 library(ggplot2)
+library(Rtsne)
+library(RColorBrewer)
+library(irlba)
+source("../../Functions/auxiliary.R")
 
 # Data from Chen et al, Cell Research
 files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Chen_CellResearch/GSE107644_RAW/", full.names = TRUE)
@@ -39,8 +43,8 @@ colData(sce_RA)$time_point <- factor(as.character(sapply(colnames(sce_RA),
 colData(sce_RA)$cell_type <- as.character(sapply(colnames(sce_RA), function(n){unlist(strsplit(n, "_"))[2]})) 
 
 # Juvenile and adult data
-sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-sce <- sce[,grepl("B6|P10|P15", colData(sce)$Sample)]
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+sce <- sce[,grepl("B6|P15|P25", colData(sce)$Sample)]
 ```
 
 ## Simple quality checks for Chen et al data
@@ -82,3 +86,38 @@ ggplot(data.frame(tSNE1 = reducedDims(sce_RA)$TSNE[,1],
   geom_point(aes(tSNE1, tSNE2, colour = cell_type))
 ```
 
+## Batch correction
+
+```{r batch-correction}
+sce <- sce[match(intersect(rownames(sce_RA), rowData(sce)$Symbol), rowData(sce)$Symbol),]
+sce_RA <- sce_RA[match(intersect(rownames(sce_RA), rowData(sce)$Symbol), rownames(sce_RA)),]
+rownames(sce_RA) <- rownames(sce)
+rowData(sce_RA)$Symbol <- rowData(sce)$Symbol
+rowData(sce_RA)$ID <- rowData(sce)$ID
+sce.single <- split.sce(sce = sce, groups = unique(colData(sce)$Library), 
+                        colData.name = "Library")
+sce.single$RA <- sce_RA
+
+corrected <- batch.correction(sce.single)
+
+# Compute tSNE
+set.seed(12345)
+pca <- prcomp_irlba(t(corrected), n = 50)
+tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 200)
+
+# Create new colour vector
+new_vector <- c(brewer.pal(n = 8, name = "Set1"), brewer.pal(n = 8, name = "Set2"), brewer.pal(n = 6, name = "Set3"))
+names(new_vector) <- unique(colData(sce_RA)$cell_type)
+col_vector <- c(metadata(sce)$color_vector, new_vector)
+
+ggplot() +
+  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce),1],
+                  tSNE2 = tsne$Y[1:ncol(sce),2],
+                  cluster = colData(sce)$AnnotatedClusters),
+             aes(tSNE1, tSNE2, colour = cluster)) + 
+    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_RA)),2],
+                  cell_type = colData(sce_RA)$cell_type),
+             aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = col_vector)
+```
