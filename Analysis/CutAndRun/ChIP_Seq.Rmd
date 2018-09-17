@@ -21,6 +21,8 @@ Here, we read in the counts in each promoter.
 
 ```{r}
 library(openxlsx)
+library(ggplot2)
+library(reshape)
 
 files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Hammoud_CSC/ChipSeq/promoters/", full.names = TRUE)
 
@@ -30,10 +32,8 @@ all.data <- lapply(as.list(files), function(n){
 
 all.data <- do.call("cbind", all.data)
 
-# Read in genenames
-genenames <- read.table("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/Genenames.txt",
-                        sep = "\t", header = TRUE)
-
+genenames <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+rownames(genenames) <- genenames$Gene.stable.ID
 ```
 
 # Visualize the data
@@ -41,6 +41,165 @@ genenames <- read.table("../../../../Dropbox (Cambridge University)/SST_spermato
 Enrichment for epigenetic marks are visualized comparing spermatid-specific and non-specific genes.
 
 ```{r}
+# Read in the spermatid-specific genes 
 spermatid.spec <- read.xlsx("../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
+spermatid.spec$ID <- genenames[match(spermatid.spec$Symbol, genenames$Gene.name),1]
+spermatid.spec <- spermatid.spec[!is.na(spermatid.spec$ID),]
+```
+
+## Visualize input control
+
+```{r}
+cur_df <- melt(all.data[,c("Input_ChIPSeq_SC", "Input_ChIPSeq_ST")])
+cur_df$ID <- c(rownames(all.data),rownames(all.data))
+cur_df$cell_type <- sapply(as.character(cur_df$variable), function(n){unlist(strsplit(n, "_"))[3]})
+cur_df$spermatid_spec <- spermatid.spec[match(as.character(cur_df$ID), spermatid.spec$ID), 
+                                        "spermatid_specific"]
+cur_df <- cur_df[!is.na(cur_df$spermatid_spec),]
+ggplot(cur_df[cur_df$cell_type == "SC",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1)))
+ggplot(cur_df[cur_df$cell_type == "ST",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1)))
+```
+
+## Visualize H3K4me3
+
+```{r}
+cur_df <- melt(all.data[,c("H3K4me3_ChIPSeq_SC", "H3K4me3_ChIPSeq_ST")])
+cur_df$ID <- c(rownames(all.data),rownames(all.data))
+cur_df$cell_type <- sapply(as.character(cur_df$variable), function(n){unlist(strsplit(n, "_"))[3]})
+cur_df$spermatid_spec <- spermatid.spec[match(as.character(cur_df$ID), spermatid.spec$ID), 
+                                        "spermatid_specific"]
+cur_df <- cur_df[!is.na(cur_df$spermatid_spec),]
+ggplot(cur_df[cur_df$cell_type == "SC",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,6))
+ggplot(cur_df[cur_df$cell_type == "ST",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,6))
+
+# Statistical testing
+wilcox.test(log2(cur_df[cur_df$cell_type == "SC" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "SC" & !cur_df$spermatid_spec,"value"]) + 1)
+wilcox.test(log2(cur_df[cur_df$cell_type == "ST" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "ST" & !cur_df$spermatid_spec,"value"]) + 1)
+```
+
+## Visualize H3K27me3
+
+```{r}
+cur_df <- melt(all.data[,c("H27me3_ChIPSeq_SC", "H27me3_ChIPSeq_ST")])
+cur_df$ID <- c(rownames(all.data),rownames(all.data))
+cur_df$cell_type <- sapply(as.character(cur_df$variable), function(n){unlist(strsplit(n, "_"))[3]})
+cur_df$spermatid_spec <- spermatid.spec[match(as.character(cur_df$ID), spermatid.spec$ID), 
+                                        "spermatid_specific"]
+cur_df <- cur_df[!is.na(cur_df$spermatid_spec),]
+ggplot(cur_df[cur_df$cell_type == "SC",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,3))
+ggplot(cur_df[cur_df$cell_type == "ST",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,3))
+
+# Statistical testing
+wilcox.test(log2(cur_df[cur_df$cell_type == "SC" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "SC" & !cur_df$spermatid_spec,"value"]) + 1)
+wilcox.test(log2(cur_df[cur_df$cell_type == "ST" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "ST" & !cur_df$spermatid_spec,"value"]) + 1)
+```
+
+## Visualize H3K27ac
+
+```{r}
+cur_df <- melt(all.data[,c("H3K27ac_ChIPSeq_SC", "H3K27ac_ChIPSeq_ST")])
+cur_df$ID <- c(rownames(all.data),rownames(all.data))
+cur_df$cell_type <- sapply(as.character(cur_df$variable), function(n){unlist(strsplit(n, "_"))[3]})
+cur_df$spermatid_spec <- spermatid.spec[match(as.character(cur_df$ID), spermatid.spec$ID), 
+                                        "spermatid_specific"]
+cur_df <- cur_df[!is.na(cur_df$spermatid_spec),]
+ggplot(cur_df[cur_df$cell_type == "SC",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,4))
+ggplot(cur_df[cur_df$cell_type == "ST",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,4))
+
+# Statistical testing
+wilcox.test(log2(cur_df[cur_df$cell_type == "SC" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "SC" & !cur_df$spermatid_spec,"value"]) + 1)
+wilcox.test(log2(cur_df[cur_df$cell_type == "ST" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "ST" & !cur_df$spermatid_spec,"value"]) + 1)
+```
+
+## Visualize H3K4me1
+
+```{r}
+cur_df <- melt(all.data[,c("H3K4me1_ChIPSeq_SC", "H3K4me1_ChIPSeq_ST")])
+cur_df$ID <- c(rownames(all.data),rownames(all.data))
+cur_df$cell_type <- sapply(as.character(cur_df$variable), function(n){unlist(strsplit(n, "_"))[3]})
+cur_df$spermatid_spec <- spermatid.spec[match(as.character(cur_df$ID), spermatid.spec$ID), 
+                                        "spermatid_specific"]
+cur_df <- cur_df[!is.na(cur_df$spermatid_spec),]
+ggplot(cur_df[cur_df$cell_type == "SC",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,5))
+ggplot(cur_df[cur_df$cell_type == "ST",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,5))
+
+# Statistical testing
+wilcox.test(log2(cur_df[cur_df$cell_type == "SC" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "SC" & !cur_df$spermatid_spec,"value"]) + 1)
+wilcox.test(log2(cur_df[cur_df$cell_type == "ST" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "ST" & !cur_df$spermatid_spec,"value"]) + 1)
+```
+
+## Visualize H3K4me1
+
+```{r}
+cur_df <- melt(all.data[,c("H3K4me1_ChIPSeq_SC", "H3K4me1_ChIPSeq_ST")])
+cur_df$ID <- c(rownames(all.data),rownames(all.data))
+cur_df$cell_type <- sapply(as.character(cur_df$variable), function(n){unlist(strsplit(n, "_"))[3]})
+cur_df$spermatid_spec <- spermatid.spec[match(as.character(cur_df$ID), spermatid.spec$ID), 
+                                        "spermatid_specific"]
+cur_df <- cur_df[!is.na(cur_df$spermatid_spec),]
+ggplot(cur_df[cur_df$cell_type == "SC",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,5))
+ggplot(cur_df[cur_df$cell_type == "ST",]) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,5))
+
+# Statistical testing
+wilcox.test(log2(cur_df[cur_df$cell_type == "SC" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "SC" & !cur_df$spermatid_spec,"value"]) + 1)
+wilcox.test(log2(cur_df[cur_df$cell_type == "ST" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "ST" & !cur_df$spermatid_spec,"value"]) + 1)
+```
+
+## Visualize H2AZ in spermatids
+
+```{r}
+cur_df <- melt(all.data[,"H2AZ_ChIPSeq_ST_1"])
+cur_df$ID <- rownames(all.data)
+cur_df$cell_type <- "ST"
+cur_df$spermatid_spec <- spermatid.spec[match(as.character(cur_df$ID), spermatid.spec$ID), 
+                                        "spermatid_specific"]
+cur_df <- cur_df[!is.na(cur_df$spermatid_spec),]
+ggplot(cur_df) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,3))
+
+# Statistical testing
+wilcox.test(log2(cur_df[cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[!cur_df$spermatid_spec,"value"]) + 1)
+```
+
+## Visualize H3K9ac in spermatids
+
+```{r}
+cur_df <- melt(all.data[,"H3K9ac_ChIPSeq_ST"])
+cur_df$ID <- rownames(all.data)
+cur_df$cell_type <- "ST"
+cur_df$spermatid_spec <- spermatid.spec[match(as.character(cur_df$ID), spermatid.spec$ID), 
+                                        "spermatid_specific"]
+cur_df <- cur_df[!is.na(cur_df$spermatid_spec),]
+ggplot(cur_df) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,3))
+
+# Statistical testing
+wilcox.test(log2(cur_df[cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[!cur_df$spermatid_spec,"value"]) + 1)
+```
+
+## Visualize Pol2 in spermatids
+
+```{r}
+cur_df <- melt(all.data[,"Pol2_ChIPSeq_ST_1"])
+cur_df$ID <- rownames(all.data)
+cur_df$cell_type <- "ST"
+cur_df$spermatid_spec <- spermatid.spec[match(as.character(cur_df$ID), spermatid.spec$ID), 
+                                        "spermatid_specific"]
+cur_df <- cur_df[!is.na(cur_df$spermatid_spec),]
+ggplot(cur_df) + geom_boxplot(aes(spermatid_spec, log2(value + 1))) + ylim(c(0,3))
+
+# Statistical testing
+wilcox.test(log2(cur_df[cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[!cur_df$spermatid_spec,"value"]) + 1)
 ```
 
