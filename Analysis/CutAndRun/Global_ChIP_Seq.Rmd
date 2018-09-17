@@ -1,0 +1,76 @@
+---
+title: "Global analysis of ChIP-Seq data"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/Global_analysis.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Read in libraries and data
+
+```{r library}
+library(csaw)
+library(rtracklayer)
+library(Rsamtools)
+
+files <- c("H3K4me1_ChIPSeq_SC.sorted.bam", "H3K4me1_ChIPSeq_ST.sorted.bam",
+           "H3K4me3_ChIPSeq_SC.sorted.bam", "H3K4me3_ChIPSeq_ST.sorted.bam",
+           "H3K27ac_ChIPSeq_SC.sorted.bam", "H3K27ac_ChIPSeq_ST.sorted.bam",
+           "H27me3_ChIPSeq_SC.sorted.bam", "H27me3_ChIPSeq_ST.sorted.bam",
+           "Input_ChIPSeq_SC.sorted.bam", "Input_ChIPSeq_ST.sorted.bam")
+
+files <- paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Hammoud_CSC/ChipSeq/bam/", files, sep = "")
+
+# Blacklisted regions
+black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
+seqlevels(black) <- sub("chr", "", seqlevels(black))
+seqnames(black) <- sub("chr", "", seqnames(black))
+
+# Parameter for reading in bam files
+param <- readParam(dedup=TRUE, minq=10, discard=black, pe="none")
+```
+
+# Count reads per chromosome
+
+```{r}
+# Count reads per chromosome
+header <- scanBamHeader(files[1])
+sizes <- header$`../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Hammoud_CSC/ChipSeq/bam/H3K4me1_ChIPSeq_SC.sorted.bam`$targets
+sizes <- sizes[!grepl("JH|GL|MT", names(sizes))]
+
+# Generate Chr ranges
+chr.ranges <- GRanges(seqnames = names(sizes), 
+                      ranges = IRanges(start = rep(1, length(sizes)),
+                                       end = sizes))
+
+# Count reads per chromosome
+out <- regionCounts(files, regions = chr.ranges, param=param)
+
+# Calculate RPKM
+cur_data <- assays(out.K9)$counts
+rownames(cur_data) <- names(sizes)
+rpm <- t(t(cur_data)/(colSums(cur_data)/1000000))
+rpkm <- rpm/(sizes/1000)
+colnames(rpkm) <- paste(treatment, batch, sep = "_")
+
+cur_data.melt <- melt(rpkm)
+cur_data.melt$cell_type <- sapply(as.character(cur_data.melt$Var2), 
+                                  function(n){unlist(strsplit(n, "_"))[1]})
+cur_data.melt$replicate <- sapply(as.character(cur_data.melt$Var2), 
+                                  function(n){unlist(strsplit(n, "_"))[2]})
+levels(cur_data.melt$Var1) <- c(as.character(1:19), "X", "Y")
+
+K9.signal <- ggplot(cur_data.melt) + geom_point(aes(Var1, value, 
+                                                    colour = cell_type,
+                                                    shape = replicate), size = 2) + 
+  ggtitle("H3K9me3") + scale_color_aaas(name = "Cell type") + 
+  ylab("RPKM") + xlab("")
+```
