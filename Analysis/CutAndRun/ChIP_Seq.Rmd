@@ -1,0 +1,46 @@
+---
+title: "ChIP Seq analysis"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/ChIP_Seq.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read in the data
+
+Reads in promoter regions were counted and normalized (CPM).
+Here, we read in the counts in each promoter.
+
+```{r}
+library(openxlsx)
+
+files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Hammoud_CSC/ChipSeq/promoters/", full.names = TRUE)
+
+all.data <- lapply(as.list(files), function(n){
+  cur_dat <- read.table(n, sep = " ", header = TRUE, stringsAsFactors = FALSE)
+})
+
+all.data <- do.call("cbind", all.data)
+
+# Read in genenames
+genenames <- read.table("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/Genenames.txt",
+                        sep = "\t", header = TRUE)
+
+```
+
+# Visualize the data
+
+Enrichment for epigenetic marks are visualized comparing spermatid-specific and non-specific genes.
+
+```{r}
+spermatid.spec <- read.xlsx("../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
+```
+

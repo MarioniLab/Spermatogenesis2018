@@ -18,13 +18,13 @@ seqnames(black) <- sub("chr", "", seqnames(black))
 
 # Set parameters
 # Single of paired-end 
-reads <- "single"
+reads <- "paired"
 
 # Input directory
-input <- "Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Hammoud_CSC/ChipSeq/bam/"
+input <- "Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/bam/H3K9me3/"
 
 # Output directory
-output <- "Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Hammoud_CSC/ChipSeq/promoters/"
+output <- "Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Cnr/promoters/H3K9me3/"
 
 
 # Parameters for parsing the bam file
