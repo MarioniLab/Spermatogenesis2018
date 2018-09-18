@@ -16,6 +16,23 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This script performs analysis of temporal changes regarding the enrichemnt of histone marks at promoters.
 
+## General libraries and files
+
+```{r}
+library(pheatmap)
+library(openxlsx)
+library(viridis)
+
+# Read in genenames
+genenames <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+rownames(genenames) <- genenames$Gene.stable.ID
+
+# Read in the spermatid-specific genes 
+spermatid.spec <- read.xlsx("../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
+spermatid.spec$ID <- genenames[match(spermatid.spec$Symbol, genenames$Gene.name),1]
+spermatid.spec <- spermatid.spec[!is.na(spermatid.spec$ID),]
+```
+
 ## H3K4me3
 
 ```{r}
@@ -33,5 +50,151 @@ meta <- data.frame(library = sapply(names, function(n){unlist(strsplit(n, "_"))[
                    mark = sapply(names, function(n){unlist(strsplit(n, "_"))[2]}),
                    celltype = sapply(names, function(n){unlist(strsplit(n, "_"))[3]}),
                    Pday = sub("JP", "", sapply(names, function(n){unlist(strsplit(n, "_"))[6]})))
+```
 
+# Visualize spermatid-specific and non-specific marks
+
+```{r, fig.height=20}
+# Select spermatid-specific genes in spermatids
+mat.spermatid.sperm_spec <- all.data[spermatid.spec$ID[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+                                     meta$celltype == "spermatids"]
+mat.spermatid.sperm_spec <- mat.spermatid.sperm_spec[,order(meta$Pday[meta$celltype == "spermatids"], decreasing = FALSE)]
+
+pheatmap(log2(mat.spermatid.sperm_spec + 1), cluster_cols = FALSE, 
+         show_colnames = FALSE, color = viridis(100), 
+         labels_row = spermatid.spec$Symbol[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+  cellheight = 8, fontsize = 7, 
+  annotation_col = data.frame(row.names = colnames(mat.spermatid.sperm_spec),
+  day = sub("JP", "", sapply(colnames(mat.spermatid.sperm_spec), function(n){unlist(strsplit(n, "_"))[6]}))))
+```
+
+```{r, fig.height=20}
+# Select non-specific genes in spermatids
+mat.spermatid.non_spec <- all.data[spermatid.spec$ID[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == FALSE],
+                                     meta$celltype == "spermatids"]
+mat.spermatid.non_spec <- mat.spermatid.non_spec[,order(meta$Pday[meta$celltype == "spermatids"], decreasing = FALSE)]
+
+pheatmap(log2(mat.spermatid.non_spec + 1), cluster_cols = FALSE, 
+         show_colnames = FALSE, color = viridis(100), show_rownames = FALSE,
+         labels_row = spermatid.spec$Symbol[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+  annotation_col = data.frame(row.names = colnames(mat.spermatid.non_spec),
+  day = sub("JP", "", sapply(colnames(mat.spermatid.non_spec), function(n){unlist(strsplit(n, "_"))[6]}))))
+```
+
+```{r, fig.height=20}
+# Select spermatid-specific genes in spermatocytes
+mat.spermatocyte.sperm_spec <- all.data[spermatid.spec$ID[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+                                     meta$celltype == "spermatocytes"]
+mat.spermatocyte.sperm_spec <- mat.spermatocyte.sperm_spec[,order(meta$Pday[meta$celltype == "spermatocytes"], decreasing = FALSE)]
+
+pheatmap(log2(mat.spermatocyte.sperm_spec + 1), cluster_cols = FALSE, 
+         show_colnames = FALSE, color = viridis(100), 
+         labels_row = spermatid.spec$Symbol[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+  cellheight = 8, fontsize = 7,
+  annotation_col = data.frame(row.names = colnames(mat.spermatocyte.sperm_spec),
+  day = sub("JP", "", sapply(colnames(mat.spermatocyte.sperm_spec), function(n){unlist(strsplit(n, "_"))[6]}))))
+```
+
+```{r, fig.height=20}
+# Select non-specific genes in spermatocytes
+mat.spermatocyte.non_spec <- all.data[spermatid.spec$ID[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == FALSE],
+                                     meta$celltype == "spermatocytes"]
+mat.spermatocyte.non_spec <- mat.spermatocyte.non_spec[,order(meta$Pday[meta$celltype == "spermatocytes"], decreasing = FALSE)]
+
+pheatmap(log2(mat.spermatocyte.non_spec + 1), cluster_cols = FALSE, 
+         show_colnames = FALSE, color = viridis(100), show_rownames = FALSE,
+         labels_row = spermatid.spec$Symbol[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+  annotation_col = data.frame(row.names = colnames(mat.spermatocyte.non_spec),
+  day = sub("JP", "", sapply(colnames(mat.spermatocyte.non_spec), function(n){unlist(strsplit(n, "_"))[6]}))))
+```
+
+## H3K9me3
+
+```{r}
+# Read in files
+files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/promoters/H3K9me3/", full.names = TRUE)
+names <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/promoters/H3K9me3/", full.names = FALSE)
+
+all.data <- lapply(as.list(files), function(n){
+  read.table(n, sep = " ", header = TRUE)
+})
+all.data <- do.call("cbind", all.data)
+
+# Create metadata file
+meta <- data.frame(library = sapply(names, function(n){unlist(strsplit(n, "_"))[1]}),
+                   mark = sapply(names, function(n){unlist(strsplit(n, "_"))[2]}),
+                   celltype = sapply(names, function(n){unlist(strsplit(n, "_"))[3]}),
+                   Pday = sub("JP", "", sapply(names, function(n){unlist(strsplit(n, "_"))[6]})))
+```
+
+# Visualize spermatid-specific and non-specific marks
+
+```{r, fig.height=20}
+# Select spermatid-specific genes in spermatids
+mat.spermatid.sperm_spec <- all.data[spermatid.spec$ID[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+                                     meta$celltype == "spermatids"]
+mat.spermatid.sperm_spec <- mat.spermatid.sperm_spec[,order(meta$Pday[meta$celltype == "spermatids"], decreasing = FALSE)]
+
+pheatmap(log2(mat.spermatid.sperm_spec + 1), cluster_cols = FALSE, 
+         show_colnames = FALSE, color = viridis(100), 
+         labels_row = spermatid.spec$Symbol[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+  cellheight = 8, fontsize = 7, 
+  annotation_col = data.frame(row.names = colnames(mat.spermatid.sperm_spec),
+  day = sub("JP", "", sapply(colnames(mat.spermatid.sperm_spec), function(n){unlist(strsplit(n, "_"))[6]}))))
+```
+
+```{r, fig.height=20}
+# Select non-specific genes in spermatids
+mat.spermatid.non_spec <- all.data[spermatid.spec$ID[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == FALSE],
+                                     meta$celltype == "spermatids"]
+mat.spermatid.non_spec <- mat.spermatid.non_spec[,order(meta$Pday[meta$celltype == "spermatids"], decreasing = FALSE)]
+
+pheatmap(log2(mat.spermatid.non_spec + 1), cluster_cols = FALSE, 
+         show_colnames = FALSE, color = viridis(100), show_rownames = FALSE,
+         labels_row = spermatid.spec$Symbol[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+  annotation_col = data.frame(row.names = colnames(mat.spermatid.non_spec),
+  day = sub("JP", "", sapply(colnames(mat.spermatid.non_spec), function(n){unlist(strsplit(n, "_"))[6]}))))
+```
+
+```{r, fig.height=20}
+# Select spermatid-specific genes in spermatocytes
+mat.spermatocyte.sperm_spec <- all.data[spermatid.spec$ID[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+                                     meta$celltype == "spermatocytes"]
+mat.spermatocyte.sperm_spec <- mat.spermatocyte.sperm_spec[,order(meta$Pday[meta$celltype == "spermatocytes"], decreasing = FALSE)]
+
+pheatmap(log2(mat.spermatocyte.sperm_spec + 1), cluster_cols = FALSE, 
+         show_colnames = FALSE, color = viridis(100), 
+         labels_row = spermatid.spec$Symbol[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+  cellheight = 8, fontsize = 7,
+  annotation_col = data.frame(row.names = colnames(mat.spermatocyte.sperm_spec),
+  day = sub("JP", "", sapply(colnames(mat.spermatocyte.sperm_spec), function(n){unlist(strsplit(n, "_"))[6]}))))
+```
+
+```{r, fig.height=20}
+# Select non-specific genes in spermatocytes
+mat.spermatocyte.non_spec <- all.data[spermatid.spec$ID[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == FALSE],
+                                     meta$celltype == "spermatocytes"]
+mat.spermatocyte.non_spec <- mat.spermatocyte.non_spec[,order(meta$Pday[meta$celltype == "spermatocytes"], decreasing = FALSE)]
+
+pheatmap(log2(mat.spermatocyte.non_spec + 1), cluster_cols = FALSE, 
+         show_colnames = FALSE, color = viridis(100), show_rownames = FALSE,
+         labels_row = spermatid.spec$Symbol[
+  !is.na(spermatid.spec$spermatid_specific) & spermatid.spec$spermatid_specific == TRUE],
+  annotation_col = data.frame(row.names = colnames(mat.spermatocyte.non_spec),
+  day = sub("JP", "", sapply(colnames(mat.spermatocyte.non_spec), function(n){unlist(strsplit(n, "_"))[6]}))))
 ```
