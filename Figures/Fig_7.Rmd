@@ -185,8 +185,9 @@ df$Symbol <- genenames[rownames(df),2]
 df <- df[order(df$Spermatocytes.K9, decreasing = TRUE),]
 
 # Annotate genenames
-df$spermatid_specific <- df$Symbol %in%
-  spermatid.specific$Symbol[spermatid.specific$spermatid_specific]
+df$spermatid_specific <- ifelse(df$Symbol %in% spermatid.specific$Genename, ifelse(
+  df$Symbol %in% spermatid.specific$Genename[spermatid.specific$Spermatid_specific == TRUE],
+TRUE, FALSE), NA)
 df$Rnf8 <- df$Symbol %in% K27writers.Rnf8$gene_id
 df$Scml2 <- df$Symbol %in% K27writers.Scml2$gene_id
 
