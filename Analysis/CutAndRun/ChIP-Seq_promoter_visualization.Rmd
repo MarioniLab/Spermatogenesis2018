@@ -44,54 +44,105 @@ cur_prom <- promoters(genes(EnsDb.Mmusculus.v79),
 
 # Bin the mapped reads
 bins <- windowCounts(files, bin = TRUE, width = 1000, param=param)
+
+# Create objects for visualziation
+gax <- GenomeAxisTrack(col="black", fontsize=15, size=2)
+gr <- getGeneRegionTrackForGviz(EnsDb.Mmusculus.v79)
+options(ucscChromosomeNames = FALSE)
 ```
 
 ## Visualization
 
 ```{r}
-# Akap4
-cur_gene <- "ENSMUSG00000050089"
+# Cypt1
+cur_gene <- "ENSMUSG00000023257"
 cur_name <- elementMetadata(cur_prom)$gene_name[
     elementMetadata(cur_prom)$gene_id == cur_gene]
 
 cur_region <- cur_prom[elementMetadata(cur_prom)$gene_id == cur_gene]
 
-collected.K4me1 <- list()
-lib.sizes <- colSums(assays(bins.K9)$counts)/1e6
-for (i in 1:length(bam.files.K9)) {
-    reads <- extractReads(bam.file=bam.files.K9[i], cur_region, param=param)
-    cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
-    collected.K9[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,5),
-         name=bam.files.K9[i],  col.axis="black", col.title="black",
-         fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+collected <- list()
+lib.sizes <- colSums(assays(bins)$counts)/1e6
+for(i in 1:2){
+  reads <- extractReads(bam.file=files[i], cur_region, param=param)
+  cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+  collected[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,0.5),
+       name=names[i],  col.axis="black", col.title="black",
+     fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
 }
-collected.K9 <- collected.K9[c(1,3,2,4)]
 
-collected.K4 <- list()
-lib.sizes <- colSums(assays(bins.K4)$counts)/1e6
-for (i in 1:length(bam.files.K4)) {
-    reads <- extractReads(bam.file=bam.files.K4[i], cur_region, param=param)
-    cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
-    collected.K4[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,5),
-         name=bam.files.K4[i],  col.axis="black", col.title="black",
-         fill="dark blue", col.histogram=NA, options(ucscChromosomeNames=FALSE))
-}
-collected.K4 <- collected.K4[c(1,3,2,4)]
-
-
-  pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Akap4_forFigure_spermatocytes.pdf", 
+pdf(paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Cypt1_H3K4me1_ChIP-Seq.pdf", 
             sep = ""),
-      width = 12, height = 7)
-  plotTracks(c(gax, c(collected.K9[1:2], collected.K4[1:2]),
+      width = 12, height = 4)
+  plotTracks(c(gax, collected[1:2],
                                     GeneRegionTrack(gr)),
              chromosome=as.character(seqnames(cur_region)),
      from=start(cur_region), to=end(cur_region), showId=TRUE)
-  dev.off()
-  
-pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Akap4_forFigure_spermatids.pdf", 
+dev.off()
+
+for(i in 3:4){
+  reads <- extractReads(bam.file=files[i], cur_region, param=param)
+  cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+  collected[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,2),
+       name=names[i],  col.axis="black", col.title="black",
+     fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+
+pdf(paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Cypt1_H3K4me3_ChIP-Seq.pdf", 
             sep = ""),
-      width = 12, height = 7)
-  plotTracks(c(gax, c(collected.K9[3:4], collected.K4[3:4]),
+      width = 12, height = 4)
+  plotTracks(c(gax, collected[3:4],
+                                    GeneRegionTrack(gr)),
+             chromosome=as.character(seqnames(cur_region)),
+     from=start(cur_region), to=end(cur_region), showId=TRUE)
+dev.off()
+
+for(i in 5:6){
+  reads <- extractReads(bam.file=files[i], cur_region, param=param)
+  cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+  collected[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,1),
+       name=names[i],  col.axis="black", col.title="black",
+     fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+
+pdf(paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Cypt1_H3K27ac_ChIP-Seq.pdf", 
+            sep = ""),
+      width = 12, height = 4)
+  plotTracks(c(gax, collected[5:6],
+                                    GeneRegionTrack(gr)),
+             chromosome=as.character(seqnames(cur_region)),
+     from=start(cur_region), to=end(cur_region), showId=TRUE)
+dev.off()
+
+for(i in 7:8){
+  reads <- extractReads(bam.file=files[i], cur_region, param=param)
+  cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+  collected[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,0.5),
+       name=names[i],  col.axis="black", col.title="black",
+     fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+
+pdf(paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Cypt1_H27me3_ChIP-Seq.pdf", 
+            sep = ""),
+      width = 12, height = 4)
+  plotTracks(c(gax, collected[7:8],
+                                    GeneRegionTrack(gr)),
+             chromosome=as.character(seqnames(cur_region)),
+     from=start(cur_region), to=end(cur_region), showId=TRUE)
+dev.off()
+
+for(i in 9:10){
+  reads <- extractReads(bam.file=files[i], cur_region, param=param)
+  cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+  collected[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,0.5),
+       name=names[i],  col.axis="black", col.title="black",
+     fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+
+pdf(paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Cypt1_Input_ChIP-Seq.pdf", 
+            sep = ""),
+      width = 12, height = 4)
+  plotTracks(c(gax, collected[9:10],
                                     GeneRegionTrack(gr)),
              chromosome=as.character(seqnames(cur_region)),
      from=start(cur_region), to=end(cur_region), showId=TRUE)
