@@ -1,0 +1,108 @@
+---
+title: "Bulk mapping to P15 sample empty drops"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Revisions/Bulk_mapping/P10_P15_emptyDrops.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Read in data and libraries
+
+We map the bulk data to spermatogonia and spermatocytes
+
+```{r}
+# Libraries
+library(scater)
+library(ggplot2)
+library(reshape2)
+library(plyr)
+library(nnet)
+library(randomForest)
+library(openxlsx)
+library(cowplot)
+library(pheatmap)
+library(viridis)
+
+# Single cell data
+sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+sce.all <- sce.all[,grepl("P15", colData(sce.all)$Sample) & 
+                   (colData(sce.all)$P15Clusters == "Undifferentiated_Spermatogonia" |
+                      colData(sce.all)$P15Clusters == "Differentiating_Spermatogonia" |
+                      colData(sce.all)$P15Clusters == "Leptotene/Zygotene" |
+                      colData(sce.all)$P15Clusters == "Pachytene_Spermatocytes")]
+sce.all <- normalize(sce.all)
+
+# Bulk data
+bulk <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+
+# Meta info
+meta <- read.table("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/BulkSamples_stats.txt", sep = "\t")
+```
+
+# Map bulk libraries to P15 emptyDrops data
+
+We perform a random forrest regression approach between the cluster labels 
+and the top 50 marker genes for each group. The training is performed on P15 samples 
+including emptyDrops selected cells.
+
+```{r bulk mapping}
+# Load marker genes
+filename <- "../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S5.xlsx"
+sheets <- getSheetNames(filename)
+marker.genes <- lapply(sheets,openxlsx::read.xlsx,xlsxFile=filename)
+names(marker.genes) <- sheets
+marker.genes <- marker.genes[grepl("Undifferentiated_Spermatogonia|Differentiating_Spermatogonia|Leptotene|Pachytene_Spermatocytes", names(marker.genes))]
+cur_markers <- as.character(unlist(lapply(marker.genes, function(n){n$GeneName[1:50]})))
+cur_markers <- rowData(sce.all)$ID[match(cur_markers, rowData(sce.all)$Symbol)]
+cur_markers <- cur_markers[cur_markers %in% rownames(bulk)]
+
+# Train the classifier on P15 - Spermatogonia
+labels <- factor(colData(sce.all)$P15Clusters, levels = unique(colData(sce.all)$P15Clusters))
+
+# Create training and testing datasets
+set.seed(1234)
+sam <- sample(1:ncol(sce.all), 4000)
+
+train.data <- as.matrix(logcounts(sce.all)[cur_markers,sam])
+train.labels <- labels[sam] 
+test.data <- as.matrix(logcounts(sce.all)[cur_markers,-sam])
+test.labels <- labels[-sam] 
+
+# Scale the counts prior to training
+# Z score
+train.data.Z <- t(apply(train.data, 1, function(n){(n - mean(n))/sd(n)}))
+test.data.Z <- t(apply(test.data, 1, function(n){(n - mean(n))/sd(n)}))
+
+# Random forrest
+Tree <- randomForest(x = t(as.matrix(train.data.Z)), y = train.labels, 
+                     xtest = t(as.matrix(test.data.Z)), 
+                     ytest = test.labels, keep.forest = TRUE)
+
+# Prediction 
+new.data <- log2(bulk[cur_markers,] + 1)
+new.data.Z <- t(apply(new.data, 1, function(n){(n - mean(n))/sd(n)}))
+
+pred.bulk <- predict(object = Tree, newdata = t(new.data.Z), type="prob")
+
+# Collect day info on libraries
+df <- data.frame(library = rownames(pred.bulk),
+                 day = as.numeric(sub(" days", "", meta[rownames(pred.bulk),"Age"])))
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Bulk_mapping/P15_bulkmapping_heatmap.pdf", 
+    onefile = FALSE)
+pheatmap(pred.bulk[order(df$day),c(2,4,3,1)], cluster_cols = FALSE, cluster_rows = FALSE,
+         col = inferno(100),
+         annotation_row = data.frame(row.names = rownames(pred.bulk),
+                    sample = factor(df$day, levels = unique(df$day)[order(unique(df$day))])),
+         labels_row = df$day[order(df$day)])
+dev.off()
+
+```
