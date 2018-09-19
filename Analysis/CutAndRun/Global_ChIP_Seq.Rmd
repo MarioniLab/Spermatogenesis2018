@@ -20,14 +20,17 @@ knitr::opts_chunk$set(echo = TRUE)
 library(csaw)
 library(rtracklayer)
 library(Rsamtools)
+library(reshape)
+library(ggplot2)
+library(ggsci)
 
-files <- c("H3K4me1_ChIPSeq_SC.sorted.bam", "H3K4me1_ChIPSeq_ST.sorted.bam",
+names <- c("H3K4me1_ChIPSeq_SC.sorted.bam", "H3K4me1_ChIPSeq_ST.sorted.bam",
            "H3K4me3_ChIPSeq_SC.sorted.bam", "H3K4me3_ChIPSeq_ST.sorted.bam",
            "H3K27ac_ChIPSeq_SC.sorted.bam", "H3K27ac_ChIPSeq_ST.sorted.bam",
            "H27me3_ChIPSeq_SC.sorted.bam", "H27me3_ChIPSeq_ST.sorted.bam",
            "Input_ChIPSeq_SC.sorted.bam", "Input_ChIPSeq_ST.sorted.bam")
 
-files <- paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Hammoud_CSC/ChipSeq/bam/", files, sep = "")
+files <- paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Hammoud_CSC/ChipSeq/bam/", names, sep = "")
 
 # Blacklisted regions
 black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
@@ -55,22 +58,26 @@ chr.ranges <- GRanges(seqnames = names(sizes),
 out <- regionCounts(files, regions = chr.ranges, param=param)
 
 # Calculate RPKM
-cur_data <- assays(out.K9)$counts
+cur_data <- assays(out)$counts
 rownames(cur_data) <- names(sizes)
 rpm <- t(t(cur_data)/(colSums(cur_data)/1000000))
 rpkm <- rpm/(sizes/1000)
-colnames(rpkm) <- paste(treatment, batch, sep = "_")
+colnames(rpkm) <- names
 
 cur_data.melt <- melt(rpkm)
-cur_data.melt$cell_type <- sapply(as.character(cur_data.melt$Var2), 
+cur_data.melt$cell_type <- sapply(as.character(cur_data.melt$X2), 
+                                  function(n){unlist(strsplit(n, "_"))[3]})
+cur_data.melt$mark <- sapply(as.character(cur_data.melt$X2), 
                                   function(n){unlist(strsplit(n, "_"))[1]})
-cur_data.melt$replicate <- sapply(as.character(cur_data.melt$Var2), 
-                                  function(n){unlist(strsplit(n, "_"))[2]})
-levels(cur_data.melt$Var1) <- c(as.character(1:19), "X", "Y")
+cur_data.melt$X1 <- as.factor(rep(c(as.character(1:19), "X", "Y"), nrow(cur_data.melt)/21))
+levels(cur_data.melt$X1) <- c(as.character(1:19), "X", "Y")
 
-K9.signal <- ggplot(cur_data.melt) + geom_point(aes(Var1, value, 
-                                                    colour = cell_type,
-                                                    shape = replicate), size = 2) + 
-  ggtitle("H3K9me3") + scale_color_aaas(name = "Cell type") + 
+all.signal <- ggplot(cur_data.melt) + geom_point(aes(X1, value, 
+                                                    colour = mark,
+                                                    shape = cell_type), size = 2, position = position_dodge(width = 0.5)) + 
+  scale_color_aaas(name = "Mark") + 
   ylab("RPKM") + xlab("")
+
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/global_signal_ChIP-Seq.pdf", 
+       all.signal, width = 12, height = 5)
 ```
