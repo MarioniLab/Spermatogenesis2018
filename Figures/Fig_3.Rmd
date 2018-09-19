@@ -41,13 +41,13 @@ sperm.markers <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermato
 ```{r}
 # To avoid batch effects between the samples, we assume that there are 
 # shared cell types between the samples
-sce.spermatogonia.p10.15 <- sce[,grepl("P1", colData(sce)$Sample) &
+sce.spermatogonia <- sce[,grepl("P10|P15|P20", colData(sce)$Sample) &
                                        colData(sce)$AnnotatedClusters == "Spermatogonia"]
-sce.spermatogonia.p10.15 <- normalize(sce.spermatogonia.p10.15)
+sce.spermatogonia <- normalize(sce.spermatogonia)
 rm(sce)
 
-sce.single <- split.sce(sce = sce.spermatogonia.p10.15, 
-                        groups = unique(colData(sce.spermatogonia.p10.15)$Library), 
+sce.single <- split.sce(sce = sce.spermatogonia, 
+                        groups = unique(colData(sce.spermatogonia)$Library), 
                         colData.name = "Library")
 
 corrected <- batch.correction(sce.single)
@@ -55,63 +55,70 @@ corrected <- batch.correction(sce.single)
 
 ```{r, spermatogonia_p10_p15}
 # Compute pca 
-pca.P10.15 <- prcomp(t(corrected))
+pca <- prcomp(t(corrected))
 
 # Visualize PCA with marker genes
-ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  samples = colData(sce.spermatogonia.p10.15)$Sample)) +
+ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  samples = colData(sce.spermatogonia)$Sample)) +
   geom_point(aes(PC1, PC2, colour = samples)) 
 
 # For visualization the non-batch corrected counts are used
 
-#Nanos3 marker for undifferentiated spermatogonia
-Nanos3.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Nanos3 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Nanos3",])) +
+#Nanos3 marker for undifferentiated pca
+Nanos3 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Nanos3 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Nanos3",])) +
   geom_point(aes(PC1, PC2, colour = Nanos3)) + scale_colour_viridis()
 
 #NZbtb16/PLZF marker for undifferentiated spemratogonia but was also found in spermatogonia alreadt expressing Stra8
-Zbtb16.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Zbtb16 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Zbtb16",])) +
+Zbtb16 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Zbtb16 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Zbtb16",])) +
   geom_point(aes(PC1, PC2, colour = Zbtb16)) + scale_colour_viridis()
 
 # Induced by RA and upregulated during spermatogonial differentiation and again later on in preleptotene spermatocytes
-Stra8.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Stra8 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Stra8",])) +
+Stra8 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Stra8 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Stra8",])) +
   geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
 
 # Ccnd2 for spermatogonial differentiation and Ccnd1 in proliferating spermatogonia
-Ccnd2.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Ccnd2 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Ccnd2",])) +
+Ccnd2 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Ccnd2 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Ccnd2",])) +
   geom_point(aes(PC1, PC2, colour = Ccnd2)) + scale_colour_viridis()
 
-Ccnd1.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Ccnd1 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Ccnd1",])) +
+Ccnd1 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Ccnd1 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Ccnd1",])) +
   geom_point(aes(PC1, PC2, colour = Ccnd1)) + scale_colour_viridis()
 
 # Rhox13 higher in differentiating spermatogonia
-Rhox13.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Rhox13 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Rhox13",])) +
+Rhox13 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Rhox13 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Rhox13",])) +
   geom_point(aes(PC1, PC2, colour = Rhox13)) + scale_colour_viridis()
 
 
 #Dmrtb1 mediates mitosis-to-meiosis 
-Dmrtb1.P10.15 <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
-                  Dmrtb1 = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "Dmrtb1",])) +
+Dmrtb1 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Dmrtb1 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Dmrtb1",])) +
+  geom_point(aes(PC1, PC2, colour = Dmrtb1)) + scale_colour_viridis()
+
+# Dmrtb1 mediates mitosis-to-meiosis 
+Dmrtb1 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Dmrtb1 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Dmrtb1",])) +
   geom_point(aes(PC1, PC2, colour = Dmrtb1)) + scale_colour_viridis()
 ```
 
