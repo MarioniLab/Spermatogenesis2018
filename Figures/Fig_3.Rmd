@@ -25,6 +25,7 @@ library(openxlsx)
 library(cowplot)
 library(viridis)
 library(pheatmap)
+library(Rtsne)
 source("../Functions/auxiliary.R")
 
 # Single cell data
@@ -58,10 +59,11 @@ corrected <- batch.correction(sce.single)
 pca <- prcomp(t(corrected))
 
 # Visualize PCA with marker genes
-ggplot(data.frame(PC1 = pca$x[,1],
+samples <- ggplot(data.frame(PC1 = pca$x[,1],
                   PC2 = pca$x[,2],
                   samples = colData(sce.spermatogonia)$Sample)) +
-  geom_point(aes(PC1, PC2, colour = samples)) 
+  geom_point(aes(PC1, PC2, colour = samples)) + 
+  scale_color_manual(values = c("#1f78b4", "#33a02c", "#e31a1c")) 
 
 # For visualization the non-batch corrected counts are used
 
@@ -115,11 +117,11 @@ Dmrtb1 <- ggplot(data.frame(PC1 = pca$x[,1],
   geom_point(aes(PC1, PC2, colour = Dmrtb1)) + scale_colour_viridis()
 
 # Dmrtb1 mediates mitosis-to-meiosis 
-Dmrtb1 <- ggplot(data.frame(PC1 = pca$x[,1],
+Gfra1 <- ggplot(data.frame(PC1 = pca$x[,1],
                   PC2 = pca$x[,2],
-                  Dmrtb1 = logcounts(sce.spermatogonia)[
-                    rowData(sce.spermatogonia)$Symbol == "Dmrtb1",])) +
-  geom_point(aes(PC1, PC2, colour = Dmrtb1)) + scale_colour_viridis()
+                  Gfra1 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Gfra1",])) +
+  geom_point(aes(PC1, PC2, colour = Gfra1)) + scale_colour_viridis()
 ```
 
 # Clustering of spermatogonia for P10 and P15
@@ -133,10 +135,10 @@ clusters <- igraph::cluster_louvain(g)$membership
 # Change cluster labels
 clusters[clusters == 1] <- "Diff_2"
 clusters[clusters == 2] <- "Diff_3"
-clusters[clusters == 3] <- "Undiff_1"
-clusters[clusters == 4] <- "Undiff_2"
-clusters[clusters == 5] <- "Diff_1"
-clusters[clusters == 6] <- "Preleptotene"
+clusters[clusters == 3] <- "Preleptotene"
+clusters[clusters == 4] <- "Undiff_1"
+clusters[clusters == 5] <- "Undiff_2"
+clusters[clusters == 6] <- "Diff_1"
 
 col_vector <- c("Undiff_1" = "#00441b",
                 "Undiff_2" = "#006d2c",
@@ -145,8 +147,8 @@ col_vector <- c("Undiff_1" = "#00441b",
                 "Diff_3" = "#66c2a4",
                 "Preleptotene" = "#d4b9da")
 
-p.clusters <- ggplot(data.frame(PC1 = pca.P10.15$x[,1],
-                  PC2 = pca.P10.15$x[,2],
+p.clusters <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
                   clusters = as.factor(clusters))) +
   geom_point(aes(PC1, PC2, colour = clusters))+ scale_colour_manual(values = col_vector)
 ```
@@ -198,8 +200,8 @@ dev.off()
 # Save final figure
 
 ```{r save}
-B <- plot_grid(Nanos3.P10.15, Stra8.P10.15, Dmrtb1.P10.15, p.clusters, ncol = 4, nrow = 1)
+B <- plot_grid(Nanos3, Stra8, Dmrtb1, p.clusters, samples, ncol = 5, nrow = 1)
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Fig_3.pdf",
-       B, width = 20, height = 5)
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3.pdf",
+       B, width = 25, height = 5)
 ```
