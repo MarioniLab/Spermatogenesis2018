@@ -38,6 +38,38 @@ sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0")) &
                      !(colData(sce.all)$AnnotatedClusters %in% c(paste("NA", 1:5, sep = ""), "Outliers"))]
 ```
 
+# Visualize the two batches for adult B6 and P5
+
+```{r}
+# Adult B6
+B6 <- sce.all[,grepl("B6", colData(sce.all)$Sample)]
+
+# Calculate tSNE
+set.seed(12345)
+B6 <- runTSNE(B6)
+
+adult.batches <- ggplot(data.frame(tSNE1 = reducedDims(B6)$TSNE[,1],
+                  tSNE2 = reducedDims(B6)$TSNE[,2],
+                  batch = colData(B6)$Library)) + 
+  geom_point(aes(tSNE1, tSNE2, colour = batch, size = batch)) +
+  scale_colour_manual(values = c("black", "red")) +
+  scale_size_manual(values = c(3,1))
+
+# P5
+P5 <- sce.all[,grepl("P5", colData(sce.all)$Sample)]
+
+# Calculate tSNE
+set.seed(12345)
+P5 <- runTSNE(P5)
+
+P5.batches <- ggplot(data.frame(tSNE1 = reducedDims(P5)$TSNE[,1],
+                  tSNE2 = reducedDims(P5)$TSNE[,2],
+                  batch = colData(P5)$Library)) + 
+  geom_point(aes(tSNE1, tSNE2, colour = batch, size = batch)) +
+  scale_colour_manual(values = c("black", "red")) +
+  scale_size_manual(values = c(3,1))
+```
+
 # Visualize the different juvenile samples and adult cells
 
 ```{r}
@@ -60,8 +92,10 @@ for(i in paste("P", c(10, 15, 20, 25, 30, 35), sep = "")){
 # Save final figure
 
 ```{r final}
-final <- plot_grid(plot.list[[1]], plot.list[[2]], plot.list[[3]],
+A <- plot_grid(adult.batches, P5.batches, ncol = 2, nrow = 1)
+B <- plot_grid(plot.list[[1]], plot.list[[2]], plot.list[[3]],
                    plot.list[[4]], plot.list[[5]], plot.list[[6]], ncol = 3, nrow = 4)
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S2/Fig_S2.pdf", 
-       final, width = 15, height = 15)
+final <- plot_grid(A, B, nol = 1, nrow = 2, rel_heights = c(1,2))
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_S2.pdf", 
+       final, width = 15, height = 20)
 ```
