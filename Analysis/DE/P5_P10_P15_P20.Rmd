@@ -1,0 +1,79 @@
+---
+title: "DE between spermatogonia and somatic cells"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/DE/P5_P10_P15_P20.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Read in the data and library
+
+```{r}
+library(scran)
+library(scater)
+library(openxlsx)
+source("../../Functions/auxiliary.R")
+
+# Select P5, P10, P15 and P20 timepoint
+sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.all <- sce.all[,grepl("P10|P15|P20", colData(sce.all)$Sample)]
+sce.all <- normalize(sce.all)
+
+# Visualize non-corrected data
+set.seed(12345)
+sce.all <- runTSNE(sce.all)
+
+# Visualize samples
+ggplot(data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
+                  tSNE2 = reducedDims(sce.all)$TSNE[,2],
+                  sample = colData(sce.all)$Sample)) + 
+  geom_point(aes(tSNE1, tSNE2, colour = sample)) 
+
+# Visualize groups
+ggplot(data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
+                  tSNE2 = reducedDims(sce.all)$TSNE[,2],
+                  clusters = colData(sce.all)$AnnotatedClusters)) + 
+  geom_point(aes(tSNE1, tSNE2, colour = clusters)) + 
+  scale_colour_manual(values = metadata(sce.all)$color_vector)
+```
+
+# DE between PTM, Spermatogonia, Leydig and Sertoli cells using P10 and P15
+
+```{r}
+cur_sce <- sce.all[,grepl("P10|P15", colData(sce.all)$Sample) & 
+                     (grepl("PTM|Sertoli|Spermatogonia", colData(sce.all)$AnnotatedClusters) |
+                             colData(sce.all)$AnnotatedClusters == "Leydig")]
+
+for(i in unique(colData(cur_sce)$AnnotatedClusters)){
+  test_sce <- cur_sce[,colData(cur_sce)$AnnotatedClusters == i]
+  test_sce <- normalize(test_sce)
+
+  cur_markers <- marker.detection(test_sce, clusters = colData(test_sce)$Sample)   
+  
+  write.xlsx(cur_markers, paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/DE/P10_P15_", i, ".xlsx"))
+}
+```
+
+# DE between Spermatocytes 1 - 5 using P15 and P20
+
+```{r}
+cur_sce <- sce.all[,grepl("P15|P20", colData(sce.all)$Sample) & 
+                     grepl("Spermatocytes_1|Spermatocytes_2|Spermatocytes_3|Spermatocytes_4|Spermatocytes_5", colData(sce.all)$AnnotatedClusters)]
+
+for(i in unique(colData(cur_sce)$AnnotatedClusters)){
+  test_sce <- cur_sce[,colData(cur_sce)$AnnotatedClusters == i]
+  test_sce <- normalize(test_sce)
+
+  cur_markers <- marker.detection(test_sce, clusters = colData(test_sce)$Sample)   
+  
+  write.xlsx(cur_markers, paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/DE/P15_P20_", i, ".xlsx"))
+}
+```
