@@ -34,6 +34,15 @@ library(reshape2)
 
 
 # Read in data - Single cell experiment object per batch
+# P5
+sce.do26386 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do26386/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do26386)$Sample <- rep("P5", ncol(sce.do26386))
+colData(sce.do26386)$Library <- rep("do26386", ncol(sce.do26386))
+
+sce.do26387 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do26387/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do26387)$Sample <- rep("P5", ncol(sce.do26387))
+colData(sce.do26387)$Library <- rep("do26387", ncol(sce.do26387))
+
 # P10
 sce.do17821 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17821/filtered_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do17821)$Sample <- rep("P10", ncol(sce.do17821))
@@ -87,7 +96,7 @@ colData(sce.do18199)$Sample <- rep("Tc0", ncol(sce.do18199))
 colData(sce.do18199)$Library <- rep("do18199", ncol(sce.do18199))
 
 # Tc1
-sce.do15983 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/Mus_human_chr21/")
+sce.do15983 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/filtered_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do15983)$Sample <- rep("Tc1", ncol(sce.do15983))
 colData(sce.do15983)$Library <- rep("do15983", ncol(sce.do15983))
 
@@ -109,8 +118,9 @@ colData(sce.do18198)$Library <- rep("do18198", ncol(sce.do18198))
 ```{r Other}
 # Merge all datasets
 sce.all <- cbind(sce.do17815, sce.do17816, sce.do15984, sce.do17622, sce.do18199,
-                  sce.do15983, sce.do17623, sce.do18197, sce.do18198,  sce.do17821,
-                 sce.do18195, sce.do17824, sce.do18196, sce.do17825, sce.do17827)
+                 sce.do15983, sce.do17623, sce.do18197, sce.do18198, sce.do26386,
+                 sce.do26387, sce.do17821, sce.do18195, sce.do17824, sce.do18196,
+                 sce.do17825, sce.do17827)
 rm(list = setdiff(ls(), "sce.all"))
 
 # Save statistics on these libraries
@@ -126,10 +136,10 @@ stats.df <- data.frame(row.names = cur_stats$Var2,
 sce.all <- calculateQCMetrics(sce.all)
 
 # Remove cells with few features
-plot(colData(sce.all)$total_counts, colData(sce.all)$total_features, log = "x", pch = 16, 
+plot(colData(sce.all)$total_counts, colData(sce.all)$total_features_by_counts, log = "x", pch = 16, 
      xlab = "Total counts", ylab = "Number of genes", 
-     col = ifelse(colData(sce.all)$total_features > 1000, "black", "red"))
-sce.all <- sce.all[,colData(sce.all)$total_features > 1000]
+     col = ifelse(colData(sce.all)$total_features_by_counts > 1000, "black", "red"))
+sce.all <- sce.all[,colData(sce.all)$total_features_by_counts > 1000]
 
 # Remove cells with high mitochondrial reads
 mt <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE,
@@ -248,7 +258,6 @@ source("../../Functions/auxiliary.R")
 # Split datasets into batches
 sce.single <- split.sce(sce = sce.all, groups = unique(colData(sce.all)$Library), 
                         colData.name = "Library")
-rm(sce.all)
 
 # Batch correction
 corrected <- batch.correction(sce.single)
