@@ -28,3 +28,4 @@ color_vector = metadata(sce)$color_vector
 
 # Save output
 save.image("Dropbox (Cambridge University)/SST_spermatocytes/Shiny/data/sce.RData")
+

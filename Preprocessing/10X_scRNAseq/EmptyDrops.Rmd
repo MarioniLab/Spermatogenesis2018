@@ -33,78 +33,75 @@ library(openxlsx)
 source("../../Functions/auxiliary.R")
 
 # Read in data - Single cell experiment object per batch
-sce.do17821 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17821/raw_gene_bc_matrices/Mus_human_chr21/")
+# P5
+sce.do26386 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do26386/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do26386)$Sample <- rep("P5", ncol(sce.do26386))
+colData(sce.do26386)$Library <- rep("do26386", ncol(sce.do26386))
+
+sce.do26387 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do26387/raw_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do26387)$Sample <- rep("P5", ncol(sce.do26387))
+colData(sce.do26387)$Library <- rep("do26387", ncol(sce.do26387))
+
+# P10
+sce.do17821 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17821/raw_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do17821)$Sample <- rep("P10", ncol(sce.do17821))
 colData(sce.do17821)$Library <- rep("do17821", ncol(sce.do17821))
 
 # P15
-sce.do18195 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18195/raw_gene_bc_matrices/Mus_human_chr21/")
+sce.do18195 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18195/raw_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do18195)$Sample <- rep("P15", ncol(sce.do18195))
 colData(sce.do18195)$Library <- rep("do18195", ncol(sce.do18195))
 
 # P20
-sce.do17824 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17824/raw_gene_bc_matrices/Mus_human_chr21/")
+sce.do17824 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17824/raw_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do17824)$Sample <- rep("P20", ncol(sce.do17824))
 colData(sce.do17824)$Library <- rep("do17824", ncol(sce.do17824))
 
 # P25
-sce.do18196 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18196/raw_gene_bc_matrices/Mus_human_chr21/")
+sce.do18196 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18196/raw_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do18196)$Sample <- rep("P25", ncol(sce.do18196))
 colData(sce.do18196)$Library <- rep("do18196", ncol(sce.do18196))
 
 # P30
-sce.do17825 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17825/raw_gene_bc_matrices/Mus_human_chr21/")
+sce.do17825 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17825/raw_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do17825)$Sample <- rep("P30", ncol(sce.do17825))
 colData(sce.do17825)$Library <- rep("do17825", ncol(sce.do17825))
 
 # P35
-sce.do17827 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17827/raw_gene_bc_matrices/Mus_human_chr21/")
+sce.do17827 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17827/raw_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do17827)$Sample <- rep("P35", ncol(sce.do17827))
 colData(sce.do17827)$Library <- rep("do17827", ncol(sce.do17827))
 
 # B6
-sce.do17815 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17815/raw_gene_bc_matrices/Mus_human_chr21/")
+sce.do17815 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17815/raw_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do17815)$Sample <- rep("B6", ncol(sce.do17815))
 colData(sce.do17815)$Library <- rep("do17815", ncol(sce.do17815))
 
-sce.do17816 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17816/raw_gene_bc_matrices/Mus_human_chr21/")
+sce.do17816 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17816/raw_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do17816)$Sample <- rep("B6", ncol(sce.do17816))
 colData(sce.do17816)$Library <- rep("do17816", ncol(sce.do17816))
-
-# Tc0
-sce.do15984 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15984/raw_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do15984)$Sample <- rep("Tc0", ncol(sce.do15984))
-colData(sce.do15984)$Library <- rep("do15984", ncol(sce.do15984))
-
-sce.do17622 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17622/raw_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do17622)$Sample <- rep("Tc0", ncol(sce.do17622))
-colData(sce.do17622)$Library <- rep("do17622", ncol(sce.do17622))
-
-sce.do18199 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18199/raw_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do18199)$Sample <- rep("Tc0", ncol(sce.do18199))
-colData(sce.do18199)$Library <- rep("do18199", ncol(sce.do18199))
-
-# Tc1
-sce.do15983 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/raw_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do15983)$Sample <- rep("Tc1", ncol(sce.do15983))
-colData(sce.do15983)$Library <- rep("do15983", ncol(sce.do15983))
-
-sce.do17623 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17623/raw_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do17623)$Sample <- rep("Tc1", ncol(sce.do17623))
-colData(sce.do17623)$Library <- rep("do17623", ncol(sce.do17623))
-
-sce.do18197 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18197/raw_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do18197)$Sample <- rep("Tc1", ncol(sce.do18197))
-colData(sce.do18197)$Library <- rep("do18197", ncol(sce.do18197))
-
-sce.do18198 <- read10xCounts("../../../../Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do18198/raw_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do18198)$Sample <- rep("Tc1", ncol(sce.do18198))
-colData(sce.do18198)$Library <- rep("do18198", ncol(sce.do18198))
 ```
 
 # Identify empty droplets
 
 ```{r emptyDrops}
+# P5
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do26386)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do26386.empty <- sce.do26386[,!is.cell]
+sce.do26386 <- sce.do26386[,is.cell]
+rm(sce.do26386.empty)
+
+set.seed(100)
+empty.droplets <- emptyDrops(counts(sce.do26387)) 
+is.cell <- empty.droplets$FDR <= 0.01
+is.cell[is.na(is.cell)] <- FALSE
+sce.do26387.empty <- sce.do26387[,!is.cell]
+sce.do26387 <- sce.do26387[,is.cell]
+rm(sce.do26387.empty)
+
 # P10
 set.seed(100)
 empty.droplets <- emptyDrops(counts(sce.do17821)) 
@@ -184,71 +181,6 @@ sce.do17816 <- sce.do17816[,is.cell]
 #saveRDS(sce.do17816.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17816_empty.rds")
 rm(sce.do17816.empty)
 
-# TC0
-set.seed(100)
-empty.droplets <- emptyDrops(counts(sce.do15984)) 
-is.cell <- empty.droplets$FDR <= 0.01
-is.cell[is.na(is.cell)] <- FALSE
-sce.do15984.empty <- sce.do15984[,!is.cell]
-sce.do15984 <- sce.do15984[,is.cell]
-#saveRDS(sce.do15984.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do15984_empty.rds")
-rm(sce.do15984.empty)
-
-set.seed(100)
-empty.droplets <- emptyDrops(counts(sce.do17622)) 
-is.cell <- empty.droplets$FDR <= 0.01
-is.cell[is.na(is.cell)] <- FALSE
-sce.do17622.empty <- sce.do17622[,!is.cell]
-sce.do17622 <- sce.do17622[,is.cell]
-#saveRDS(sce.do17622.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17622_empty.rds")
-rm(sce.do17622.empty)
-
-set.seed(100)
-empty.droplets <- emptyDrops(counts(sce.do18199)) 
-is.cell <- empty.droplets$FDR <= 0.01
-is.cell[is.na(is.cell)] <- FALSE
-sce.do18199.empty <- sce.do18199[,!is.cell]
-sce.do18199 <- sce.do18199[,is.cell]
-#saveRDS(sce.do18199.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17622_empty.rds")
-rm(sce.do18199.empty)
-
-# Tc1
-set.seed(100)
-empty.droplets <- emptyDrops(counts(sce.do15983)) 
-is.cell <- empty.droplets$FDR <= 0.01
-is.cell[is.na(is.cell)] <- FALSE
-sce.do15983.empty <- sce.do15983[,!is.cell]
-sce.do15983 <- sce.do15983[,is.cell]
-#saveRDS(sce.do15983.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do15983_empty.rds")
-rm(sce.do15983.empty)
-
-set.seed(100)
-empty.droplets <- emptyDrops(counts(sce.do17623)) 
-is.cell <- empty.droplets$FDR <= 0.01
-is.cell[is.na(is.cell)] <- FALSE
-sce.do17623.empty <- sce.do17623[,!is.cell]
-sce.do17623 <- sce.do17623[,is.cell]
-#saveRDS(sce.do17623.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17623_empty.rds")
-rm(sce.do17623.empty)
-
-set.seed(100)
-empty.droplets <- emptyDrops(counts(sce.do18197)) 
-is.cell <- empty.droplets$FDR <= 0.01
-is.cell[is.na(is.cell)] <- FALSE
-sce.do18197.empty <- sce.do18197[,!is.cell]
-sce.do18197 <- sce.do18197[,is.cell]
-#saveRDS(sce.do15983.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do15983_empty.rds")
-rm(sce.do18197.empty)
-
-set.seed(100)
-empty.droplets <- emptyDrops(counts(sce.do18198)) 
-is.cell <- empty.droplets$FDR <= 0.01
-is.cell[is.na(is.cell)] <- FALSE
-sce.do18198.empty <- sce.do18198[,!is.cell]
-sce.do18198 <- sce.do18198[,is.cell]
-#saveRDS(sce.do17623.empty, "/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Preprocessing/EmptyDrops/sce_do17623_empty.rds")
-rm(sce.do18198.empty)
-
 save.image("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops_temp.RData")
 load("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops_temp.RData")
 ```
@@ -257,19 +189,23 @@ load("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data
 
 ```{r filtering}
 # Merge datasets
-sce.all.1 <- cbind(sce.do17815, sce.do17816, sce.do17821, sce.do18195)
-sce.all.2 <- cbind(sce.do17824, sce.do18196, sce.do17825, sce.do17827)
+sce.all.1 <- cbind(sce.do17815, sce.do17816, sce.do26386, sce.do26387)
+sce.all.2 <- cbind(sce.do17821, sce.do18195)
+sce.all.3 <- cbind(sce.do17824, sce.do18196, sce.do17825, sce.do17827)
 rm("sce.do17815")
 rm("sce.do17816")
+rm("sce.do26386")
+rm("sce.do26387")
 rm("sce.do17821")
 rm("sce.do18195")
 rm("sce.do17824")
 rm("sce.do18196")
 rm("sce.do17825")
 rm("sce.do17827")
-sce.all <- cbind(sce.all.1, sce.all.2)
+sce.all <- cbind(sce.all.1, sce.all.2, sce.all.3)
 rm("sce.all.1")
 rm("sce.all.2")
+rm("sce.all.3")
 
 # Save statistics on these libraries
 cur_stats <- melt(table(colData(sce.all)$Sample, colData(sce.all)$Library))
@@ -286,10 +222,10 @@ write.table(stats.df, "../../../../Dropbox (Cambridge University)/SST_spermatocy
 
 sce.all <- calculateQCMetrics(sce.all)
 
-plot(colData(sce.all)$total_counts, colData(sce.all)$total_features, log = "x", pch = 16, 
+plot(colData(sce.all)$total_counts, colData(sce.all)$total_features_by_counts, log = "x", pch = 16, 
      xlab = "Total counts", ylab = "Number of genes", 
-     col = ifelse(colData(sce.all)$total_features > 500, "black", "red"))
-sce.all <- sce.all[,colData(sce.all)$total_features > 500]
+     col = ifelse(colData(sce.all)$total_features_by_counts > 500, "black", "red"))
+sce.all <- sce.all[,colData(sce.all)$total_features_by_counts > 500]
 
 # Remove cells with high mitochondrial reads
 mt <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE,
@@ -317,7 +253,7 @@ write.table(stats.df, "../../../../Dropbox (Cambridge University)/SST_spermatocy
 
 
 saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
-sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+#sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
 
 # Normalization
@@ -334,7 +270,7 @@ sce.all <- normalize(sce.all, return_log = TRUE)
 
 saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 
-sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+#sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 ```
 
 # Batch correction

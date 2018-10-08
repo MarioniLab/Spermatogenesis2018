@@ -18,7 +18,7 @@ shinyUI(fluidPage(
                "Visualization of the expression of whole chromosomes is achieved when",
                "entering the chromosome name (e.g. ChrX)."),
       selectizeInput("dataset", label = "Select dataset", 
-                  choices = c("B6", "P10", "P15", "P20", "P25", "P30", "P35", "Tc0", "Tc1"),
+                  choices = c("B6", "P5", "P10", "P15", "P20", "P25", "P30", "P35"),
                   options = list(placeholder = 'Select one or multiple datasets',
                                  maxItems = 9)),
       helpText("Please select one or multiple datasets for visualization.",
