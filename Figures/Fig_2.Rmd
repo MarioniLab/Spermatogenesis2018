@@ -54,10 +54,10 @@ proportions <- with(df, table(sample, group))/plyr::count(df = df, vars = "sampl
 # Visualize percentages for germ cells
 
 ```{r, visualization}
-cur_df <- proportions[c("B6", "P15", "P20", "P25", "P30", "P35"),1:23]
+cur_df <- proportions[c("B6", "P10", "P15", "P20", "P25", "P30", "P35"),c(26, 25, 24, 27, 1:23)]
 cur_df.melt <- melt(cur_df)
-levels(cur_df.melt$sample) <- rev(c("B6", "P15", "P20", "P25", "P30", "P35"))
-levels(cur_df.melt$group) <- levels(colData(sce.all)$AnnotatedClusters)
+levels(cur_df.melt$sample) <- rev(c("B6", "P10", "P15", "P20", "P25", "P30", "P35"))
+levels(cur_df.melt$group) <- levels(colData(sce.all)$AnnotatedClusters)[c(26, 25, 24, 27, 1:23)]
 
 proportions.p <- ggplot(cur_df.melt) + 
   geom_point(aes(group, rev(sample), size = value, fill = group), shape = 22) +
@@ -68,8 +68,8 @@ proportions.p <- ggplot(cur_df.melt) +
   scale_size_area(max_size = 6) + guides(colour = FALSE)
 
 # Save plot
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2/ProportionsPlot.pdf", proportions.p,
-       width = 180, units = "mm", height = 80)
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_2_ProportionsPlot.pdf", proportions.p,
+       width = 220, units = "mm", height = 80)
 ```
 
 # Map bulk libraries to stages

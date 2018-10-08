@@ -160,24 +160,28 @@ p.clusters <- ggplot(data.frame(PC1 = pca$x[,1],
   geom_point(aes(PC1, PC2, colour = clusters)) + 
   scale_colour_manual(values = metadata(cur_sce)$colour_vector.P15) +
   guides(colour = FALSE)
+
+p.nogenes <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  no.genes = nexprs(cur_sce, detection_limit = 0))) +
+  geom_point(aes(PC1, PC2, colour = no.genes)) + 
+  scale_color_gradientn(colours = inferno(100))
 ```
 
 # Save final figure
 
 ```{r save}
-A <- plot_grid(emptyDrops, emptyDrops.P15, p.clusters, 
-               ncol = 3, nrow = 1, 
+A <- plot_grid(emptyDrops, emptyDrops.P15, p.clusters, p.nogenes,
+               ncol = 4, nrow = 1, 
                labels = c("A", "B", "C"))
-B <- plot_grid(emptyDrops.Sycp1, emptyDrops.H2afx, emptyDrops.Hormad1, 
-               ncol = 3, nrow = 1, 
+B <- plot_grid(emptyDrops.Sycp1, emptyDrops.H2afx, emptyDrops.Hormad1, emptyDrops.no.genes,
+               ncol = 4, nrow = 1, 
                labels = c("D", NULL, NULL))
-C <- plot_grid(emptyDrops.no.genes, NULL, NULL, ncol = 3, nrow = 1, 
-               labels = c("E", NULL, NULL))
 final <- plot_grid(A, B, C,
-                   ncol = 1, nrow = 3)
+                   ncol = 1, nrow = 2)
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/Fig_S4.pdf", final,
-       width = 15, height = 15)
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_S4.pdf", final,
+       width = 20, height = 12)
 ```
 
 # Save versions of the plots that have figure legends

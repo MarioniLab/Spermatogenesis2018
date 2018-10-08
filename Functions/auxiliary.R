@@ -91,7 +91,7 @@ marker.detection <- function(sce, clusters){
   # Collect group specific markers
   markers.spec <- lapply(cur_markers, function(n){
     if(!is.na(n$Top[1])){
-    cur_n <- n[n$FDR < 0.1 & apply(n[,3:ncol(n)], 1, function(x){sum(x > 0)}) == ncol(n) - 2,]
+    cur_n <- n[n$FDR < 0.1 & apply(as.matrix(n[,3:ncol(n)]), 1, function(x){sum(x > 0)}) == ncol(n) - 2,]
       if(nrow(cur_n) > 0){
         cur_n$GeneName <- rowData(sce)$Symbol[match(rownames(cur_n), rowData(sce)$ID)]
       }
