@@ -372,43 +372,71 @@ ggplot(data.frame(tsne1 = reducedDims(sce.P15)$TSNE[,1],
 
 ggplot(data.frame(tsne1 = reducedDims(sce.P15)$TSNE[,1],
                   tsne2 = reducedDims(sce.P15)$TSNE[,2],
-                  gene = logcounts(sce.P15)[rowData(sce.P15)$ID[rowData(sce.P15)$Symbol == "Lgals1"],])) +
-  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+                  gene = logcounts(sce.P15)[rowData(sce.P15)$Symbol == "Cd14",])) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + 
+  scale_colour_viridis()
+
+df1 <- data.frame(tsne1 =reducedDims(sce.P15)$TSNE[
+                      colData(sce.P15)$AnnotatedClusters != "NewCell",1],
+                  tsne2 = reducedDims(sce.P15)$TSNE[
+                    colData(sce.P15)$AnnotatedClusters != "NewCell",2],
+                  cluster = colData(sce.P15)$AnnotatedClusters[
+                    colData(sce.P15)$AnnotatedClusters != "NewCell"
+                  ])
+df2 <- data.frame(tsne1 =reducedDims(sce.P15)$TSNE[
+                      colData(sce.P15)$AnnotatedClusters == "NewCell",1],
+                  tsne2 = reducedDims(sce.P15)$TSNE[
+                    colData(sce.P15)$AnnotatedClusters == "NewCell",2],
+                  cluster = colData(sce.P15)$AnnotatedClusters[
+                    colData(sce.P15)$AnnotatedClusters == "NewCell"
+                  ])
+
+ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = cluster)) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = cluster)) +
+  scale_color_manual(values = metadata(sce.all)$color_vector)
+
 
 annotatedCluster <- clusters
-annotatedCluster[annotatedCluster == 1] <- "Immature_Leydig"
-annotatedCluster[annotatedCluster == 2] <- "Sertoli_1"
-annotatedCluster[annotatedCluster == 3] <- "Leptotene/Zygotene"
-annotatedCluster[annotatedCluster == 4] <- "PTM"
-annotatedCluster[annotatedCluster == 5] <- "Pachytene_Spermatocytes"
-annotatedCluster[annotatedCluster == 6] <- "Interstitial_tMg_1"
-annotatedCluster[annotatedCluster == 7] <- "Undifferentiated_Spermatogonia"
-annotatedCluster[annotatedCluster == 8] <- "Endothelial_cells"
-annotatedCluster[annotatedCluster == 9] <- "Sertoli_2"
-annotatedCluster[annotatedCluster == 10] <- "Interstitial_tMg_2"
-annotatedCluster[annotatedCluster == 11] <- "Leydig"
-annotatedCluster[annotatedCluster == 12] <- "Pachytene_Spermatocytes"
-annotatedCluster[annotatedCluster == 13] <- "Differentiating_Spermatogonia"
+annotatedCluster[annotatedCluster == 1] <- "Leydig_1"
+annotatedCluster[annotatedCluster == 2] <- "Zygotene"
+annotatedCluster[annotatedCluster == 3] <- "Differentiating_Spermatogonia_2"
+annotatedCluster[annotatedCluster == 4] <- "Endothelial_cells"
+annotatedCluster[annotatedCluster == 5] <- "PTM"
+annotatedCluster[annotatedCluster == 6] <- "Pachytene_2"
+annotatedCluster[annotatedCluster == 7] <- "Leptotene"
+annotatedCluster[annotatedCluster == 8] <- "Immature_Leydig"
+annotatedCluster[annotatedCluster == 9] <- "Differentiating_Spermatogonia_1"
+annotatedCluster[annotatedCluster == 10] <- "Sertoli_1"
+annotatedCluster[annotatedCluster == 11] <- "Sertoli_2"
+annotatedCluster[annotatedCluster == 12] <- "Interstitial_tMg"
+annotatedCluster[annotatedCluster == 13] <- "Outliers"
+annotatedCluster[annotatedCluster == 14] <- "Pachytene_1"
+annotatedCluster[annotatedCluster == 15] <- "Leydig_2"
+annotatedCluster[annotatedCluster == 16] <- "Undifferentiated_Spermatogonia"
 
 
 colData(sce.P15)$AnnotatedClusters <- factor(annotatedCluster,
-      levels = c("Undifferentiated_Spermatogonia", "Differentiating_Spermatogonia",
-                 "Leptotene/Zygotene", "Pachytene_Spermatocytes",
-                 "Immature_Leydig","Leydig","Sertoli_1","Sertoli_2", 
-                 "PTM", "Interstitial_tMg_1", "Interstitial_tMg_2", "Endothelial_cells"))
+      levels = c("Undifferentiated_Spermatogonia", "Differentiating_Spermatogonia_1", "Differentiating_Spermatogonia_2", 
+                 "Leptotene", "Zygotene", "Pachytene_1", "Pachytene_2",                 "Immature_Leydig","Leydig_1", "Leydig_2", "Sertoli_1","Sertoli_2", 
+                 "PTM", "Interstitial_tMg", "Endothelial_cells", "Outliers"))
 
 colour_vector.P15 <- c("Undifferentiated_Spermatogonia" = "#00441b", 
-                   "Differentiating_Spermatogonia" = "#238b45",
-                   "Leptotene/Zygotene" = "#FBDCEA",
-                   "Pachytene_Spermatocytes" = "#F2B2D1",
+                   "Differentiating_Spermatogonia_1" = "#238b45", 
+                   "Differentiating_Spermatogonia_2" = "#66c2a4",
+                   "Leptotene" = "#FBDCEA",
+                   "Zygotene" = "#ceb3bf",
+                   "Pachytene_1" = "#F2B2D1",
+                   "Pachytene_2" = "#bc89a2",
                    "Sertoli_1" = "#643F18",
                    "Sertoli_2" = "sienna4",
-                   "Leydig" = "#985D25",
+                   "Leydig_1" = "#985D25",
+                   "Leydig_2" = "#ad6827",
                    "Immature_Leydig" = "#A58D81",
                    "PTM" = "#C48C58", 
                    "Endothelial_cells" = "#FFDFB2",
-                   "Interstitial_tMg_1" = "#F36E20",
-                   "Interstitial_tMg_2" = "darkorange3")
+                   "Interstitial_tMg" = "#F36E20",
+                   "Outliers" = "#067277")
 
 ggplot(data.frame(tsne1 = reducedDims(sce.P15)$TSNE[,1],
                   tsne2 = reducedDims(sce.P15)$TSNE[,2],
@@ -420,10 +448,9 @@ P15.clusters <- rep(NA, ncol(sce.all))
 P15.clusters[colData(sce.all)$Sample == "P15"] <- annotatedCluster
 
 colData(sce.all)$P15Clusters <- factor(P15.clusters,
-      levels = c("Undifferentiated_Spermatogonia", "Differentiating_Spermatogonia",
-                 "Leptotene/Zygotene", "Pachytene_Spermatocytes",
-                 "Immature_Leydig","Leydig","Sertoli_1","Sertoli_2", 
-                 "PTM", "Interstitial_tMg_1", "Interstitial_tMg_2", "Endothelial_cells", NA))
+      levels = c("Undifferentiated_Spermatogonia", "Differentiating_Spermatogonia_1", "Differentiating_Spermatogonia_2", 
+                 "Leptotene", "Zygotene", "Pachytene_1", "Pachytene_2",                 "Immature_Leydig","Leydig_1", "Leydig_2", "Sertoli_1","Sertoli_2", 
+                 "PTM", "Interstitial_tMg", "Endothelial_cells", "Outliers", NA))
 metadata(sce.all)$colour_vector.P15 <- colour_vector.P15
 
 saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
