@@ -35,7 +35,7 @@ sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analys
 # Select adult B6 samples and exclude outlying cells 
 # Also exclude endothelia cells since only one cell was detected
 sce <- sce[,colData(sce)$Sample == "B6" & !(colData(sce)$AnnotatedClusters %in% 
-                                             c(paste("NA", 1:5, sep = ""), "Outliers", "Endothelial_cells"))]
+                                             c("Outliers", "Endothelial_cells"))]
 sce <- normalize(sce)
 ```
 
@@ -47,9 +47,10 @@ folder.
 
 ```{r DE}
 sperm.markers <- marker.detection(sce, as.character(colData(sce)$AnnotatedClusters))
+sperm.markers <- sperm.markers[levels(colData(sce)$AnnotatedClusters)[levels(colData(sce)$AnnotatedClusters) %in% unique(colData(sce)$AnnotatedClusters)]]
 
 # Save this list as Table S1
-write.xlsx(sperm.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S2.xlsx")
+write.xlsx(sperm.markers, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S2.xlsx")
 
 # Save the rds file for later use
 saveRDS(sperm.markers, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.rds")
@@ -107,6 +108,6 @@ Now we build the parts of the final figure coming from the scRNA-Seq analysis.
 final.1 <- plot_grid(plotlist = gene.list, nrow = 2, ncol = 3)
 final <- plot_grid(final.1, p.cells, ncol = 2, nrow = 1, rel_widths = c(2,1), 
                    labels = c("D", "E"), label_size = 16)
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_1/Fig_1.pdf",
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_1/Fig_1.pdf",
        final, units = "mm", width = 300, height = 90)
 ```
