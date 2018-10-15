@@ -100,7 +100,7 @@ labels <- factor(colData(sce.B6)$AnnotatedClusters,
                         unique(colData(sce.B6)$AnnotatedClusters)])
 
 # Create training and testing datasets
-set.seed(1234)
+set.seed(123)
 sam <- sample(1:ncol(sce.B6), 2000)
 #train.data <- data.frame(t(as.matrix(logcounts(sce.B6)[cur_markers,sam])))
 #train.data$labels <- labels[sam] 
@@ -135,7 +135,7 @@ pred.bulk <- predict(object = Tree, newdata = t(new.data.Z), type="prob")
 df <- data.frame(library = rownames(pred.bulk),
                  day = as.numeric(sub(" days", "", meta[rownames(pred.bulk),"Age"])))
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_2/Fig_2_bulkmapping_heatmap.pdf", 
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_2//Fig_2_bulkmapping_heatmap.pdf", 
     onefile = FALSE)
 pheatmap(pred.bulk[order(df$day),], cluster_cols = FALSE, cluster_rows = FALSE,
          col = inferno(100),
