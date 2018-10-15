@@ -48,23 +48,33 @@ sce.spermatogonia <- normalize(sce.spermatogonia)
 rm(sce)
 
 # Visualize non-batch corrected data
-pca <- prcomp(t(logcounts(sce.spermatogonia)))
-ggplot(data.frame(tsne1 = pca$x[,1],
-                  tsne2 = pca$x[,2],
+sce.spermatogonia <- runPCA(sce.spermatogonia)
+ggplot(data.frame(PC1 = reducedDims(sce.spermatogonia)$PCA[,1],
+                  PC2 = reducedDims(sce.spermatogonia)$PCA[,2],
                   samples = colData(sce.spermatogonia)$Sample)) +
-  geom_point(aes(tsne1, tsne2, colour = samples)) + 
+  geom_point(aes(PC1, PC2, colour = samples)) + 
   scale_color_manual(values = c("#1f78b4", "#33a02c", "#e31a1c"))
+
+ggplot(data.frame(PC1 = reducedDims(sce.spermatogonia)$PCA[,1],
+                  PC2 = reducedDims(sce.spermatogonia)$PCA[,2],
+                  Nanos3 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Stra8",])) +
+  geom_point(aes(PC1, PC2, colour = Nanos3)) + scale_colour_viridis()
 
 sce.single <- split.sce(sce = sce.spermatogonia, 
                         groups = unique(colData(sce.spermatogonia)$Library), 
                         colData.name = "Library")
 
-corrected <- batch.correction(sce.single)
+# Use P10 as first sample
+corrected <- batch.correction(sce.single[c("do17821", "do18195", "do26386", "do26387")])
+
+sce.spermatogonia <- do.call(cbind, sce.single[c("do17821", "do18195", "do26386", "do26387")])
 ```
 
 ```{r, spermatogonia_p10_p15}
 # Compute pca 
 pca <- prcomp(t(corrected))
+tsne <- Rtsne(t(corrected))
 
 # Visualize PCA with marker genes
 samples <- ggplot(data.frame(PC1 = pca$x[,1],
@@ -72,6 +82,18 @@ samples <- ggplot(data.frame(PC1 = pca$x[,1],
                   samples = colData(sce.spermatogonia)$Sample)) +
   geom_point(aes(PC1, PC2, colour = samples)) + 
   scale_color_manual(values = c("#1f78b4", "#33a02c", "#e31a1c")) 
+
+samples.tsne <- ggplot(data.frame(tsne1 = tsne$Y[,1],
+                  tsne2 = tsne$Y[,2],
+                  samples = colData(sce.spermatogonia)$Sample)) +
+  geom_point(aes(tsne1, tsne2, colour = samples)) + 
+  scale_color_manual(values = c("#1f78b4", "#33a02c", "#e31a1c")) 
+
+gene.tsne <- ggplot(data.frame(tsne1 = tsne$Y[,1],
+                  tsne2 = tsne$Y[,2],
+                  gene = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Ccnd1",])) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
 
 # For visualization the non-batch corrected counts are used
 
@@ -135,27 +157,25 @@ Gfra1 <- ggplot(data.frame(PC1 = pca$x[,1],
 
 ```{r}
 # Use the same graph based clustering technique
-g <- buildSNNGraph(corrected, k = 10, pc.approx = TRUE)
-
-set.seed(12345)
+set.seed(123)
+g <- buildSNNGraph(corrected, k = 15, pc.approx = TRUE)
 clusters <- igraph::cluster_louvain(g)$membership
 
 # Change cluster labels
-clusters[clusters == 1] <- "Gonocytes"
-clusters[clusters == 2] <- "Diff_1"
-clusters[clusters == 3] <- "Undiff_2"
-clusters[clusters == 4] <- "Diff_2"
-clusters[clusters == 5] <- "Diff_3"
-clusters[clusters == 6] <- "Preleptotene"
-clusters[clusters == 7] <- "Undiff_1"
+clusters[clusters == 1] <- "Diff_2"
+clusters[clusters == 2] <- "Undiff_3"
+clusters[clusters == 3] <- "Diff_3"
+clusters[clusters == 4] <- "Diff_1"
+clusters[clusters == 5] <- "Undiff_1"
+clusters[clusters == 6] <- "Undiff_2"
 
-col_vector <- c("Undiff_1" = "#00441b",
-                "Undiff_2" = "#006d2c",
+
+col_vector <- c("Undiff_1" = "#001c0b",
+                "Undiff_2" = "#00441b",
                 "Diff_1" = "#238b45",
                 "Diff_2" = "#41ae76",
                 "Diff_3" = "#66c2a4",
-                "Gonocytes" = "#001609",
-                "Preleptotene" = "#d4b9da")
+                "Undiff_3" = "#006d2c")
 
 p.clusters <- ggplot(data.frame(PC1 = pca$x[,1],
                   PC2 = pca$x[,2],
