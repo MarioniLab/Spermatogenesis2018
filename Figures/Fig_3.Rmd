@@ -26,6 +26,8 @@ library(cowplot)
 library(viridis)
 library(pheatmap)
 library(Rtsne)
+library(irlba)
+library(RColorBrewer)
 source("../Functions/auxiliary.R")
 
 # Single cell data
@@ -196,46 +198,133 @@ write.xlsx(spermatogonia.markers, "../../../Dropbox (Cambridge University)/SST_s
 write.xlsx(spermatogonia.markers.P5, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S4_P5.xlsx")
 ```
 
-# Visualize marker genes
+# Visualize RA blocked cells on empty drops
 
 ```{r}
-# First we order the cells based on their differerentiation trajectory
-prank <- PT(rd = pca$x[,1:3], clusters = clusters, col_vector = col_vector)
+# Read in RA blocked cell data from Chen et al, Cell Research
+files <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Chen_CellResearch/GSE107644_RAW/", full.names = TRUE)
 
-# Collect count for heatmap
-for.heatmap <- logcounts(sce.spermatogonia)[match(sperm.markers$GeneName, 
-                                                         rowData(sce.spermatogonia)$Symbol),
-                                      order(prank[,"rank"], decreasing = TRUE)]
-colnames(for.heatmap) <- paste(colData(sce.spermatogonia)$Library[
-  order(prank[,"rank"], decreasing = TRUE)],
-  colData(sce.spermatogonia)$Barcode[
-  order(prank[,"rank"], decreasing = TRUE)], sep = "_")
+all_cells <- lapply(as.list(files), function(n){
+  cur_file <- read.table(n, sep = "\t", header = TRUE)
+  rownames(cur_file) <- cur_file[,1]
+  cur_file <- cur_file[,-1]
+})
 
-# Visualize top genes in form of heatmap
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Spermatogonia_heatmap_P10_P15.pdf", onefile = FALSE, width = 10, height = 15)
-pheatmap(for.heatmap, 
-         cluster_rows = FALSE, cluster_cols = FALSE,
-         scale = "row", show_rownames = FALSE,
-         show_colnames = FALSE, gaps_row = seq(15,90, 15),
-         cellheight = 8, fontsize = 7,
-         color = colorRampPalette(c("#053061", "#4393c3", 
-                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
-         annotation_col = data.frame(row.names = colnames(for.heatmap),
-                                     cell_type = clusters[order(prank[,"rank"], decreasing = TRUE)]),
-         annotation_row = data.frame(row.names = rownames(for.heatmap),
-                                     gene_list = sperm.markers$Cluster,
-                                     label = sperm.markers$Label),
-         annotation_colors = list(cell_type = col_vector,
-                                  gene_list = col_vector,
-                                  label = c("NA" = "white", "label" = "black")))
-dev.off()
+all_cells <- do.call("cbind", all_cells)
+
+# Form a sce 
+sce_RA <- SingleCellExperiment(assays=list(counts=Matrix::Matrix(as.matrix(all_cells), sparse = TRUE)))
+colData(sce_RA)$time_point <- factor(as.character(sapply(colnames(sce_RA), 
+                                                         function(n){unlist(strsplit(n, "_"))[1]})),
+                                        levels = paste("SpSC", c(0, 2:37), sep = "")) 
+colData(sce_RA)$cell_type <- as.character(sapply(colnames(sce_RA), function(n){unlist(strsplit(n, "_"))[2]})) 
+
+# P15 data
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+sce <- sce[,grepl("P15", colData(sce)$Sample)]
+
+# QC on RA cells
+sce_RA <- calculateQCMetrics(sce_RA)
+
+ggplot(as.data.frame(colData(sce_RA))) + 
+  geom_point(aes(total_features_by_counts, log10_total_counts, colour = time_point))
+
+# Remove 2 cells with few features and one cell with high features detected
+sce_RA <- sce_RA[,colData(sce_RA)$total_features_by_counts > 1250 &
+                   colData(sce_RA)$total_features_by_counts < 12000]
+
+# Normalization of RA cells
+clusters <- quickCluster(sce_RA, method = "igraph", irlba.args = c("work" = 100), 
+                         max.size = 1000)
+
+sce_RA <- computeSumFactors(sce_RA, clusters=clusters)
+
+sce_RA <- normalize(sce_RA, return_log = TRUE)
+
+# Batch correction
+sce <- sce[match(intersect(rownames(sce_RA), rowData(sce)$Symbol), rowData(sce)$Symbol),]
+sce_RA <- sce_RA[match(intersect(rownames(sce_RA), rowData(sce)$Symbol), rownames(sce_RA)),]
+
+rownames(sce_RA) <- rownames(sce)
+rowData(sce_RA)$Symbol <- rowData(sce)$Symbol
+rowData(sce_RA)$ID <- rowData(sce)$ID
+
+# Select only the germ cells
+sce.P15 <- sce[,grepl("Pachytene|Differentiating|Zygotene|Leptotene|Undifferentiated", colData(sce)$P15Clusters) &
+                 colData(sce)$AnnotatedClusters != "Outliers"]
+sce.P15 <- normalize(sce.P15)
+
+# Select Early germ cells from RA blocked cells
+sce_early_RA <- sce_RA[,grepl("A1|ePL|G1|mPL|eP|mP|lPL|Z|L|ln|Spo11KOL1", colData(sce_RA)$cell_type)]
+sce_early_RA <- normalize(sce_early_RA)
+
+# Batch correction
+# Calculate highly variable genes
+HVG.genes <- lapply(list(sce.P15, sce_early_RA), function(n){
+    HVG <- trendVar(n, use.spikes = FALSE)
+    decomposeVar(n, HVG)
+  })
+  
+HVG.df <- do.call("combineVar", HVG.genes)
+HVG.df <- HVG.df[order(HVG.df$bio, decreasing = TRUE),]
+genes <- rownames(HVG.df)[1:1000]
+  
+# Batch correction
+corrected <- mnnCorrect(as.matrix(logcounts(sce.P15)[genes,]),
+                        as.matrix(logcounts(sce_early_RA)[genes,]), 
+                        cos.norm.in=TRUE, cos.norm.out=TRUE, sigma=0.1)
+
+# Assign mutual nearest neighbours in P15 sample with cell identity from RA blocked cells
+new.cellID <- vector(length = ncol(sce.P15))
+new.cellID[as.integer(corrected$pairs[[2]]$other.cell)] <- sce_early_RA$cell_type[as.integer(corrected$pairs[[2]]$current.cell)]
+new.cellID[new.cellID == "FALSE"] <- "NewCell"
+colData(sce.P15)$RA_blocked_identity <- new.cellID
+
+# Visualization
+set.seed(111)
+pca <- prcomp_irlba(t(do.call("cbind", corrected$corrected)), n = 50)
+tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
+
+# CellRanger filter cluster
+# Create new colour vector
+new_vector <- c(brewer.pal(n = 8, name = "Set1"), brewer.pal(n = 8, name = "Set2"))
+names(new_vector) <- unique(colData(sce_early_RA)$cell_type)
+col_vector <- c(metadata(sce)$color_vector, new_vector)
+
+empty_drops_RA <- ggplot() +
+  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
+                  tSNE2 = tsne$Y[1:ncol(sce.P15),2],
+                  cluster = colData(sce.P15)$AnnotatedClusters),
+             aes(tSNE1, tSNE2, colour = cluster)) + 
+    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
+                  cell_type = colData(sce_early_RA)$cell_type),
+             aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = col_vector)
+
+new_vector <- c(brewer.pal(n = 8, name = "Set1"), brewer.pal(n = 8, name = "Set2"))
+names(new_vector) <- unique(colData(sce_early_RA)$cell_type)
+col_vector <- c(metadata(sce)$colour_vector.P15, new_vector)
+
+empty_drops_clustered <- ggplot() +
+  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
+                  tSNE2 = tsne$Y[1:ncol(sce.P15),2],
+                  cluster = colData(sce.P15)$P15Clusters),
+             aes(tSNE1, tSNE2, colour = cluster)) + 
+    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
+                  cell_type = colData(sce_early_RA)$cell_type),
+             aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = col_vector)
 ```
 
 # Save final figure
 
 ```{r save}
-B <- plot_grid(Nanos3, Stra8, Dmrtb1, p.clusters, samples, ncol = 5, nrow = 1)
+A <- plot_grid(Nanos3, Stra8, Dmrtb1, p.clusters, samples, ncol = 5, nrow = 1)
+B <- plot_grid(empty_drops_RA, empty_drops_clustered, ncol = 2, nrow = 1)
+final <- plot_grid(A, B, nrow = 2, rel_heights = c(1,2))
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3.pdf",
-       B, width = 25, height = 5)
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3/Fig_3.pdf",
+       final, width = 25, height = 20)
 ```
