@@ -42,10 +42,18 @@ sperm.markers <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermato
 ```{r}
 # To avoid batch effects between the samples, we assume that there are 
 # shared cell types between the samples
-sce.spermatogonia <- sce[,grepl("P10|P15|P20", colData(sce)$Sample) &
+sce.spermatogonia <- sce[,grepl("P5|P10|P15", colData(sce)$Sample) &
                                        colData(sce)$AnnotatedClusters == "Spermatogonia"]
 sce.spermatogonia <- normalize(sce.spermatogonia)
 rm(sce)
+
+# Visualize non-batch corrected data
+pca <- prcomp(t(logcounts(sce.spermatogonia)))
+ggplot(data.frame(tsne1 = pca$x[,1],
+                  tsne2 = pca$x[,2],
+                  samples = colData(sce.spermatogonia)$Sample)) +
+  geom_point(aes(tsne1, tsne2, colour = samples)) + 
+  scale_color_manual(values = c("#1f78b4", "#33a02c", "#e31a1c"))
 
 sce.single <- split.sce(sce = sce.spermatogonia, 
                         groups = unique(colData(sce.spermatogonia)$Library), 
@@ -116,7 +124,6 @@ Dmrtb1 <- ggplot(data.frame(PC1 = pca$x[,1],
                     rowData(sce.spermatogonia)$Symbol == "Dmrtb1",])) +
   geom_point(aes(PC1, PC2, colour = Dmrtb1)) + scale_colour_viridis()
 
-# Dmrtb1 mediates mitosis-to-meiosis 
 Gfra1 <- ggplot(data.frame(PC1 = pca$x[,1],
                   PC2 = pca$x[,2],
                   Gfra1 = logcounts(sce.spermatogonia)[
@@ -124,27 +131,30 @@ Gfra1 <- ggplot(data.frame(PC1 = pca$x[,1],
   geom_point(aes(PC1, PC2, colour = Gfra1)) + scale_colour_viridis()
 ```
 
-# Clustering of spermatogonia for P10 and P15
+# Clustering of spermatogonia for P5, P10 and P15
 
 ```{r}
 # Use the same graph based clustering technique
-g <- buildSNNGraph(corrected, k = 15, pc.approx = TRUE)
+g <- buildSNNGraph(corrected, k = 10, pc.approx = TRUE)
 
+set.seed(12345)
 clusters <- igraph::cluster_louvain(g)$membership
 
 # Change cluster labels
-clusters[clusters == 1] <- "Diff_2"
-clusters[clusters == 2] <- "Diff_3"
-clusters[clusters == 3] <- "Preleptotene"
-clusters[clusters == 4] <- "Undiff_1"
-clusters[clusters == 5] <- "Undiff_2"
-clusters[clusters == 6] <- "Diff_1"
+clusters[clusters == 1] <- "Gonocytes"
+clusters[clusters == 2] <- "Diff_1"
+clusters[clusters == 3] <- "Undiff_2"
+clusters[clusters == 4] <- "Diff_2"
+clusters[clusters == 5] <- "Diff_3"
+clusters[clusters == 6] <- "Preleptotene"
+clusters[clusters == 7] <- "Undiff_1"
 
 col_vector <- c("Undiff_1" = "#00441b",
                 "Undiff_2" = "#006d2c",
                 "Diff_1" = "#238b45",
                 "Diff_2" = "#41ae76",
                 "Diff_3" = "#66c2a4",
+                "Gonocytes" = "#001609",
                 "Preleptotene" = "#d4b9da")
 
 p.clusters <- ggplot(data.frame(PC1 = pca$x[,1],
@@ -156,25 +166,29 @@ p.clusters <- ggplot(data.frame(PC1 = pca$x[,1],
 # Find marker genes for these groups
 
 ```{r}
-spermatogonia.markers <- marker.detection(sce.spermatogonia.p10.15, 
+spermatogonia.markers <- marker.detection(sce.spermatogonia, 
                                           clusters)
 
-write.xlsx(spermatogonia.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S4.xlsx")
+spermatogonia.markers.P5 <- marker.detection(sce.spermatogonia[,sce.spermatogonia$Sample == "P5"], 
+                                          clusters[sce.spermatogonia$Sample == "P5"])
+
+write.xlsx(spermatogonia.markers, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S4.xlsx")
+write.xlsx(spermatogonia.markers.P5, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S4_P5.xlsx")
 ```
 
 # Visualize marker genes
 
 ```{r}
 # First we order the cells based on their differerentiation trajectory
-prank <- PT(rd = pca.P10.15$x[,1:3], clusters = clusters, col_vector = col_vector)
+prank <- PT(rd = pca$x[,1:3], clusters = clusters, col_vector = col_vector)
 
 # Collect count for heatmap
-for.heatmap <- logcounts(sce.spermatogonia.p10.15)[match(sperm.markers$GeneName, 
-                                                         rowData(sce.spermatogonia.p10.15)$Symbol),
+for.heatmap <- logcounts(sce.spermatogonia)[match(sperm.markers$GeneName, 
+                                                         rowData(sce.spermatogonia)$Symbol),
                                       order(prank[,"rank"], decreasing = TRUE)]
-colnames(for.heatmap) <- paste(colData(sce.spermatogonia.p10.15)$Library[
+colnames(for.heatmap) <- paste(colData(sce.spermatogonia)$Library[
   order(prank[,"rank"], decreasing = TRUE)],
-  colData(sce.spermatogonia.p10.15)$Barcode[
+  colData(sce.spermatogonia)$Barcode[
   order(prank[,"rank"], decreasing = TRUE)], sep = "_")
 
 # Visualize top genes in form of heatmap
