@@ -46,7 +46,7 @@ sce <- normalize(sce)
 # Order cells in pseudotime
 
 ```{r PT}
-sce.spermatocytes <- sce[, colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[2:9]]
+sce.spermatocytes <- sce[, colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[2:8]]
 sce.spermatocytes <- normalize(sce.spermatocytes)
 
 # Compute HVG
@@ -164,8 +164,8 @@ Tcte2.p <- ggplot(data.frame(x = PT,
         axis.line.x = element_blank())
 
 spermatocytes.p <- plot_grid(p.number.genes, Hormad1.p, Sycp3.p, Pou5f2.p, Tcte2.p, ncol = 1, nrow = 5)
-#ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4.pdf", 
-#       spermatocytes.p, width = 6, height = 8)
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/Fig_4.pdf", 
+       spermatocytes.p, width = 6, height = 8)
 ```
 
 # Correlation analysis to number of genes expressed
@@ -232,6 +232,32 @@ pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
          scale = "row",
          gaps_row = seq(15,120, 15), cellheight = 2)
 dev.off()
+```
+
+# Enrichment analysis for fertility genes
+
+```{r enichment}
+# Read in fertility related genes
+# These can be downloaded at: https://media.nature.com/original/nature-assets/nm/journal/v14/n11/extref/nm.f.1895-S1.pdf
+library(tabulizer)
+library(openxlsx)
+# There are pages which are diffucult to read in: 1, 16, 18, 21, 
+# We extracted the information on these pages by hand
+fertility.genes <- tabulizer::extract_tables("https://media.nature.com/original/nature-assets/nm/journal/v14/n11/extref/nm.f.1895-S1.pdf", pages = c(2:15, 17, 19, 20, 22))
+fertility.genes.1 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/NatMed_fertility_remaining.xlsx")
+
+# Parse the output and save in new data.frame
+fertility.genes.clean <- lapply(fertility.genes, function(n){
+  cur_n <- n[,c(1,2,4)]
+  cur_n[,1] <- sub("[\\)\\;].*", "", sub(".*\\(", "", cur_n[,1]))
+  cur_n
+})
+df.fertility <- do.call("rbind", fertility.genes.clean)
+colnames(df.fertility) <- colnames(fertility.genes.1)
+df.fertility <- rbind(df.fertility, fertility.genes.1)
+
+# Select the genes that show male or both fertility effect
+df.fertility.male <- df.fertility[grepl("Both|Male", df.fertility[,2]),]
 ```
 
 # Tc1 and Tc0 analysis
