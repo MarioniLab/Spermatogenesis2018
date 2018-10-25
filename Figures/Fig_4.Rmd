@@ -35,6 +35,7 @@ source("../Functions/auxiliary.R")
 
 # Single cell data
 sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+marker.genes <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.rds")
 
 # Select spermatogonia and spermatocytes
 sce <- sce[,colData(sce)$Sample == "B6"]
@@ -258,6 +259,55 @@ df.fertility <- rbind(df.fertility, fertility.genes.1)
 
 # Select the genes that show male or both fertility effect
 df.fertility.male <- df.fertility[grepl("Both|Male", df.fertility[,2]),]
+
+# Calculate the enrichment of the expressed fertility genes within the set of 
+# group specific genes
+df.stats <- matrix(NA, ncol = 2, nrow = length(marker.genes))
+rownames(df.stats) <- names(marker.genes)
+
+for(i in 1:nrow(df.stats)){
+  cur_sce <- sce[,sce$AnnotatedClusters == rownames(df.stats)[i]]
+  cur_sce <- cur_sce[Matrix::rowMeans(logcounts(cur_sce)) > log(2),]
+  
+  # Enrichment testing
+  # Build contigency table
+  cur_mat <- matrix(data = NA, 2, 2)
+  rownames(cur_mat) <- c("Fertility-genes", "Non-fertility-genes")
+  colnames(cur_mat) <- c("Group-spec", "Non-group-spec")
+  cur_mat[1,1] <- sum(rowData(cur_sce)$Symbol %in% as.character(df.fertility$Genename) & 
+                        rowData(cur_sce)$Symbol %in% 
+                        marker.genes[[rownames(df.stats)[i]]]$GeneName)
+  cur_mat[1,2] <- sum(rowData(cur_sce)$Symbol %in% as.character(df.fertility$Genename) & 
+                        !(rowData(cur_sce)$Symbol %in% 
+                        marker.genes[[rownames(df.stats)[i]]]$GeneName))
+  cur_mat[2,1] <- sum(!(rowData(cur_sce)$Symbol %in% as.character(df.fertility$Genename)) & 
+                        rowData(cur_sce)$Symbol %in% 
+                        marker.genes[[rownames(df.stats)[i]]]$GeneName)
+  cur_mat[2,2] <- sum(!(rowData(cur_sce)$Symbol %in% as.character(df.fertility$Genename)) & 
+                        !(rowData(cur_sce)$Symbol %in% 
+                        marker.genes[[rownames(df.stats)[i]]]$GeneName))
+  # Odds ratio
+  (cur_mat[1,1]/cur_mat[1,2])/(cur_mat[2,1]/cur_mat[2,2])
+  test <- fisher.test(cur_mat, alternative = "greater")
+  df.stats[i,1] <- test$p.value
+}
+
+df.stats[,2] <- p.adjust(df.stats[,1], method = "BH")
+df.stats <- as.data.frame(df.stats)
+df.stats$Celltype <- rownames(df.stats)
+
+df.stats.red <- df.stats[grepl("Spermatocytes", rownames(df.stats)),]
+
+# Statistic visualization
+p.stats <- ggplot(df.stats.red) + geom_col(aes(Celltype, -log10(V2), 
+                                           fill = Celltype)) +
+  scale_fill_manual(values = metadata(sce)$color_vector) + 
+  guides(fill = FALSE) + geom_hline(yintercept = 1, color = "dark red") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab("-log10(BH-corrected p-value)")
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/Fig_4_enrichment.pdf", 
+       p.stats, width = 5, height = 4)
 ```
 
 # Tc1 and Tc0 analysis
