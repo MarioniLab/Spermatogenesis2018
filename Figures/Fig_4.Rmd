@@ -320,6 +320,9 @@ for.heatmap <- logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID[match(
 rownames(for.heatmap) <- markers
 colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
 
+# Marker genes to label
+to.label <- c("Hmgb2", "Tex101", "Cks2", "Sycp1", "Sycp2", "Piwil1", "Ybx2", "Pou5f2", "Cdk1", "Aurka", "H3f3b")
+
 pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/Fig_4_MarkerGenes.pdf", onefile = FALSE, height = 5, width = 10)
 pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE,
@@ -330,15 +333,17 @@ pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
                                   infertility = c("Both" = "green",
                                                   "Female" = "red",
                                                   "Male" = "blue"),
-                                  enrichment = rev(viridis(100))),
+                                  enrichment = viridis(100)),
          annotation_row = data.frame(row.names = rownames(for.heatmap),
                                      cell_type = factor(rep(rownames(df.stats.red), each = 15),
                                                         labels = rownames(df.stats.red)),
                                      infertility = df.fertility[rownames(for.heatmap),"Sex"],
-                                     enrichment = rep(df.stats.red$BHvalue, each = 15)), 
+                                     enrichment = rep(-log10(df.stats.red$BHvalue), each = 15),
+                                     label = ifelse(rownames(for.heatmap) %in% to.label, "Yes", "No")), 
          scale = "row", annotation_legend = TRUE,
          gaps_row = seq(15,105, 15), cellheight = 2)
 dev.off()
+rownames(for.heatmap)[rownames(for.heatmap) %in% to.label]
 ```
 
 # Tc1 and Tc0 analysis
@@ -364,7 +369,7 @@ df <- data.frame(sample = paste(colData(sce)$Sample, colData(sce)$Library, sep =
 
 proportions <- with(df, table(sample, group))/plyr::count(df = df, vars = "sample")$freq
 
-cur_df <- proportions[,1:23]
+cur_df <- proportions[,1:22]
 cur_df.melt <- melt(cur_df)
 cur_df.melt$Genotype <- sapply(as.character(cur_df.melt$sample), function(n){
   unlist(strsplit(n, "_"))[1]
@@ -380,12 +385,12 @@ proportions.p <- ggplot(cur_df.melt) + geom_point(aes(group, rev(sample), size =
         axis.text.y = element_text(size = 12))
 
 # Save plot
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/CellTypeProportion_Tc1.pdf",
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/CellTypeProportion_Tc1.pdf",
        proportions.p, width = 10, height = 5)
 
-# Sattistical testing between conditions
+# Statistical testing between conditions
 sample.counts <- with(df, table(sample, group))
-sample.counts <- sample.counts[,1:23]
+sample.counts <- sample.counts[,1:22]
 overall.counts <- plyr::count(df = df, vars = "sample")$freq
 
 y <- DGEList(counts = t(sample.counts), lib.size = overall.counts, 
