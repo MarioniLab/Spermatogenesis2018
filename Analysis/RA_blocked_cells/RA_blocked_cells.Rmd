@@ -72,6 +72,7 @@ sce_RA <- normalize(sce_RA, return_log = TRUE)
 # Visaulize as tSNE
 set.seed(12345)
 sce_RA <- runTSNE(sce_RA)
+sce_RA <- runPCA(sce_RA)
 
 ggplot(data.frame(tSNE1 = reducedDims(sce_RA)$TSNE[,1],
                   tSNE2 = reducedDims(sce_RA)$TSNE[,2],
@@ -84,6 +85,12 @@ ggplot(data.frame(tSNE1 = reducedDims(sce_RA)$TSNE[,1],
                   time_point = colData(sce_RA)$time_point,
                   cell_type = colData(sce_RA)$cell_type)) +
   geom_point(aes(tSNE1, tSNE2, colour = cell_type))
+
+ggplot(data.frame(PC1 = reducedDims(sce_RA)$PCA[,1],
+                  PC2 = reducedDims(sce_RA)$PCA[,2],
+                  time_point = colData(sce_RA)$time_point,
+                  cell_type = colData(sce_RA)$cell_type)) +
+  geom_point(aes(PC1, PC2, colour = cell_type))
 ```
 
 ## Batch correction
@@ -177,18 +184,19 @@ ggplot() +
   scale_color_manual(values = col_vector)
 ```
 
-# RA blocked cells mapped to P15, P20 and P25 cellRanger
+# RA blocked cells mapped to B6 cellRanger
 
 ```{r P15_P20_P25}
 sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce <- sce[,grepl("B6", colData(sce)$Sample)]
-sce <- sce[rownames(sce_RA),]
+sce <- sce[intersect(rownames(sce_RA), rownames(sce)),]
+sce_RA <- sce_RA[rownames(sce),]
 
 # Select only the germ cells
-sce <- sce[,grepl("Spermatocytes_1|Spermatocytes_2|Spermatocytes_3|Spermatocytes_4|Spermatocytes_5|Spermatocytes_6|Spermatocytes_7|Meiosis|S1|S2|S3|S4|S5|S6|S7|S8|S9|S10|S11|S12|S13|S14", colData(sce)$AnnotatedClusters)]
+sce <- sce[,grepl("Spermatocytes|S1|S2|S3|S4|S5|S6|S7|S8|S9", colData(sce)$AnnotatedClusters)]
 sce <- normalize(sce)
 
-# Select Early germ cells from RA blocked cells
+# Select mid germ cells from RA blocked cells
 sce_mid_RA <- sce_RA[,grepl("D|MI|MII|RS1o2|RS3o4|RS5o6|Sox30KORS2o3|RS7o8", colData(sce_RA)$cell_type) | colData(sce_RA)$cell_type == "lP" | colData(sce_RA)$cell_type == "mP"]
 sce_mid_RA <- normalize(sce_mid_RA)
 
@@ -218,5 +226,16 @@ ggplot() +
                   tSNE2 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_mid_RA)),2],
                   cell_type = colData(sce_mid_RA)$cell_type),
              aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = col_vector)
+
+ggplot() +
+  geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce),1],
+                  PC2 = pca$x[1:ncol(sce),2],
+                  cluster = colData(sce)$AnnotatedClusters),
+             aes(PC1, PC2, colour = cluster)) + 
+    geom_point(data = data.frame(PC1 = pca$x[(ncol(sce)+1):(ncol(sce)+ncol(sce_mid_RA)),1],
+                  PC2 = pca$x[(ncol(sce)+1):(ncol(sce)+ncol(sce_mid_RA)),2],
+                  cell_type = colData(sce_mid_RA)$cell_type),
+             aes(PC1, PC2, colour = cell_type, size = 3)) +
   scale_color_manual(values = col_vector)
 ```
