@@ -44,7 +44,7 @@ sperm.markers <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermato
 ```{r}
 # To avoid batch effects between the samples, we assume that there are 
 # shared cell types between the samples
-sce.spermatogonia <- sce[,grepl("P5|P10|P15|B6", colData(sce)$Sample) &
+sce.spermatogonia <- sce[,grepl("P5|P10|P15", colData(sce)$Sample) &
                                        colData(sce)$AnnotatedClusters == "Spermatogonia"]
 sce.spermatogonia <- normalize(sce.spermatogonia)
 rm(sce)
@@ -263,10 +263,13 @@ sce <- sce[,grepl("P15", colData(sce)$Sample)]
 # Select only the germ cells
 sce.P15 <- sce[,grepl("Pachytene|Differentiating|Zygotene|Leptotene|Undifferentiated", colData(sce)$P15Clusters) &
                  colData(sce)$AnnotatedClusters != "Outliers"]
-sce.P15 <- normalize(sce.P15)
 
 # Select Early germ cells from RA blocked cells
 sce_early_RA <- sce_RA[,grepl("TypeB|A1|ePL|G1|mPL|eP|mP|lPL|Z|L|ln|Spo11KOL1", colData(sce_RA)$cell_type)]
+sce_early_RA <- sce_early_RA[intersect(rownames(sce_early_RA), rownames(sce.P15)),]
+sce.P15 <- sce.P15[rownames(sce_early_RA),]
+
+sce.P15 <- normalize(sce.P15)
 sce_early_RA <- normalize(sce_early_RA)
 
 # Batch correction
@@ -296,12 +299,7 @@ set.seed(111)
 pca <- prcomp_irlba(t(do.call("cbind", corrected$corrected)), n = 50)
 tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
 
-# CellRanger filter cluster
-# Create new colour vector
-new_vector <- c(brewer.pal(n = 8, name = "Set1"), brewer.pal(n = 8, name = "Set2"))
-names(new_vector) <- unique(colData(sce_early_RA)$cell_type)
-col_vector <- c(metadata(sce)$color_vector, new_vector)
-
+# CellRanger threshold
 empty_drops_RA <- ggplot() +
   geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
                   tSNE2 = tsne$Y[1:ncol(sce.P15),2],
@@ -311,12 +309,10 @@ empty_drops_RA <- ggplot() +
                   tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
                   cell_type = colData(sce_early_RA)$cell_type),
              aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
-  scale_color_manual(values = col_vector)
+  scale_color_manual(values = c(metadata(sce.P15)$color_vector,
+                                metadata(sce_early_RA)$colour_vector_RA, "NewCell" = "black"))
 
-new_vector <- c(brewer.pal(n = 8, name = "Set1"), brewer.pal(n = 8, name = "Set2"))
-names(new_vector) <- unique(colData(sce_early_RA)$cell_type)
-col_vector <- c(metadata(sce)$colour_vector.P15, new_vector)
-
+# EmptyDrops threshold
 empty_drops_clustered <- ggplot() +
   geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
                   tSNE2 = tsne$Y[1:ncol(sce.P15),2],
@@ -326,7 +322,8 @@ empty_drops_clustered <- ggplot() +
                   tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
                   cell_type = colData(sce_early_RA)$cell_type),
              aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
-  scale_color_manual(values = col_vector)
+  scale_color_manual(values = c(metadata(sce.P15)$colour_vector.P15,
+                                metadata(sce_early_RA)$colour_vector_RA, "NewCell" = "black"))
 ```
 
 # Save final figure
