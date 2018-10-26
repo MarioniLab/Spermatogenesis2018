@@ -47,7 +47,7 @@ sce <- normalize(sce)
 # Order cells in pseudotime
 
 ```{r PT}
-sce.spermatocytes <- sce[, colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[2:8]]
+sce.spermatocytes <- sce[, colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[2:9]]
 sce.spermatocytes <- normalize(sce.spermatocytes)
 
 # Compute HVG
@@ -169,6 +169,90 @@ ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Resu
        spermatocytes.p, width = 6, height = 8)
 ```
 
+# Map RA blocked cells to spermatocytes
+
+```{r}
+# Data from Chen et al, Cell Research
+files <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Chen_CellResearch/GSE107644_RAW/", full.names = TRUE)
+
+all_cells <- lapply(as.list(files), function(n){
+  cur_file <- read.table(n, sep = "\t", header = TRUE)
+  rownames(cur_file) <- cur_file[,1]
+  cur_file <- cur_file[,-1]
+})
+
+all_cells <- do.call("cbind", all_cells)
+
+# Form a sce 
+sce_RA <- SingleCellExperiment(assays=list(counts=Matrix::Matrix(as.matrix(all_cells), sparse = TRUE)))
+colData(sce_RA)$time_point <- factor(as.character(sapply(colnames(sce_RA), 
+                                                         function(n){unlist(strsplit(n, "_"))[1]})),
+                                        levels = paste("SpSC", c(0, 2:37), sep = "")) 
+colData(sce_RA)$cell_type <- as.character(sapply(colnames(sce_RA), function(n){unlist(strsplit(n, "_"))[2]})) 
+
+# Quality check 
+sce_RA <- calculateQCMetrics(sce_RA)
+
+# Remove 2 cells with few features detected
+sce_RA <- sce_RA[,colData(sce_RA)$total_features_by_counts > 1250]
+
+clusters <- quickCluster(sce_RA, method = "igraph", irlba.args = c("work" = 100), 
+                         max.size = 2000)
+
+sce_RA <- computeSumFactors(sce_RA, clusters=clusters)
+
+sce_RA <- normalize(sce_RA, return_log = TRUE)
+
+# Batch correction
+sce.spermatocytes.1 <- sce.spermatocytes[match(intersect(rownames(sce_RA), rowData(sce.spermatocytes)$Symbol),
+                                               rowData(sce.spermatocytes)$Symbol),]
+sce_RA <- sce_RA[match(intersect(rownames(sce_RA), rowData(sce.spermatocytes.1)$Symbol), 
+                       rownames(sce_RA)),]
+rownames(sce_RA) <- rownames(sce.spermatocytes.1)
+rowData(sce_RA)$Symbol <- rowData(sce.spermatocytes.1)$Symbol
+rowData(sce_RA)$ID <- rowData(sce.spermatocytes.1)$ID
+
+# Select specific cell types 
+sce_mid_RA <- sce_RA[,grepl("D|MI|MII|RS1o2", colData(sce_RA)$cell_type) | colData(sce_RA)$cell_type == "lP" | colData(sce_RA)$cell_type == "mP"]
+sce_mid_RA <- normalize(sce_mid_RA)
+
+sce.single <- split.sce(sce = sce.spermatocytes.1, groups = unique(colData(sce.spermatocytes.1)$Library), 
+                        colData.name = "Library")
+sce.single$RA <- sce_mid_RA
+
+corrected <- batch.correction(sce.single)
+
+# Compute PCA
+pca <- prcomp(t(corrected))
+
+new_vector <- c(brewer.pal(n = 8, name = "Set1"), brewer.pal(n = 8, name = "Set2"))
+names(new_vector) <- unique(colData(sce_mid_RA)$cell_type)
+col_vector <- c(metadata(sce)$color_vector, new_vector)
+
+ggplot() +
+  geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatocytes.1),1],
+                  PC2 = pca$x[1:ncol(sce.spermatocytes.1),2],
+                  cluster = colData(sce.spermatocytes.1)$AnnotatedClusters),
+             aes(PC1, PC2, colour = cluster)) + 
+    geom_point(data = data.frame(PC1 = pca$x[(ncol(sce.spermatocytes.1)+1):(ncol(sce.spermatocytes.1)+ncol(sce_mid_RA)),1],
+                  PC2 = pca$x[(ncol(sce.spermatocytes.1)+1):(ncol(sce.spermatocytes.1)+ncol(sce_mid_RA)),2],
+                  cell_type = colData(sce_mid_RA)$cell_type),
+             aes(PC1, PC2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = col_vector)
+
+# Pseudo rank
+prank <- PT(rd = pca$x[,1:3], clusters = c(as.character(colData(sce.spermatocytes.1)$AnnotatedClusters),
+                                           colData(sce_mid_RA)$cell_type),
+            col_vector = col_vector)
+
+# Visualize number of genes expressed
+cur_sce <- do.call("cbind", sce.single)
+number.genes <- apply(logcounts(cur_sce), 2, function(n){length(which(n>0))})
+
+
+
+```
+
 # Correlation analysis to number of genes expressed
 
 ```{r}
@@ -272,10 +356,12 @@ df.stats[,3] <- p.adjust(df.stats[,2], method = "BH")
 df.stats <- as.data.frame(df.stats)
 df.stats$Celltype <- rownames(df.stats)
 
-df.stats.red <- df.stats[grepl("Spermatocytes", rownames(df.stats)),]
+df.stats.red <- df.stats[grepl("Spermatocytes", rownames(df.stats)) |
+                           rownames(df.stats) == "S1",]
 
 # Statistic visualization
-p.stats <- ggplot(df.stats.red) + geom_col(aes(Celltype, -log10(BHvalue), 
+p.stats <- ggplot(df.stats.red) + geom_col(aes(factor(Celltype,
+                        levels = c(paste("Spermatocytes_", 1:7, sep = ""), "S1")), -log10(BHvalue), 
                                            fill = Celltype)) +
   scale_fill_manual(values = metadata(sce)$color_vector) + 
   guides(fill = FALSE) + geom_hline(yintercept = 1, color = "dark red") +
