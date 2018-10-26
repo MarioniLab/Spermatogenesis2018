@@ -1,0 +1,135 @@
+---
+title: "RA blocked cells pre-processing"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/RA_processing') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Read in the data
+
+For the RA blocked cells, 36 batches were sequenced. 
+The raw data is available from: GEO Accessor: GSE107644
+
+```{r data, message=FALSE}
+library(scater)
+library(ggplot2)
+source("../../Functions/auxiliary.R")
+
+# Read in RA blocked cell data from Chen et al, Cell Research
+files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Chen_CellResearch/GSE107644_RAW/", full.names = TRUE)
+
+all_cells <- lapply(as.list(files), function(n){
+  cur_file <- read.table(n, sep = "\t", header = TRUE)
+  rownames(cur_file) <- cur_file[,1]
+  cur_file <- cur_file[,-1]
+})
+
+all_cells <- do.call("cbind", all_cells)
+```
+
+# Quality control
+
+```{r}
+# Form a sce 
+sce_RA <- SingleCellExperiment(assays=list(counts=Matrix::Matrix(as.matrix(all_cells), sparse = TRUE)))
+colData(sce_RA)$time_point <- factor(as.character(sapply(colnames(sce_RA), 
+                                                         function(n){unlist(strsplit(n, "_"))[1]})),
+                                        levels = paste("SpSC", c(0, 2:37), sep = "")) 
+colData(sce_RA)$cell_type <- factor(as.character(sapply(colnames(sce_RA), 
+                                                        function(n){unlist(strsplit(n, "_"))[2]})),
+                                    levels = c("A1", "ln", "TypeBS", "G1", "TypeBG2M",
+                                               "ePL", "mPL", "lPL", "L", "Z",
+                                               "eP", "mP", "lP", "D", "MI", "MII",
+                                               "RS1o2", "RS3o4", "RS5o6", "RS7o8",
+                                               "Spo11KOL1", "Sox30KORS2o3"))
+
+# QC on RA cells
+sce_RA <- calculateQCMetrics(sce_RA)
+
+ggplot(as.data.frame(colData(sce_RA))) + 
+  geom_point(aes(total_features_by_counts, log10_total_counts, colour = time_point))
+
+# Remove 2 cells with few features and one cell with high features detected
+sce_RA <- sce_RA[,colData(sce_RA)$total_features_by_counts > 1250 &
+                   colData(sce_RA)$total_features_by_counts < 12000]
+```
+
+# Normalization
+
+```{r}
+# Normalization of RA cells
+clusters <- quickCluster(sce_RA, method = "igraph", irlba.args = c("work" = 100), 
+                         max.size = 1000)
+
+sce_RA <- computeSumFactors(sce_RA, clusters=clusters)
+
+sce_RA <- normalize(sce_RA, return_log = TRUE)
+```
+
+# Dimensionality reduction
+
+```{r}
+set.seed(1234)
+sce_RA <- runTSNE(sce_RA)
+sce_RA <- runPCA(sce_RA)
+```
+
+# Visualization
+
+```{r}
+colour_vector_RA <- c("A1" = "#67001f",
+                      "TypeBS" = "#49006a",
+                      "ePL" = "#800026", 
+                      "G1" = "#ae017e",        
+                      "mPL" = "#fc4e2a",       
+                      "eP" = "#084081",        
+                      "D" = "#2171b5",    
+                      "mP" = "#4eb3d3",     
+                      "RS1o2" = "#014636",  
+                      "TypeBG2M" = "#e7298a",
+                      "lPL" = "#fed976",      
+                      "MI" = "#807dba",       
+                      "RS7o8" = "#74c476",    
+                      "Z" = "#fe9929",   
+                      "MII" = "#dadaeb",     
+                      "L" = "#662506",      
+                      "lP" = "#ccebc5",      
+                      "ln" = "#fde0dd",        
+                      "RS3o4" = "#3690c0",      
+                      "RS5o6" = "#a6bddb",     
+                      "Sox30KORS2o3" = "#999999",
+                      "Spo11KOL1" = "#a65628")
+
+
+ggplot(data.frame(tSNE1 = reducedDims(sce_RA)$TSNE[,1],
+                  tSNE2 = reducedDims(sce_RA)$TSNE[,2],
+                  time_point = colData(sce_RA)$time_point,
+                  cell_type = colData(sce_RA)$cell_type)) +
+  geom_point(aes(tSNE1, tSNE2, colour = time_point))
+
+ggplot(data.frame(tSNE1 = reducedDims(sce_RA)$TSNE[,1],
+                  tSNE2 = reducedDims(sce_RA)$TSNE[,2],
+                  time_point = colData(sce_RA)$time_point,
+                  cell_type = colData(sce_RA)$cell_type)) +
+  geom_point(aes(tSNE1, tSNE2, colour = cell_type)) + 
+  scale_colour_manual(values = colour_vector_RA)
+
+ggplot(data.frame(PC1 = reducedDims(sce_RA)$PCA[,1],
+                  PC2 = reducedDims(sce_RA)$PCA[,2],
+                  time_point = colData(sce_RA)$time_point,
+                  cell_type = colData(sce_RA)$cell_type)) +
+  geom_point(aes(PC1, PC2, colour = cell_type))
+
+metadata(sce_RA)$colour_vector_RA <- colour_vector_RA
+
+saveRDS(sce_RA, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_RA.rds")
+```
