@@ -39,12 +39,12 @@ sperm.markers <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermato
 
 # Visualize spermatogonia from P10 and P15
 
-## Peform bacth correction on spermatogonia pf P10 and P15
+## Peform batch correction on spermatogonia of P10 and P15
 
 ```{r}
 # To avoid batch effects between the samples, we assume that there are 
 # shared cell types between the samples
-sce.spermatogonia <- sce[,grepl("P5|P10|P15", colData(sce)$Sample) &
+sce.spermatogonia <- sce[,grepl("P5|P10|P15|B6", colData(sce)$Sample) &
                                        colData(sce)$AnnotatedClusters == "Spermatogonia"]
 sce.spermatogonia <- normalize(sce.spermatogonia)
 rm(sce)
@@ -198,56 +198,67 @@ write.xlsx(spermatogonia.markers, "../../../Dropbox (Cambridge University)/SST_s
 write.xlsx(spermatogonia.markers.P5, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S4_P5.xlsx")
 ```
 
+# Visualize RA blocked cells on spermatogonia
+
+```{r RA-spermatogonia}
+# Read in RA blocked cell data from Chen et al, Cell Research
+sce_RA <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_RA.rds")
+
+# Batch correction
+sce.spermatogonia <- sce.spermatogonia[match(intersect(rownames(sce_RA), 
+                          rowData(sce.spermatogonia)$Symbol), rowData(sce.spermatogonia)$Symbol),]
+sce_RA <- sce_RA[match(intersect(rownames(sce_RA), rowData(sce.spermatogonia)$Symbol), 
+                       rownames(sce_RA)),]
+
+rownames(sce_RA) <- rownames(sce.spermatogonia)
+rowData(sce_RA)$Symbol <- rowData(sce.spermatogonia)$Symbol
+rowData(sce_RA)$ID <- rowData(sce.spermatogonia)$ID
+
+# Select specific cell types 
+sce_early_RA <- sce_RA[,grepl("A1|ln|TypeBS|G1|TypeBG2M|ePL", colData(sce_RA)$cell_type)]
+sce_early_RA <- normalize(sce_early_RA)
+
+sce.single <- split.sce(sce = sce.spermatogonia, groups = unique(colData(sce.spermatogonia)$Library), 
+                        colData.name = "Library")
+sce.single$RA <- sce_early_RA
+
+corrected <- batch.correction(sce.single)
+
+# Visualize PCA 
+pca <- prcomp(t(corrected))
+tsne <- Rtsne(t(corrected))
+
+ggplot() +
+  geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
+                  PC2 = pca$x[1:ncol(sce.spermatogonia),2],
+                  cluster = clusters),
+             aes(PC1, PC2, colour = cluster)) + 
+  geom_point(data = data.frame(PC1 = pca$x[(ncol(sce.spermatogonia)+1):(ncol(sce.spermatogonia)+ncol(sce_early_RA)),1],
+                  PC2 = pca$x[(ncol(sce.spermatogonia)+1):(ncol(sce.spermatogonia)+ncol(sce_early_RA)),2],
+                  cell_type = colData(sce_early_RA)$cell_type),
+             aes(PC1, PC2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = c(col_vector,
+                                metadata(sce_early_RA)$colour_vector_RA))
+
+ggplot() +
+  geom_point(data = data.frame(tsne1 = tsne$Y[1:ncol(sce.spermatogonia),1],
+                  tsne2 = tsne$Y[1:ncol(sce.spermatogonia),2],
+                  cluster = clusters),
+             aes(tsne1, tsne2, colour = cluster)) + 
+  geom_point(data = data.frame(tsne1 = tsne$Y[(ncol(sce.spermatogonia)+1):(ncol(sce.spermatogonia)+ncol(sce_early_RA)),1],
+                  tsne2 = tsne$Y[(ncol(sce.spermatogonia)+1):(ncol(sce.spermatogonia)+ncol(sce_early_RA)),2],
+                  cell_type = colData(sce_early_RA)$cell_type),
+             aes(tsne1, tsne2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = c(col_vector,
+                                metadata(sce_early_RA)$colour_vector_RA))
+```
+
 # Visualize RA blocked cells on empty drops
 
 ```{r}
-# Read in RA blocked cell data from Chen et al, Cell Research
-files <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Chen_CellResearch/GSE107644_RAW/", full.names = TRUE)
-
-all_cells <- lapply(as.list(files), function(n){
-  cur_file <- read.table(n, sep = "\t", header = TRUE)
-  rownames(cur_file) <- cur_file[,1]
-  cur_file <- cur_file[,-1]
-})
-
-all_cells <- do.call("cbind", all_cells)
-
-# Form a sce 
-sce_RA <- SingleCellExperiment(assays=list(counts=Matrix::Matrix(as.matrix(all_cells), sparse = TRUE)))
-colData(sce_RA)$time_point <- factor(as.character(sapply(colnames(sce_RA), 
-                                                         function(n){unlist(strsplit(n, "_"))[1]})),
-                                        levels = paste("SpSC", c(0, 2:37), sep = "")) 
-colData(sce_RA)$cell_type <- as.character(sapply(colnames(sce_RA), function(n){unlist(strsplit(n, "_"))[2]})) 
-
 # P15 data
 sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 sce <- sce[,grepl("P15", colData(sce)$Sample)]
-
-# QC on RA cells
-sce_RA <- calculateQCMetrics(sce_RA)
-
-ggplot(as.data.frame(colData(sce_RA))) + 
-  geom_point(aes(total_features_by_counts, log10_total_counts, colour = time_point))
-
-# Remove 2 cells with few features and one cell with high features detected
-sce_RA <- sce_RA[,colData(sce_RA)$total_features_by_counts > 1250 &
-                   colData(sce_RA)$total_features_by_counts < 12000]
-
-# Normalization of RA cells
-clusters <- quickCluster(sce_RA, method = "igraph", irlba.args = c("work" = 100), 
-                         max.size = 1000)
-
-sce_RA <- computeSumFactors(sce_RA, clusters=clusters)
-
-sce_RA <- normalize(sce_RA, return_log = TRUE)
-
-# Batch correction
-sce <- sce[match(intersect(rownames(sce_RA), rowData(sce)$Symbol), rowData(sce)$Symbol),]
-sce_RA <- sce_RA[match(intersect(rownames(sce_RA), rowData(sce)$Symbol), rownames(sce_RA)),]
-
-rownames(sce_RA) <- rownames(sce)
-rowData(sce_RA)$Symbol <- rowData(sce)$Symbol
-rowData(sce_RA)$ID <- rowData(sce)$ID
 
 # Select only the germ cells
 sce.P15 <- sce[,grepl("Pachytene|Differentiating|Zygotene|Leptotene|Undifferentiated", colData(sce)$P15Clusters) &
@@ -255,7 +266,7 @@ sce.P15 <- sce[,grepl("Pachytene|Differentiating|Zygotene|Leptotene|Undifferenti
 sce.P15 <- normalize(sce.P15)
 
 # Select Early germ cells from RA blocked cells
-sce_early_RA <- sce_RA[,grepl("A1|ePL|G1|mPL|eP|mP|lPL|Z|L|ln|Spo11KOL1", colData(sce_RA)$cell_type)]
+sce_early_RA <- sce_RA[,grepl("TypeB|A1|ePL|G1|mPL|eP|mP|lPL|Z|L|ln|Spo11KOL1", colData(sce_RA)$cell_type)]
 sce_early_RA <- normalize(sce_early_RA)
 
 # Batch correction
