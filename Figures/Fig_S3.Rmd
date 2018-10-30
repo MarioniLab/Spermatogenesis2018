@@ -39,17 +39,37 @@ sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0")) &
                      colData(sce.all)$AnnotatedClusters != "Outliers"]
 ```
 
-# Visualize P10 sample
+# Visualize P5 and P10 sample
 
 ```{r}
-select <- grepl("P10", colData(sce.all)$Sample)
+select <- grepl("P5|P10", colData(sce.all)$Sample)
+
+# Plot sample distribution across somatic cells
+sample_col_vector <- c("P5"= "#e31a1c", "P10"="#1f78b4")
+cur_df <- data.frame(tsne1 = reducedDims(sce.all)$TSNE[select,1],
+                     tsne2 = reducedDims(sce.all)$TSNE[select,2],
+                     sample = colData(sce.all)$Sample[select]) 
+P5.P10.sample <- ggplot(cur_df) +
+    geom_point(aes(tsne1, tsne2, colour = sample), size = 0.5) + 
+    ylab("tSNE 2") + xlab("tSNE 1") + scale_color_manual(values = sample_col_vector)
+
+# Plot different somatic cell types
 cur_df <- data.frame(tsne1 = reducedDims(sce.all)$TSNE[select,1],
                      tsne2 = reducedDims(sce.all)$TSNE[select,2],
                      cell_type = colData(sce.all)$AnnotatedClusters[select]) 
 
-P10.tsne <- ggplot(cur_df) +
+P5.P10.tsne <- ggplot(cur_df) +
   geom_point(aes(tsne1, tsne2, colour = cell_type), size = 0.5) + 
   ylab("tSNE 2") + xlab("tSNE 1") + scale_color_manual(values = metadata(sce.all)$color_vector)
+
+# Combine plots
+cluster_legend <- get_legend(P5.P10.tsne + theme(legend.position="bottom"))
+A <- plot_grid(P5.P10.sample + theme(legend.position = c(.05, .8)), P5.P10.tsne + theme(legend.position = "none"), ncol = 2)
+final <- plot_grid(A, cluster_legend, nrow = 2, rel_heights = c(4,1))
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S3/Fig_S3.pdf",
+       final, width = 15, height = 7.5)
+
 ```
 
 # Collect marker genes for somatic cells in P10 
@@ -62,7 +82,7 @@ somatic.markers <- marker.detection(cur_sce,
                                     as.character(colData(cur_sce)$AnnotatedClusters))
 
 # Save this list as Table S1
-write.xlsx(somatic.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S3.xlsx")
+write.xlsx(somatic.markers, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S3.xlsx")
 
 ```
 
@@ -80,6 +100,27 @@ top.markers <- as.character(unlist(lapply(somatic.markers,
                                           function(n){n$GeneName[1:5]})))
 
 # Genes to visualize
+genes <- c(#Spermatocytes
+          "Sycp1", top.markers[42:45],
+          #Spermatogonia
+           "Dmrt1", top.markers[46:49],
+          #Leydig
+           "Insl3", top.markers[c(26, 28:30)],
+          #Sertoli
+           "Gstm6", top.markers[c(36:38, 40)],
+          #Macrophages
+           "Fcer1g", top.markers[c(21:22, 24:25)],
+          #PTM
+           "Acta2", top.markers[c(32:35)],
+          #Immature_Leydig3
+           "Dlk1", top.markers[c(16, 18:20)],
+           #Endothelial cells
+           "Col4a1", top.markers[c(1, 3:5)],
+          #Immature_Leydig1
+          "Inhba", top.markers[7:10],
+          #Immature_Leydig2
+          "Dcn", top.markers[12:15])
+
 genes <- c("Cst12", top.markers[26:29],  
            "Sycp1", top.markers[32:35],
            "Dmrt1", top.markers[c(36,38:40)],
@@ -96,7 +137,7 @@ rownames(for.heatmap) <- genes
 colnames(for.heatmap) <- paste(colData(cur_sce)$Barcode, 
                                colData(cur_sce)$Library, sep = "")
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/P10_heatmap.pdf", 
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S3/Somatic_markers_heatmap.pdf", 
     onefile = FALSE, width = 7, height = 10)
 pheatmap(for.heatmap, cluster_rows = FALSE,
          clustering_distance_cols = cur_dist,
@@ -163,6 +204,7 @@ p.clusters <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
 # Save final figure
 
 ```{r final}
+
 final <- plot_grid(P10.tsne, NULL,
                    p.clusters, ncol = 2, nrow = 2)
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Fig_S3.pdf", 
