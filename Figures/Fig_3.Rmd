@@ -37,9 +37,9 @@ sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analys
 sperm.markers <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Spermatogonia_Top15.xlsx")
 ```
 
-# Visualize spermatogonia from P10 and P15
+# Visualize spermatogonia from P5, P10 and P15
 
-## Peform batch correction on spermatogonia of P10 and P15
+## Peform batch correction on spermatogonia of P5, P10 and P15
 
 ```{r}
 # To avoid batch effects between the samples, we assume that there are 
@@ -73,8 +73,9 @@ corrected <- batch.correction(sce.single[c("do17821", "do18195", "do26386", "do2
 sce.spermatogonia <- do.call(cbind, sce.single[c("do17821", "do18195", "do26386", "do26387")])
 ```
 
-```{r, spermatogonia_p10_p15}
+```{r, spermatogonia_P5_p10_p15}
 # Compute pca 
+set.seed(456)
 pca <- prcomp(t(corrected))
 tsne <- Rtsne(t(corrected))
 
@@ -99,19 +100,19 @@ gene.tsne <- ggplot(data.frame(tsne1 = tsne$Y[,1],
 
 # For visualization the non-batch corrected counts are used
 
-#Nanos3 marker for undifferentiated pca
+#Gfra1 marker for undifferentiated spermatogonia with stem-like function
+Gfra1 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Gfra1 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Gfra1",])) +
+  geom_point(aes(PC1, PC2, colour = Gfra1)) + scale_colour_viridis()
+
+#Nanos3 marker for undifferentiated spermatogonia with progenitor function
 Nanos3 <- ggplot(data.frame(PC1 = pca$x[,1],
                   PC2 = pca$x[,2],
                   Nanos3 = logcounts(sce.spermatogonia)[
                     rowData(sce.spermatogonia)$Symbol == "Nanos3",])) +
   geom_point(aes(PC1, PC2, colour = Nanos3)) + scale_colour_viridis()
-
-#NZbtb16/PLZF marker for undifferentiated spemratogonia but was also found in spermatogonia alreadt expressing Stra8
-Zbtb16 <- ggplot(data.frame(PC1 = pca$x[,1],
-                  PC2 = pca$x[,2],
-                  Zbtb16 = logcounts(sce.spermatogonia)[
-                    rowData(sce.spermatogonia)$Symbol == "Zbtb16",])) +
-  geom_point(aes(PC1, PC2, colour = Zbtb16)) + scale_colour_viridis()
 
 # Induced by RA and upregulated during spermatogonial differentiation and again later on in preleptotene spermatocytes
 Stra8 <- ggplot(data.frame(PC1 = pca$x[,1],
@@ -148,11 +149,13 @@ Dmrtb1 <- ggplot(data.frame(PC1 = pca$x[,1],
                     rowData(sce.spermatogonia)$Symbol == "Dmrtb1",])) +
   geom_point(aes(PC1, PC2, colour = Dmrtb1)) + scale_colour_viridis()
 
-Gfra1 <- ggplot(data.frame(PC1 = pca$x[,1],
+#Prss50 early meiotic marker
+Prss50 <- ggplot(data.frame(PC1 = pca$x[,1],
                   PC2 = pca$x[,2],
-                  Gfra1 = logcounts(sce.spermatogonia)[
-                    rowData(sce.spermatogonia)$Symbol == "Gfra1",])) +
-  geom_point(aes(PC1, PC2, colour = Gfra1)) + scale_colour_viridis()
+                  Prss50 = logcounts(sce.spermatogonia)[
+                    rowData(sce.spermatogonia)$Symbol == "Prss50",])) +
+  geom_point(aes(PC1, PC2, colour = Prss50)) + scale_colour_viridis()
+
 ```
 
 # Clustering of spermatogonia for P5, P10 and P15
@@ -160,29 +163,40 @@ Gfra1 <- ggplot(data.frame(PC1 = pca$x[,1],
 ```{r}
 # Use the same graph based clustering technique
 set.seed(123)
-g <- buildSNNGraph(corrected, k = 15, pc.approx = TRUE)
+g <- buildSNNGraph(corrected, k = 11, pc.approx = TRUE)
 clusters <- igraph::cluster_louvain(g)$membership
 
 # Change cluster labels
-clusters[clusters == 1] <- "Diff_2"
-clusters[clusters == 2] <- "Undiff_3"
-clusters[clusters == 3] <- "Diff_3"
-clusters[clusters == 4] <- "Diff_1"
-clusters[clusters == 5] <- "Undiff_1"
-clusters[clusters == 6] <- "Undiff_2"
+clusters[clusters == 1] <- "Diff_In_B"
+clusters[clusters == 2] <- "Diff_A1_2"
+clusters[clusters == 3] <- "pL"
+clusters[clusters == 4] <- "Undiff_progenitor"
+clusters[clusters == 5] <- "Undiff_transitional"
+clusters[clusters == 6] <- "Undiff_stem"
+clusters[clusters == 7] <- "Diff_A3_4"
+clusters[clusters == 8] <- "Gonocytes"
 
 
-col_vector <- c("Undiff_1" = "#001c0b",
-                "Undiff_2" = "#00441b",
-                "Diff_1" = "#238b45",
-                "Diff_2" = "#41ae76",
-                "Diff_3" = "#66c2a4",
-                "Undiff_3" = "#006d2c")
+col_vector <- c("Gonocytes" = "#7A9606",
+                "Undiff_stem" = "#0D3D21",
+                "Undiff_transitional" = "#87998E",
+                "Undiff_progenitor" = "#076E38",
+                "Diff_A1_2" = "#5FA37D",
+                "Diff_A3_4" = "#87D6B2",
+                "Diff_In_B"="#B9EAD6",
+                "pL"="#E5DFEA")
 
 p.clusters <- ggplot(data.frame(PC1 = pca$x[,1],
                   PC2 = pca$x[,2],
                   clusters = as.factor(clusters))) +
   geom_point(aes(PC1, PC2, colour = clusters))+ scale_colour_manual(values = col_vector)
+
+ggplot(data.frame(tsne1 = tsne$Y[,1],
+                  tsne2 = tsne$Y[,2],
+                  clusters = as.factor(clusters))) +
+  geom_point(aes(tsne1, tsne2, colour = clusters))+ scale_colour_manual(values = col_vector)
+
+
 ```
 
 # Find marker genes for these groups
@@ -300,6 +314,15 @@ pca <- prcomp_irlba(t(do.call("cbind", corrected$corrected)), n = 50)
 tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
 
 # CellRanger threshold
+empty_drops <- ggplot() +
+  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
+                  tSNE2 = tsne$Y[1:ncol(sce.P15),2],
+                  cluster = colData(sce.P15)$AnnotatedClusters),
+             aes(tSNE1, tSNE2, colour = cluster)) + 
+  scale_color_manual(values = c(metadata(sce.P15)$color_vector,
+                                metadata(sce_early_RA)$colour_vector_RA, "NewCell" = "black"))
+
+# CellRanger threshold with RA mapped cells
 empty_drops_RA <- ggplot() +
   geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
                   tSNE2 = tsne$Y[1:ncol(sce.P15),2],
@@ -329,9 +352,12 @@ empty_drops_clustered <- ggplot() +
 # Save final figure
 
 ```{r save}
-A <- plot_grid(Nanos3, Stra8, Dmrtb1, p.clusters, samples, ncol = 5, nrow = 1)
-B <- plot_grid(empty_drops_RA, empty_drops_clustered, ncol = 2, nrow = 1)
-final <- plot_grid(A, B, nrow = 2, rel_heights = c(1,2))
+A <- plot_grid(Gfra1 + theme(legend.position=c(.05,.8)), Nanos3+ theme(legend.position=c(.05,.8)), Stra8+ theme(legend.position=c(.05,.8)), Dmrtb1+ theme(legend.position=c(.05,.8)), samples+ theme(legend.position=c(.05,.8)), p.clusters + theme(legend.position=c(.05,.8)), ncol = 6)
+B_legend1 <- get_legend(empty_drops + theme(legend.position="bottom"))
+B_legend2 <- get_legend(empty_drops_RA + theme(legend.position="bottom"))
+B_legend3 <- get_legend(empty_drops_clustered + theme(legend.position = "bottom"))
+B <- plot_grid(empty_drops+ theme(legend.position="none"), empty_drops_RA+ theme(legend.position="none"), empty_drops_clustered+ theme(legend.position="none"), B_legend1, B_legend2, B_legend3, ncol = 3, nrow = 2, rel_heights = c(4,1))
+final <- plot_grid(A, B, nrow=2, rel_heights = c(1,2))
 
 ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3/Fig_3.pdf",
        final, width = 25, height = 20)
