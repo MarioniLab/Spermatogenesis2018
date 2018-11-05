@@ -399,10 +399,10 @@ new.clusters[new.clusters == 16] <- "S6"
 new.clusters[new.clusters == 18] <- "Spermatocytes_7"
 new.clusters[new.clusters == 19] <- "Leydig"
 new.clusters[new.clusters == 20] <- "PTM"
-new.clusters[new.clusters == 21] <- "Immature_Leydig_1"
+new.clusters[new.clusters == 21] <- "Fetal_Leydig_2"
 new.clusters[new.clusters == 22] <- "Interstitial_tMg"
-new.clusters[new.clusters == 23] <- "Immature_Leydig_3"
-new.clusters[new.clusters == 24] <- "Immature_Leydig_2"
+new.clusters[new.clusters == 23] <- "Fetal_Leydig_1"
+new.clusters[new.clusters == 24] <- "Fetal_Leydig_3"
 new.clusters[new.clusters == 25] <- "Spermatogonia"
 new.clusters[new.clusters == 26] <- "Outliers"
 new.clusters[new.clusters == 27] <- "Outliers"
@@ -425,7 +425,7 @@ colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
                  "Spermatocytes_5","Spermatocytes_6","Spermatocytes_7", 
                  "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9",
                  "S10", "S11", "S12", "S13", "S14", "Sertoli", "Leydig", 
-                 "Immature_Leydig_1", "Immature_Leydig_2", "Immature_Leydig_3", "PTM", "Endothelial_cells", 
+                 "Fetal_Leydig_1", "Fetal_Leydig_2", "Fetal_Leydig_3", "PTM", "Endothelial_cells", 
                  "Interstitial_tMg", "Outliers"))
 
 # Add number of properly annotated cells to dataframe
@@ -467,9 +467,9 @@ colour_vector <- c("Spermatogonia" = "#046735",
                    "S14" = "#E5E5E3",
                    "Sertoli" = "#643F18",
                    "Leydig" = "#985D25",
-                   "Immature_Leydig_1" = "#A58D81",
-                   "Immature_Leydig_2" = "#ceb0a1",
-                   "Immature_Leydig_3" = "#7a685f",
+                   "Fetal_Leydig_1" = "#A58D81",
+                   "Fetal_Leydig_2" = "#ceb0a1",
+                   "Fetal_Leydig_3" = "#7a685f",
                    "PTM" = "#C48C58", 
                    "Endothelial_cells" = "#FFDFB2",
                    "Interstitial_tMg" = "#F36E20",
