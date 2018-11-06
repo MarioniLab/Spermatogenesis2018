@@ -1,0 +1,82 @@
+---
+title: "Atypical promoters"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/Atypical_promoters.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script analyses the temporal expression patterns of the atypical promoters described in Hammound et al. 2014.
+
+Since the genes have not been reported in detail, we need to parse them out of the GO analysis.
+
+## Read in data
+
+```{r}
+library(readxl)
+library(scater)
+library(reshape2)
+library(dplyr)
+library(plyr)
+library(pheatmap)
+atypical <- as.data.frame(read_xls("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Hammoud_CSC/Atypical_promoter_GO.xls"))
+colnames(atypical) <- atypical[1,]
+atypical <- atypical[-1,]
+
+genes <- unique(as.character(unlist(sapply(atypical$Genes, 
+                                    function(n){unlist(strsplit(n, ", "))}))))
+
+# Turn annotation into mouse gene annotation
+genes.mouse <- as.character(sapply(genes, function(n){
+  cur_letters <- unlist(strsplit(n, ""))
+  cur_letters[2:length(cur_letters)] <- tolower(cur_letters[2:length(cur_letters)])
+  paste(cur_letters, collapse = "")
+}))
+
+# Check if genes are contained in sce object
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- sce[,grepl("B6", sce$Sample)]
+sce <- normalize(sce)
+genes.mouse <- genes.mouse[genes.mouse %in% rowData(sce)$Symbol]
+```
+
+## Visualize gene expression patterns
+
+```{r}
+# Select atypical genes
+cur_genes <- logcounts(sce)[match(genes.mouse, rowData(sce)$Symbol),]
+
+# Build mean expression matrix
+df <- as.data.frame(t(as.matrix(cur_genes)))
+df$groups <- colData(sce)$AnnotatedClusters
+df.melt <- melt(df, id.vars = "groups")
+
+# Collect mean expression for each gene in each group
+mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
+mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
+rownames(mat.for.heatmap) <- mat.for.heatmap$variable
+mat.for.heatmap <- mat.for.heatmap[,-c(1,24:27)]
+
+
+# Order by peak expression
+mat.for.heatmap <- mat.for.heatmap[order(apply(mat.for.heatmap, 1, which.max),
+                                         decreasing = FALSE),]
+
+# Plot heatmap
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Atypical_promoter_expression.pdf",   width = 7, height = 30)
+pheatmap(mat.for.heatmap, cluster_rows = FALSE, cluster_cols = FALSE, show_rownames = FALSE,
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
+                  cell_type = colnames(mat.for.heatmap)),
+         annotation_colors = list(cell_type = metadata(sce)$color_vector), 
+         scale = "row", border_color = NA, cellheight = 4, cellwidth = 8, fontsize = 7)
+dev.off()
+```
