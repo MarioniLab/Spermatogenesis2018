@@ -87,7 +87,7 @@ cur_color_vector <- brewer.pal(10,"Paired")
 samples <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
                          tSNE2 = reducedDims(sce.all)$TSNE[,2],
                          sample = colData(sce.all)$Sample)) +
-    geom_point(aes(tSNE1, tSNE2, colour = sample)) +
+    geom_point(aes(tSNE1, tSNE2, colour = sample), size = 0.5) +
     scale_color_manual(values = cur_color_vector) + 
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
@@ -100,7 +100,7 @@ samples <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
 cluster <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
                          tSNE2 = reducedDims(sce.all)$TSNE[,2],
                          group = colData(sce.all)$AnnotatedClusters)) +
-    geom_point(aes(tSNE1, tSNE2, colour = group)) +
+    geom_point(aes(tSNE1, tSNE2, colour = group), size = 0.5) +
     scale_color_manual(values = metadata(sce.all)$color_vector) + 
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
@@ -143,7 +143,7 @@ for(i in paste("P", c(5, 10, 15, 20, 25, 30, 35), sep = "")){
 
 ```{r final}
 A <- plot_grid(adult.batches + theme(legend.position = c(.8,.9)), P5.batches + theme(legend.position = c(.8,.9)), ncol = 1, nrow = 2)
-B <- plot_grid(samples + theme(legend.position=c(1,.9)), cluster + theme(legend.position = "none"), ncol = 1, nrow =2)
+B <- plot_grid(samples + theme(legend.position=c(.01,.05)), cluster + theme(legend.position = "none"), ncol = 1, nrow =2)
 AB <- plot_grid(A, B, ncol = 2, nrow = 1, rel_widths=c(2,3))
 legend <- get_legend(cluster + theme(legend.position = "right"))
 C <- plot_grid(plot.list[[1]], plot.list[[2]], legend, plot.list[[3]], 

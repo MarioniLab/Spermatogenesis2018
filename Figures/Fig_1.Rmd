@@ -75,8 +75,7 @@ gene.list <- lapply(as.list(genes), function(n){
         panel.background = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(),
         axis.title = element_text(size = 12, face = "bold"),
-        plot.title = element_text(size = 12, face = "bold", hjust = 0.5), 
-        line = element_blank()) +
+        plot.title = element_text(size = 12, face = "bold", hjust = 0.5)) +
     ggtitle(n)
 })
 ```
@@ -95,9 +94,9 @@ p.cells <- ggplot(data = data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),
         axis.text = element_blank(), axis.ticks = element_blank(),
-        axis.title = element_text(size = 12, face = "bold"), 
-        line = element_blank()) + 
-  guides(colour = FALSE)
+        axis.title = element_text(size = 12, face = "bold")) + 
+  guides(colour = FALSE) +
+    ggtitle("Cluster")
 ```
 
 # Save the final figure
@@ -105,9 +104,10 @@ p.cells <- ggplot(data = data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
 Now we build the parts of the final figure coming from the scRNA-Seq analysis.
 
 ```{r save}
-final.1 <- plot_grid(plotlist = gene.list, nrow = 2, ncol = 3)
-final <- plot_grid(final.1, p.cells, ncol = 2, nrow = 1, rel_widths = c(2,1), 
+final.1 <- plot_grid(plotlist = gene.list , nrow = 2, ncol = 3)
+final.2 <- plot_grid(p.cells, NULL, ncol =1, nrow = 2, rel_heights = c(3,1))
+final <- plot_grid(final.1, final.2, ncol = 2, nrow = 1, rel_widths = c(2,1), 
                    labels = c("D", "E"), label_size = 16)
 ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_1/Fig_1.pdf",
-       final, units = "mm", width = 300, height = 90)
+       final, width = 15, height = 10)
 ```
