@@ -111,44 +111,13 @@ cluster <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
 
 ```
 
-
-# Visualize the different juvenile samples and adult cells
-
-```{r}
-plot.list <- list()
-for(i in paste("P", c(5, 10, 15, 20, 25, 30, 35), sep = "")){
-  select <- grepl(paste(i, "|B6", sep = ""), colData(sce.all)$Sample)
-  cur_df <- data.frame(tsne1 = reducedDims(sce.all)$TSNE[select,1],
-                     tsne2 = reducedDims(sce.all)$TSNE[select,2],
-                     clusters = ifelse(grepl("B6", colData(sce.all)$Sample[select]),
-                                       "B6",
-                       as.character(colData(sce.all)$AnnotatedClusters)[select])) 
-  
-  plot.list[[i]] <- ggplot(cur_df) +
-  geom_point(aes(tsne1, tsne2, colour = clusters), size = 0.5) + scale_color_manual(values = c(metadata(sce.all)$color_vector, "B6" = "light grey")) + 
-  ylab("tSNE 2") + xlab("tSNE 1") +
-    theme(panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          panel.background = element_blank(),
-          axis.text = element_blank(), axis.ticks = element_blank(),
-          axis.title = element_text(size = 12, face = "bold")) + 
-    guides(colour = FALSE)
-}
-
-
-```
-
-
 # Save final figure
 
 ```{r final}
 A <- plot_grid(adult.batches + theme(legend.position = c(.8,.9)), P5.batches + theme(legend.position = c(.8,.9)), ncol = 1, nrow = 2)
 B <- plot_grid(samples + theme(legend.position=c(.01,.05)), cluster + theme(legend.position = "none"), ncol = 1, nrow =2)
-AB <- plot_grid(A, B, ncol = 2, nrow = 1, rel_widths=c(2,3))
-legend <- get_legend(cluster + theme(legend.position = "right"))
-C <- plot_grid(plot.list[[1]], plot.list[[2]], legend, plot.list[[3]], 
-                   plot.list[[4]], NULL, plot.list[[5]], plot.list[[6]], plot.list[[7]], ncol = 3, nrow = 3)
-final <- plot_grid(AB, C, ncol = 1, nrow = 2)
+final <- plot_grid(A, B, ncol = 2, nrow = 1, rel_widths=c(2,3))
+
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S2/Fig_S2.pdf", 
-       final, width = 15, height = 20)
+       final, width = 15, height = 15)
 ```
