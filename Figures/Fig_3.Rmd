@@ -45,7 +45,7 @@ sperm.markers <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermato
 # To avoid batch effects between the samples, we assume that there are 
 # shared cell types between the samples
 sce.spermatogonia <- sce[,grepl("P5|P10|P15", colData(sce)$Sample) &
-                                        grepl("Spermatogonia", colData(sce)$AnnotatedClusters)]
+                                       colData(sce)$AnnotatedClusters == "Spermatogonia"]
 sce.spermatogonia <- normalize(sce.spermatogonia)
 rm(sce)
 
@@ -56,13 +56,6 @@ ggplot(data.frame(PC1 = reducedDims(sce.spermatogonia)$PCA[,1],
                   samples = colData(sce.spermatogonia)$Sample)) +
   geom_point(aes(PC1, PC2, colour = samples)) + 
   scale_color_manual(values = c("#1f78b4", "#33a02c", "#e31a1c"))
-
-# Visualize different types of spermatogonia
-ggplot(data.frame(PC1 = reducedDims(sce.spermatogonia)$PCA[,1],
-                  PC2 = reducedDims(sce.spermatogonia)$PCA[,2],
-                  samples = colData(sce.spermatogonia)$AnnotatedClusters)) +
-  geom_point(aes(PC1, PC2, colour = samples)) + 
-  scale_color_manual(values = metadata(sce.spermatogonia)$color_vector)
 
 ggplot(data.frame(PC1 = reducedDims(sce.spermatogonia)$PCA[,1],
                   PC2 = reducedDims(sce.spermatogonia)$PCA[,2],
@@ -93,18 +86,6 @@ samples <- ggplot(data.frame(PC1 = pca$x[,1],
   geom_point(aes(PC1, PC2, colour = samples)) + 
   scale_color_manual(values = c("#1f78b4", "#33a02c", "#e31a1c")) 
 
-# Visualize different types of spermatogonia
-ggplot(data.frame(PC1 = pca$x[,1],
-                  PC2 = pca$x[,2],
-                  samples = colData(sce.spermatogonia)$AnnotatedClusters)) +
-  geom_point(aes(PC1, PC2, colour = samples)) + 
-  scale_color_manual(values = metadata(sce.spermatogonia)$color_vector)
-
-ggplot(data.frame(tsne1 = tsne$Y[,1],
-                  tsne2 = tsne$Y[,2],
-                  samples = colData(sce.spermatogonia)$AnnotatedClusters)) +
-  geom_point(aes(tsne1, tsne2, colour = samples)) + 
-  scale_color_manual(values = metadata(sce.spermatogonia)$color_vector)
 
 samples.tsne <- ggplot(data.frame(tsne1 = tsne$Y[,1],
                   tsne2 = tsne$Y[,2],
