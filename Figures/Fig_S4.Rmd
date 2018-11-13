@@ -26,10 +26,6 @@ library(cowplot)
 library(viridis)
 library(pheatmap)
 source("../Functions/auxiliary.R")
-
-# Single cell data
-sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
-no.genes <- nexprs(sce, detection_limit = 0)
 ```
 
 # Heatmap of genes during spermatogonial differentiation
@@ -37,9 +33,6 @@ no.genes <- nexprs(sce, detection_limit = 0)
 ```{r spermatogonia}
 # Single cell data
 sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-
-# Read in markers for spermatogonia
-sperm.markers <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Spermatogonia_Top15.xlsx")
 
 # To avoid batch effects between the samples, we assume that there are 
 # shared cell types between the samples
@@ -74,7 +67,6 @@ clusters[clusters == 6] <- "Undiff_stem"
 clusters[clusters == 7] <- "Diff_A3_4"
 clusters[clusters == 8] <- "Gonocytes"
 
-
 col_vector <- c("Gonocytes" = "#7A9606",
                 "Undiff_stem" = "#0D3D21",
                 "Undiff_transitional" = "#87998E",
@@ -84,35 +76,53 @@ col_vector <- c("Gonocytes" = "#7A9606",
                 "Diff_In_B"="#B9EAD6",
                 "pL"="#E5DFEA")
 
+spermatogonia.markers <- marker.detection(sce.spermatogonia, 
+                                          clusters)
+
 # First we order the cells based on their differerentiation trajectory
 prank <- PT(rd = pca$x[,1:3], clusters = clusters, col_vector = col_vector)
 
+# Find marker genes to visualize
+spermatogonia.markers <- spermatogonia.markers[c("Undiff_progenitor",
+                                                 "Undiff_transitional",
+                                                 "Undiff_stem",
+                                                 "Gonocytes",
+                                                 "Diff_A1_2",
+                                                 "Diff_A3_4",
+                                                 "Diff_In_B",
+                                                 "pL")]
+markers <- data.frame(symbol = unlist(lapply(spermatogonia.markers, 
+                                             function(n){n[1:5,"GeneName"]})),
+                      ID = unlist(lapply(spermatogonia.markers, 
+                                             function(n){rownames(n)[1:5]})),
+                      group = rep(names(spermatogonia.markers), each = 5))
+
 # Collect count for heatmap
-for.heatmap <- logcounts(sce.spermatogonia)[match(sperm.markers$GeneName, 
+for.heatmap <- logcounts(sce.spermatogonia)[match(markers$symbol, 
                                                          rowData(sce.spermatogonia)$Symbol),
                                       order(prank[,"rank"], decreasing = TRUE)]
 colnames(for.heatmap) <- paste(colData(sce.spermatogonia)$Library[
   order(prank[,"rank"], decreasing = TRUE)],
   colData(sce.spermatogonia)$Barcode[
   order(prank[,"rank"], decreasing = TRUE)], sep = "_")
+rownames(for.heatmap) <- markers$symbol
 
 # Visualize top genes in form of heatmap
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Spermatogonia_heatmap_P10_P15.pdf", onefile = FALSE, width = 10, height = 15)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Spermatogonia_heatmap_P5_P10_P15.pdf", onefile = FALSE, width = 10, height = 15)
 pheatmap(for.heatmap, 
          cluster_rows = FALSE, cluster_cols = FALSE,
-         scale = "row", show_rownames = FALSE,
-         show_colnames = FALSE, gaps_row = seq(15,90, 15),
+         scale = "row", 
+         show_colnames = FALSE, gaps_row = seq(5,35, 5),
          cellheight = 8, fontsize = 7,
          color = colorRampPalette(c("#053061", "#4393c3", 
                                     "#f7f7f7", "#d6604d", "#67001f"))(100),
          annotation_col = data.frame(row.names = colnames(for.heatmap),
-                                     cell_type = clusters[order(prank[,"rank"], decreasing = TRUE)]),
+                                     cell_type = clusters[order(prank[,"rank"], 
+                                                                decreasing = TRUE)]),
          annotation_row = data.frame(row.names = rownames(for.heatmap),
-                                     gene_list = sperm.markers$Cluster,
-                                     label = sperm.markers$Label),
+                                     gene_list = markers$group),
          annotation_colors = list(cell_type = col_vector,
-                                  gene_list = col_vector,
-                                  label = c("NA" = "white", "label" = "black")))
+                                  gene_list = col_vector))
 dev.off()
 ```
 
