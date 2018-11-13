@@ -1,0 +1,114 @@
+---
+title: "Velocyto P15 sample"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '../../../../Dropbox (Cambridge University)/SST_Spermatocytes/Analysis/Vaelocyto/P15.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Read in the data and library
+
+```{r, message=FALSE, warning=FALSE}
+library(velocyto.R)
+library(RColorBrewer)
+library(Rtsne)
+library(scater)
+loom.data <- read.loom.matrices("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Velocyto/do17828.loom")
+
+# Load filtered counts
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- sce[,grepl("P15", sce$Sample)]
+sce <- normalize(sce)
+
+spliced.dat <- loom.data$spliced
+spliced.dat <- spliced.dat[,intersect(paste("do17828:", sub("-1", "x", sce$Barcode), sep = ""),
+                                      colnames(spliced.dat))]
+
+unspliced.dat <- loom.data$unspliced
+unspliced.dat <- unspliced.dat[,colnames(spliced.dat)]
+
+sce <- sce[,match(sub("x", "-1", sub("SIGAC5:", "", colnames(spliced.dat))), sce$Barcode)]
+
+ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
+       tSNE2 = reducedDims(sce)$TSNE[,2],
+       cluster = as.factor(sce$Clusters))) + 
+  geom_point(aes(tSNE1, tSNE2, colour = cluster))
+
+ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
+       tSNE2 = reducedDims(sce)$TSNE[,2],
+       OLFM4 = logcounts(sce)[rowData(sce)$Symbol == "OLFM4",])) + 
+  geom_point(aes(tSNE1, tSNE2, colour = OLFM4)) +
+  scale_color_viridis_c()
+```
+
+# Velocyto estimation
+
+```{r}
+# Filter genes
+clusters.named <- sce$Clusters
+names(clusters.named) <- colnames(spliced.dat)
+spliced.dat <- filter.genes.by.cluster.expression(emat = spliced.dat,
+                                                  clusters = clusters.named,
+                                                  min.max.cluster.average = 0.1)
+
+unspliced.dat <- filter.genes.by.cluster.expression(emat = unspliced.dat,
+                                                  clusters = clusters.named,
+                                                  min.max.cluster.average = 0.03)
+length(intersect(rownames(spliced.dat),rownames(unspliced.dat)))
+```
+
+Estimate the velocyties
+
+```{r}
+fit.quantile <- 0.05
+rvel.cd <- gene.relative.velocity.estimates(spliced.dat,
+                                            unspliced.dat,
+                                            deltaT=1,
+                                            kCells=10,
+                                            kGenes=1,
+                                            fit.quantile=fit.quantile)
+
+cols <- as.vector(brewer.pal(n = 8,"Set3"))
+cell.colors <- cols[as.numeric(clusters.named)]
+names(cell.colors) <- names(clusters.named)
+
+pca.velocity.plot(rvel.cd, cell.colors=ac(cell.colors,alpha=0.7),
+                  cex=1.2, pcount = 1, show.grid.flow = TRUE, nPcs = 2,
+                  arrow.scale = 2)
+
+set.seed(12345)
+tSNE.velocity.plot(rvel.cd,
+                   cell.colors=ac(cell.colors,alpha=0.7),
+                   perplexity=30, cex=0.8, arrow.scale=100,
+                   show.grid.flow=TRUE, min.grid.cell.mass=0.9, grid.n=40)
+
+emb <- reducedDims(sce)$TSNE
+rownames(emb) <- colnames(spliced.dat)
+
+show.velocity.on.embedding.cor(emb, rvel.cd, n=100, scale='log',
+                               cell.colors=ac(cell.colors,alpha=0.5), cex=0.8, arrow.scale=2,
+                               show.grid.flow=TRUE, min.grid.cell.mass=0.5, grid.n=40, arrow.lwd=1,
+                               do.par=F, cell.border.alpha = 0.1)
+
+ggplot(data.frame(tSNE1 = emb[,1],
+                  tSNE2 = emb[,2], 
+                  cluster = as.factor(sce$Clusters))) + 
+  geom_point(aes(tSNE1, tSNE2, colour = cluster)) +
+  scale_color_manual(values = cols)
+
+ggplot(data.frame(tSNE1 = emb[,1],
+                  tSNE2 = emb[,2], 
+                  OLFM4 = logcounts(sce)[rowData(sce)$Symbol == "OLFM4",])) + 
+  geom_point(aes(tSNE1, tSNE2, colour = OLFM4)) +
+  scale_color_viridis_c()
+
+
+```
