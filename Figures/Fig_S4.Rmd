@@ -242,10 +242,10 @@ sce.P15 <- normalize(sce.P15)
 Lep.Zygot.markers <- marker.detection(sce.P15, 
                                   as.character(colData(sce.P15)$P15Clusters))
 
-write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S5.xlsx")
+write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S5.xlsx")
 
 # PCA of P15 germ cells
-cur_sce <- sce.P15[,grepl("Leptotene|Zygotene|Sperm", colData(sce.P15)$P15Clusters)]
+cur_sce <- sce.P15[,grepl("Leptotene|Zygotene|Sperm|Pachytene", colData(sce.P15)$P15Clusters)]
 cur_sce <- normalize(cur_sce)
 
 HVgenes <- HVG(cur_sce)
@@ -278,7 +278,7 @@ B <- plot_grid(emptyDrops.Sycp1, emptyDrops.H2afx, emptyDrops.Hormad1, emptyDrop
 final <- plot_grid(A, B, C,
                    ncol = 1, nrow = 2)
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_S4.pdf", final,
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Fig_S4.pdf", final,
        width = 20, height = 12)
 ```
 
@@ -290,7 +290,7 @@ emptyDrops <- ggplot() +
   geom_point(data = df1, aes(tsne1, tsne2, colour = batch), size = 0.5) +
   scale_color_manual(values = metadata(sce)$color_vector)
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/emptyDrops_labels.pdf", emptyDrops,
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/emptyDrops_labels.pdf", emptyDrops,
        width = 7, height = 7)
 
 emptyDrops.P15 <- ggplot() +
@@ -300,6 +300,6 @@ emptyDrops.P15 <- ggplot() +
              aes(tsne1, tsne2, colour = P15), size = 0.5) +
   scale_color_manual(values = metadata(sce)$colour_vector.P15) 
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S4/emptyDrops.P15_labels.pdf", emptyDrops.P15,
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/emptyDrops.P15_labels.pdf", emptyDrops.P15,
        width = 7, height = 7)
 ```
