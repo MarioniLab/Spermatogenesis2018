@@ -48,44 +48,41 @@ sce.spermatogonia <- sce[,grepl("P5|P10|P15", colData(sce)$Sample) &
 sce.spermatogonia <- normalize(sce.spermatogonia)
 rm(sce)
 
-# Visualize non-batch corrected data
-pca <- prcomp(t(logcounts(sce.spermatogonia)))
-ggplot(data.frame(tsne1 = pca$x[,1],
-                  tsne2 = pca$x[,2],
-                  samples = colData(sce.spermatogonia)$Sample)) +
-  geom_point(aes(tsne1, tsne2, colour = samples)) + 
-  scale_color_manual(values = c("#1f78b4", "#33a02c", "#e31a1c"))
-
 sce.single <- split.sce(sce = sce.spermatogonia, 
                         groups = unique(colData(sce.spermatogonia)$Library), 
                         colData.name = "Library")
 
-corrected <- batch.correction(sce.single)
+# Use P10 as first sample
+corrected <- batch.correction(sce.single[c("do17821", "do18195", "do26386", "do26387")])
+
+sce.spermatogonia <- do.call(cbind, sce.single[c("do17821", "do18195", "do26386", "do26387")])
 
 # Compute pca 
 pca <- prcomp(t(corrected))
 
-# Use the same graph based clustering technique
-set.seed(12345)
-g <- buildSNNGraph(corrected, k = 10, pc.approx = TRUE)
+set.seed(123)
+g <- buildSNNGraph(corrected, k = 11, pc.approx = TRUE)
 clusters <- igraph::cluster_louvain(g)$membership
 
 # Change cluster labels
-clusters[clusters == 1] <- "Gonocytes"
-clusters[clusters == 2] <- "Diff_1"
-clusters[clusters == 3] <- "Undiff_2"
-clusters[clusters == 4] <- "Diff_2"
-clusters[clusters == 5] <- "Diff_3"
-clusters[clusters == 6] <- "Preleptotene"
-clusters[clusters == 7] <- "Undiff_1"
+clusters[clusters == 1] <- "Diff_In_B"
+clusters[clusters == 2] <- "Diff_A1_2"
+clusters[clusters == 3] <- "pL"
+clusters[clusters == 4] <- "Undiff_progenitor"
+clusters[clusters == 5] <- "Undiff_transitional"
+clusters[clusters == 6] <- "Undiff_stem"
+clusters[clusters == 7] <- "Diff_A3_4"
+clusters[clusters == 8] <- "Gonocytes"
 
-col_vector <- c("Undiff_1" = "#00441b",
-                "Undiff_2" = "#006d2c",
-                "Diff_1" = "#238b45",
-                "Diff_2" = "#41ae76",
-                "Diff_3" = "#66c2a4",
-                "Gonocytes" = "#001609",
-                "Preleptotene" = "#d4b9da")
+
+col_vector <- c("Gonocytes" = "#7A9606",
+                "Undiff_stem" = "#0D3D21",
+                "Undiff_transitional" = "#87998E",
+                "Undiff_progenitor" = "#076E38",
+                "Diff_A1_2" = "#5FA37D",
+                "Diff_A3_4" = "#87D6B2",
+                "Diff_In_B"="#B9EAD6",
+                "pL"="#E5DFEA")
 
 # First we order the cells based on their differerentiation trajectory
 prank <- PT(rd = pca$x[,1:3], clusters = clusters, col_vector = col_vector)

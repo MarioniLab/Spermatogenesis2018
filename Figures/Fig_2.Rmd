@@ -50,11 +50,11 @@ df <- data.frame(sample = sub("_.*", "", colData(sce.all)$Sample),
 
 proportions <- with(df, table(sample, group))/plyr::count(df = df, vars = "sample")$freq
 
-# Sum across immature Leydig cells
-proportions <- cbind(proportions, rowSums(proportions[,grepl("Immature_Leydig", colnames(proportions))]))
+# Sum across Fetal Leydig cells
+proportions <- cbind(proportions, rowSums(proportions[,grepl("Fetal_Leydig", colnames(proportions))]))
 proportions <- proportions[c("B6", "P5", "P10", "P15", "P20", "P25", "P30", "P35"),
-                           c(32, 24, 23, 1:22)]
-colnames(proportions)[1] <- "Immature_Leydig" 
+                           c(1:22, 23, 24, 32)]
+colnames(proportions)[25] <- "Fetal_Leydig" 
 ```
 
 # Visualize percentages for germ cells
@@ -67,16 +67,17 @@ levels(cur_df.melt$Var2) <- colnames(proportions)
 proportions.p <- ggplot(cur_df.melt) + 
   geom_point(aes(Var2, rev(Var1), size = value, fill = Var2), shape = 22) +
   scale_fill_manual(values = c(metadata(sce.all)$color_vector,
-        "Immature_Leydig" = as.character(metadata(sce.all)$color_vector["Immature_Leydig_1"]))) + 
+        "Fetal_Leydig" = as.character(metadata(sce.all)$color_vector["Fetal_Leydig_1"]))) + 
   theme(panel.background = element_blank(), axis.title = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12)) +
-  scale_size_area(max_size = 6) + guides(colour = FALSE)
+  scale_size_area(max_size = 15) + guides(colour = FALSE)
 
 # Save plot
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_2/Fig_2_proportions.pdf", proportions.p,
-       width = 220, units = "mm", height = 80)
+       width = 320, units = "mm", height = 130)
 ```
+
 
 # Map bulk libraries to stages
 

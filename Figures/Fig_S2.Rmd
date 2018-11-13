@@ -14,8 +14,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This script recapitulates the visualization of all juvenile samples and 
-plots marker genes for the P10 sample.
+This script recapitulates the visualization of replicates for B6 and P5 and the juvenile samples. 
 
 # Load data and libraries
 
@@ -34,8 +33,7 @@ source("../Functions/auxiliary.R")
 
 # Single cell data
 sce.all <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0")) & 
-                     !(colData(sce.all)$AnnotatedClusters %in% c(paste("NA", 1:5, sep = ""), "Outliers"))]
+sce.all <- sce.all[,!(colData(sce.all)$AnnotatedClusters %in% c(paste("NA", 1:5, sep = ""), "Outliers"))]
 ```
 
 # Visualize the two batches for adult B6 and P5
@@ -53,7 +51,12 @@ adult.batches <- ggplot(data.frame(tSNE1 = reducedDims(B6)$TSNE[,1],
                   batch = colData(B6)$Library)) + 
   geom_point(aes(tSNE1, tSNE2, colour = batch, size = batch)) +
   scale_colour_manual(values = c("black", "red")) +
-  scale_size_manual(values = c(3,1))
+  scale_size_manual(values = c(3,1)) + 
+  theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.text = element_blank(), axis.ticks = element_blank(),
+          axis.title = element_text(size = 12, face = "bold")) + ggtitle("B6")
 
 # P5
 P5 <- sce.all[,grepl("P5", colData(sce.all)$Sample)]
@@ -67,35 +70,54 @@ P5.batches <- ggplot(data.frame(tSNE1 = reducedDims(P5)$TSNE[,1],
                   batch = colData(P5)$Library)) + 
   geom_point(aes(tSNE1, tSNE2, colour = batch, size = batch)) +
   scale_colour_manual(values = c("black", "red")) +
-  scale_size_manual(values = c(3,1))
+  scale_size_manual(values = c(3,1)) + 
+  theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.text = element_blank(), axis.ticks = element_blank(),
+          axis.title = element_text(size = 12, face = "bold")) + ggtitle("P5")
 ```
 
-# Visualize the different juvenile samples and adult cells
+# Visualize all samples together
 
 ```{r}
-plot.list <- list()
-for(i in paste("P", c(10, 15, 20, 25, 30, 35), sep = "")){
-  select <- grepl(paste(i, "|B6", sep = ""), colData(sce.all)$Sample)
-  cur_df <- data.frame(tsne1 = reducedDims(sce.all)$TSNE[select,1],
-                     tsne2 = reducedDims(sce.all)$TSNE[select,2],
-                     clusters = ifelse(grepl("B6", colData(sce.all)$Sample[select]),
-                                       "B6",
-                       as.character(colData(sce.all)$AnnotatedClusters)[select])) 
-  
-  plot.list[[i]] <- ggplot(cur_df) +
-  geom_point(aes(tsne1, tsne2, colour = clusters), size = 0.5) + scale_color_manual(values = c(metadata(sce.all)$color_vector, "B6" = "light grey")) + 
-  ylab("tSNE 2") + xlab("tSNE 1") 
-}
-```
+# tSNE all samples
+cur_color_vector <- brewer.pal(10,"Paired")
 
+samples <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
+                         tSNE2 = reducedDims(sce.all)$TSNE[,2],
+                         sample = colData(sce.all)$Sample)) +
+    geom_point(aes(tSNE1, tSNE2, colour = sample), size = 0.5) +
+    scale_color_manual(values = cur_color_vector) + 
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.text = element_blank(), axis.ticks = element_blank(),
+          axis.title = element_text(size = 12, face = "bold"), 
+          line = element_blank()) + ggtitle("Samples")
+
+# tSNE all samples - clusters
+cluster <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
+                         tSNE2 = reducedDims(sce.all)$TSNE[,2],
+                         group = colData(sce.all)$AnnotatedClusters)) +
+    geom_point(aes(tSNE1, tSNE2, colour = group), size = 0.5) +
+    scale_color_manual(values = metadata(sce.all)$color_vector) + 
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.text = element_blank(), axis.ticks = element_blank(),
+          axis.title = element_text(size = 12, face = "bold"), 
+          line = element_blank()) + ggtitle("Cluster")
+
+```
 
 # Save final figure
 
 ```{r final}
-A <- plot_grid(adult.batches, P5.batches, ncol = 2, nrow = 1)
-B <- plot_grid(plot.list[[1]], plot.list[[2]], plot.list[[3]],
-                   plot.list[[4]], plot.list[[5]], plot.list[[6]], ncol = 3, nrow = 4)
-final <- plot_grid(A, B, nol = 1, nrow = 2, rel_heights = c(1,2))
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_S2.pdf", 
-       final, width = 15, height = 20)
+A <- plot_grid(adult.batches + theme(legend.position = c(.8,.9)), P5.batches + theme(legend.position = c(.8,.9)), ncol = 1, nrow = 2)
+B <- plot_grid(samples + theme(legend.position=c(.01,.05)), cluster + theme(legend.position = "none"), ncol = 1, nrow =2)
+final <- plot_grid(A, B, ncol = 2, nrow = 1, rel_widths=c(2,3))
+
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S2/Fig_S2.pdf", 
+       final, width = 15, height = 15)
 ```

@@ -1,0 +1,194 @@
+---
+title: "RA blocked cells on adult"
+author: "Christina Ernst"
+date: "11/11/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script is for visualization of all juvenile samples across the adult trajectory and for mapping RA-synchronized cells onto the adult trajectory. 
+
+# Load data
+
+```{r data}
+library(scran)
+library(scater)
+library(Matrix)
+library(ggplot2)
+library(Rtsne)
+library(RColorBrewer)
+library(irlba)
+library(cowplot)
+source("../../Functions/auxiliary.R")
+```
+
+```{r juvenile samples}
+# Visualize the different juvenile samples and adult cells
+sce.all <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.all <- sce.all[,!(colData(sce.all)$AnnotatedClusters %in% c(paste("NA", 1:5, sep = ""), "Outliers"))]
+
+plot.list <- list()
+for(i in paste("P", c(5, 10, 15, 20, 25, 30, 35), sep = "")){
+  select <- grepl(paste(i, "|B6", sep = ""), colData(sce.all)$Sample)
+  cur_df <- data.frame(tsne1 = reducedDims(sce.all)$TSNE[select,1],
+                     tsne2 = reducedDims(sce.all)$TSNE[select,2],
+                     clusters = ifelse(grepl("B6", colData(sce.all)$Sample[select]),
+                                       "B6",
+                       as.character(colData(sce.all)$AnnotatedClusters)[select])) 
+  
+  plot.list[[i]] <- ggplot(cur_df) +
+  geom_point(aes(tsne1, tsne2, colour = clusters), size = 0.5) + scale_color_manual(values = c(metadata(sce.all)$color_vector, "B6" = "light grey")) + 
+  ylab("tSNE 2") + xlab("tSNE 1") +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.text = element_blank(), axis.ticks = element_blank(),
+          axis.title = element_text(size = 12, face = "bold")) + 
+    guides(colour = FALSE)
+}
+
+
+# tSNE with all samples
+cluster <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
+                         tSNE2 = reducedDims(sce.all)$TSNE[,2],
+                         group = colData(sce.all)$AnnotatedClusters)) +
+    geom_point(aes(tSNE1, tSNE2, colour = group), size = 0.5) +
+    scale_color_manual(values = metadata(sce.all)$color_vector) + 
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.text = element_blank(), axis.ticks = element_blank(),
+          axis.title = element_text(size = 12, face = "bold"), 
+          line = element_blank()) + ggtitle("Cluster")
+
+```
+
+
+
+```{r RA cells onto adult}
+# Data from Chen et al, Cell Research
+files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Data/Chen_CellResearch/GSE107644_RAW/", full.names = TRUE)
+
+all_cells <- lapply(as.list(files), function(n){
+  cur_file <- read.table(n, sep = "\t", header = TRUE)
+  rownames(cur_file) <- cur_file[,1]
+  cur_file <- cur_file[,-1]
+})
+
+all_cells <- do.call("cbind", all_cells)
+
+# Form a sce 
+sce_RA <- SingleCellExperiment(assays=list(counts=Matrix::Matrix(as.matrix(all_cells), sparse = TRUE)))
+colData(sce_RA)$time_point <- factor(as.character(sapply(colnames(sce_RA), 
+                                                         function(n){unlist(strsplit(n, "_"))[1]})),
+                                        levels = paste("SpSC", c(0, 2:37), sep = "")) 
+colData(sce_RA)$cell_type <- as.character(sapply(colnames(sce_RA), function(n){unlist(strsplit(n, "_"))[2]})) 
+
+# Quality check 
+sce_RA <- calculateQCMetrics(sce_RA)
+
+# Remove 2 cells with few features detected
+sce_RA <- sce_RA[,colData(sce_RA)$total_features_by_counts > 1250]
+
+clusters <- quickCluster(sce_RA, method = "igraph", irlba.args = c("work" = 100), 
+                         max.size = 2000)
+
+sce_RA <- computeSumFactors(sce_RA, clusters=clusters)
+
+sce_RA <- normalize(sce_RA, return_log = TRUE)
+
+# Adult data
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- sce[,grepl("B6", colData(sce)$Sample)]
+sce <- sce[intersect(rownames(sce_RA), rownames(sce)),]
+sce_RA <- sce_RA[rownames(sce),]
+
+# Select only the germ cells
+sce <- sce[,grepl("Spermatogonia|Spermatocytes|S1|S2|S3|S4|S5|S6|S7|S8|S9", colData(sce)$AnnotatedClusters)]
+sce <- normalize(sce)
+
+# Select cells from RA blocked cells that are represented in adult trajectory
+sce_all_RA <- sce_RA[,grepl("A1|ln|TypeB|G1|L|Z|eP|mP|lP|D|MI|MII|RS1o2|RS3o4|RS5o6|RS7o8", colData(sce_RA)$cell_type) &
+                       colData(sce_RA)$cell_type != "Spo11KOL1"]
+
+sce_all_RA <- normalize(sce_all_RA)
+
+# Batch correction
+sce.single <- split.sce(sce = sce, groups = unique(colData(sce)$Library), 
+                        colData.name = "Library")
+sce.single$RA <- sce_all_RA
+
+corrected <- batch.correction(sce.single)
+
+# Visualization
+set.seed(123)
+pca <- prcomp_irlba(t(corrected), n = 50)
+tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
+
+# Create new colour vector
+colour_vector_RA <- c("A1" = "#67001f",
+                      "TypeBS" = "#49006a",
+                      "ePL" = "#800026", 
+                      "G1" = "#ae017e",        
+                      "mPL" = "#fc4e2a",       
+                      "eP" = "#084081",        
+                      "D" = "#2171b5",    
+                      "mP" = "#4eb3d3",     
+                      "RS1o2" = "#014636",  
+                      "TypeBG2M" = "#e7298a",
+                      "lPL" = "#fed976",      
+                      "MI" = "#807dba",       
+                      "RS7o8" = "#74c476",    
+                      "Z" = "#fe9929",   
+                      "MII" = "#dadaeb",     
+                      "L" = "#662506",      
+                      "lP" = "#ccebc5",      
+                      "ln" = "#fde0dd",        
+                      "RS3o4" = "#3690c0",      
+                      "RS5o6" = "#a6bddb")
+
+
+
+new_vector <- c(brewer.pal(n = 8, name = "Set1"), brewer.pal(n = 8, name = "Set2"), brewer.pal(n = 8, name = "Set3"))
+names(new_vector) <- unique(colData(sce_all_RA)$cell_type)
+col_vector <- c(metadata(sce)$color_vector, colour_vector_RA)
+
+tSNE_RA <- ggplot() +
+  geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),2],
+                  cell_type = colData(sce_all_RA)$cell_type),
+             aes(tSNE1, tSNE2, colour = cell_type, size = 1.5, alpha = 0.75), shape = 8) +
+  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce),1],
+                  tSNE2 = tsne$Y[1:ncol(sce),2],
+                  cluster = colData(sce)$AnnotatedClusters),
+             aes(tSNE1, tSNE2, colour = cluster)) + 
+  scale_color_manual(values = col_vector)
+
+ggplot() +
+  geom_point(data = data.frame(PC1 = pca$x[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),1],
+                  PC2 = pca$x[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),2],
+                  cell_type = colData(sce_all_RA)$cell_type),
+             aes(PC1, PC2, colour = cell_type, size = 1.5, alpha = 0.75), shape = 8) +
+  geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce),1],
+                  PC2 = pca$x[1:ncol(sce),2],
+                  cluster = colData(sce)$AnnotatedClusters),
+             aes(PC1, PC2, colour = cluster)) + 
+  scale_color_manual(values = col_vector)
+```
+
+
+# Save final figure
+
+```{r final}
+legendA <- get_legend(cluster + theme(legend.position = "right"))
+A <- plot_grid(plot.list[[1]], plot.list[[2]], plot.list[[3]], 
+                   plot.list[[4]], plot.list[[5]], plot.list[[6]], plot.list[[7]], legendA, ncol = 4, nrow = 2)
+legendB <- get_legend(tSNE_RA + theme(legend.position = "right"))
+B <- plot_grid(tSNE_RA + theme(legend.position = "none"), legendB, ncol = 2, nrow = 1, rel_widths = c(3,1))
+final <- plot_grid(A, B, ncol = 1, nrow = 2, rel_heights = c(2,3))
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S3/Fig_S3new.pdf", 
+       final, width = 15, height = 20)
+```

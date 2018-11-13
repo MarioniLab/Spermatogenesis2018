@@ -420,7 +420,7 @@ new.clusters[new.clusters == 40] <- "Spermatocytes_5"
 new.clusters[new.clusters == 41] <- "S12"
 
 colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
-      levels = c("Spermatogonia", "Spermatocytes_1",
+      levels = c("Spermatogonia_1", "Spermatogonia_2", "Spermatocytes_1",
                  "Spermatocytes_2","Spermatocytes_3","Spermatocytes_4",
                  "Spermatocytes_5","Spermatocytes_6","Spermatocytes_7", 
                  "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9",
@@ -443,7 +443,8 @@ stats.df$ProperlyAnnotated <- cur_stats$value
 write.table(stats.df, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/CellRangerFiltering_stats.txt", 
             sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE)
 
-colour_vector <- c("Spermatogonia" = "#046735", 
+colour_vector <- c("Spermatogonia_1" = "#046735", 
+                   "Spermatogonia_2" = "#04331A",
                    "Spermatocytes_1" = "#FBDCEA", 
                    "Spermatocytes_2" = "#F2B2D1",
                    "Spermatocytes_3" = "#E86FAA", 

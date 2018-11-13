@@ -86,6 +86,7 @@ samples <- ggplot(data.frame(PC1 = pca$x[,1],
   geom_point(aes(PC1, PC2, colour = samples)) + 
   scale_color_manual(values = c("#1f78b4", "#33a02c", "#e31a1c")) 
 
+
 samples.tsne <- ggplot(data.frame(tsne1 = tsne$Y[,1],
                   tsne2 = tsne$Y[,2],
                   samples = colData(sce.spermatogonia)$Sample)) +
