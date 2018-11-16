@@ -69,7 +69,6 @@ corrected <- batch.correction(sce.single)
 
 # Visualize PCA 
 pca <- prcomp(t(corrected))
-tsne <- Rtsne(t(corrected))
 
 # Plot sample distribution
 sample <- ggplot() +
@@ -175,6 +174,7 @@ Dmrtb1 <- ggplot() +
                                 Dmrtb1 = logcounts(sce.spermatogonia)[
                                     rowData(sce.spermatogonia)$Symbol == "Dmrtb1",]), aes(PC1, PC2, colour = Dmrtb1)) + 
                                     scale_colour_viridis()
+
 legend_RA <- plot_grid(get_legend(cluster_RA + theme(legend.position = "right")))
 
 A <- plot_grid(sample + theme(legend.position=c(.8,.8)), cluster + theme(legend.position=c(.8,.8)), cluster_RA + theme(legend.position= "NULL"), legend_RA,  Gfra1 + theme(legend.position=c(.8,.8)), Zbtb16 + theme(legend.position=c(.8,.8)), Stra8 + theme(legend.position=c(.8,.8)), Dmrtb1 + theme(legend.position=c(.8,.8)), ncol = 4, nrow = 2)
@@ -226,14 +226,13 @@ write.xlsx(spermatogonia.markers, "../../../Dropbox (Cambridge University)/SST_s
 prank <- PT(rd = pca$x[1:ncol(sce.spermatogonia),1:3], clusters = clusters, col_vector = col_vector)
 
 # Find marker genes to visualize
-spermatogonia.markers <- spermatogonia.markers[c("Undiff_progenitor",
-                                                 "Undiff_transitional",
-                                                 "Undiff_stem",
-                                                 "Gonocytes",
-                                                 "Diff_A1_2",
-                                                 "Diff_A3_4",
+spermatogonia.markers <- spermatogonia.markers[c("Undiff_1",
+                                                 "Undiff_2",
+                                                 "Undiff_3",
+                                                 "Diff_A",
                                                  "Diff_In_B",
                                                  "pL")]
+
 
 markers <- data.frame(symbol = unlist(lapply(spermatogonia.markers, 
                                              function(n){n[1:10,"GeneName"]})),
@@ -250,9 +249,6 @@ colnames(for.heatmap) <- paste(colData(sce.spermatogonia)$Library[
   colData(sce.spermatogonia)$Barcode[
   order(prank[,"rank"], decreasing = TRUE)], sep = "_")
 rownames(for.heatmap) <- markers$symbol
-
-to.label <- c("Egr4", "Zbtb16", "Tubb5", "Ccnd2", "Rhox10", "Dmrtb1", "Plk1", "Tex101", "Prss50")
-
 
 # Visualize top genes in form of heatmap
 pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Spermatogonia_heatmap_P10_P15.pdf", onefile = FALSE, width = 10, height = 15)
@@ -273,9 +269,97 @@ pheatmap(for.heatmap,
 dev.off()
 ```
 
+# Visualize spermatogonia from P5
+
+```{r}
+spermatogonia.P5 <- sce[,grepl("P5", colData(sce)$Sample) &
+                                       colData(sce)$AnnotatedClusters == "Spermatogonia"]
+spermatogonia.P5 <- normalize(spermatogonia.P5)
+
+# Visualize non-batch corrected data
+spermatogonia.P5 <- runPCA(spermatogonia.P5)
+ggplot(data.frame(PC1 = reducedDims(spermatogonia.P5)$PCA[,1],
+                  PC2 = reducedDims(spermatogonia.P5)$PCA[,2],
+                  libraries = colData(spermatogonia.P5)$Library)) +
+  geom_point(aes(PC1, PC2, colour =  libraries)) + 
+  scale_color_manual(values = c( "#FF9100", "#e31a1c"))
+
+# Batch correction
+sce.single <- split.sce(sce = spermatogonia.P5, 
+                        groups = unique(colData(spermatogonia.P5)$Library), 
+                        colData.name = "Library")
+
+corrected <- batch.correction(sce.single[c("do26386", "do26387")])
+
+spermatogonia.P5 <- do.call(cbind, sce.single[c("do26386", "do26387")])
+
+# Compute pca 
+pca <- prcomp(t(corrected))
+
+# Visualize PCA with marker genes
+libraries <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  libraries = colData(spermatogonia.P5)$Library)) +
+  geom_point(aes(PC1, PC2, colour = libraries)) + 
+  scale_color_manual(values = c("#FF9100", "#e31a1c")) 
+
+set.seed(123)
+g <- buildSNNGraph(corrected, k = 15, pc.approx = TRUE)
+clusters <- igraph::cluster_louvain(g)$membership
 
 
+# Change cluster labels
+clusters[clusters == 1] <- "Undiff_1"
+clusters[clusters == 2] <- "Prospermatogonia"
+clusters[clusters == 3] <- "Undiff_2"
+clusters[clusters == 4] <- "Diff"
 
+
+col_vector <- c("Prospermatogonia" = "#7A9606",
+                "Undiff_1" = "#0D3D21",
+                "Undiff_2" = "#076E38",
+                "Diff" = "#5FA37D")
+
+p5.cluster <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  clusters = as.factor(clusters))) +
+            geom_point(aes(PC1, PC2, colour = clusters)) + 
+            scale_colour_manual(values = col_vector)
+
+# Plot marker gene expression
+
+Gfra1.p5 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Gfra1 = logcounts(spermatogonia.P5)[
+                    rowData(spermatogonia.P5)$Symbol == "Gfra1",])) +
+  geom_point(aes(PC1, PC2, colour = Gfra1)) + scale_colour_viridis()
+
+Stra8.p5 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Stra8 = logcounts(spermatogonia.P5)[
+                    rowData(spermatogonia.P5)$Symbol == "Stra8",])) +
+  geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
+
+Eif2s2.p5 <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  Eif2s2 = logcounts(spermatogonia.P5)[
+                    rowData(spermatogonia.P5)$Symbol == "Eif2s2",])) +
+  geom_point(aes(PC1, PC2, colour = Eif2s2)) + scale_colour_viridis()
+
+
+spermatogonia.markers.P5 <- marker.detection(spermatogonia.P5, 
+                                          clusters)
+write.xlsx(spermatogonia.markers.P5, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S4_P5.xlsx")
+
+
+legend_B <- plot_grid(get_legend(p5.cluster), get_legend(Gfra1.p5) , get_legend(Stra8.p5), get_legend(Eif2s2.p5), ncol = 4 , nrow = 1)
+B_plot <- plot_grid(p5.cluster + theme(legend.position= "NONE"), Gfra1.p5 + theme(legend.position= "NONE"), Stra8.p5 + theme(legend.position= "NONE"), Eif2s2.p5 + theme(legend.position= "NONE"), ncol = 4, nrow = 1)
+B <- plot_grid(B_plot, legend_B, ncol = 1, nrow = 2)
+final <- plot_grid(A, B, ncol = 1, nrow = 2, rel_heights = c(3,1))
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3/Fig_3.pdf",
+       final, width = 15, height = 12.5)
+```
 
 
 
