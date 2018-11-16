@@ -83,13 +83,13 @@ sample <- ggplot() +
 no.genes <- nexprs(sce.spermatogonia, detection_limit = 0)
 number_genes <- ggplot() +
   geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
-                  PC2 = pca$x[1:ncol(sce.spermatogonia),2],
-                  cluster = clusters),
+                  PC2 = pca$x[1:ncol(sce.spermatogonia),2]),
              aes(PC1, PC2, colour = no.genes)) +
   scale_color_gradientn(colours = inferno(100))
 
 
 #Cluster spermatogonia
+set.seed(1234)
 g <- buildSNNGraph(corrected[,1:ncol(sce.spermatogonia)], k = 15, pc.approx = TRUE)
 clusters <- igraph::cluster_louvain(g)$membership
 
@@ -180,6 +180,32 @@ legend_RA <- plot_grid(get_legend(cluster_RA + theme(legend.position = "right"))
 A <- plot_grid(sample + theme(legend.position=c(.8,.8)), cluster + theme(legend.position=c(.8,.8)), cluster_RA + theme(legend.position= "NULL"), legend_RA,  Gfra1 + theme(legend.position=c(.8,.8)), Zbtb16 + theme(legend.position=c(.8,.8)), Stra8 + theme(legend.position=c(.8,.8)), Dmrtb1 + theme(legend.position=c(.8,.8)), ncol = 4, nrow = 2)
 
 
+```
+
+# Calculate Entropy
+
+```{r}
+sce.P15 <- sce.spermatogonia[,grepl("P15", colData(sce.spermatogonia)$Sample)]
+clusters.P15 <- clusters[grepl("P15", colData(sce.spermatogonia)$Sample)]
+cur_counts <- 2^(logcounts(sce.P15)) - 1 + 0.1
+probs   <- t(t(cur_counts)/apply(cur_counts,2,sum))
+entropy <- -apply(probs*log(probs)/log(nrow(sce)),2,sum)
+
+sce.P15 <- runPCA(sce.P15)
+
+ggplot() +
+  geom_point(data = data.frame(PC1 = reducedDims(sce.P15)$PCA[,1],
+                  PC2 = reducedDims(sce.P15)$PCA[,2],
+                  entropy = entropy),
+             aes(PC1, PC2, colour = entropy)) + 
+            scale_color_gradientn(colours = magma(100))
+
+ggplot() +
+  geom_point(data = data.frame(PC1 = reducedDims(sce.P15)$PCA[,1],
+                  PC2 = reducedDims(sce.P15)$PCA[,2],
+                  clusters = clusters.P15),
+             aes(PC1, PC2, colour = clusters)) + 
+            scale_color_manual(values = col_vector)
 ```
 
 # Find marker genes for these groups
