@@ -75,17 +75,8 @@ sample <- ggplot() +
   geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
                   PC2 = pca$x[1:ncol(sce.spermatogonia),2],
                   sample = sce.spermatogonia$Sample),
-             aes(PC1, PC2, colour = sample)) + 
+             aes(PC1, PC2, colour = sample), size = 0.5) + scale_y_reverse() +
             scale_color_manual(values = c("#1f78b4", "#33a02c"))
-
-# Plot number of genes expressed
-no.genes <- nexprs(sce.spermatogonia, detection_limit = 0)
-number_genes <- ggplot() +
-  geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
-                  PC2 = pca$x[1:ncol(sce.spermatogonia),2]),
-             aes(PC1, PC2, colour = no.genes)) +
-  scale_color_gradientn(colours = inferno(100))
-
 
 #Cluster spermatogonia
 set.seed(1234)
@@ -96,12 +87,12 @@ clusters[clusters == 1] <- "Diff_In_B"
 clusters[clusters == 2] <- "Diff_A"
 clusters[clusters == 3] <- "pL"
 clusters[clusters == 4] <- "Undiff_2"
-clusters[clusters == 5] <- "Undiff_3"
+clusters[clusters == 5] <- "Undiff_to_Diff"
 clusters[clusters == 6] <- "Undiff_1"
 
 col_vector <- c("Undiff_1" = "#0D3D21",
                 "Undiff_2" = "#14713E",
-                "Undiff_3" = "#41AE76",
+                "Undiff_to_Diff" = "#41AE76",
                 "Diff_A" = "#52E8A4",
                 "Diff_In_B" = "#A3EFCE",
                 "pL" = "#E5DFEA")
@@ -111,7 +102,7 @@ cluster <- ggplot() +
   geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
                   PC2 = pca$x[1:ncol(sce.spermatogonia),2],
                   cluster = clusters),
-             aes(PC1, PC2, colour = cluster)) + 
+             aes(PC1, PC2, colour = cluster), size = 0.5) + scale_y_reverse() +
             scale_color_manual(values = c(col_vector))
 
 # Include RA-cells
@@ -120,11 +111,11 @@ cluster_RA <- ggplot() +
   geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
                                  PC2 = pca$x[1:ncol(sce.spermatogonia),2],
                                  cluster = clusters),
-               aes(PC1, PC2, colour = cluster)) + 
+               aes(PC1, PC2, colour = cluster), size = 0.5) + 
    geom_point(data = data.frame(PC1 = pca$x[(ncol(sce.spermatogonia)+1):(ncol(sce.spermatogonia)+ncol(sce_early_RA)),1],
                                  PC2 = pca$x[(ncol(sce.spermatogonia)+1):(ncol(sce.spermatogonia)+ncol(sce_early_RA)),2],
                                  cell_type = colData(sce_early_RA)$cell_type),
-               aes(PC1, PC2, colour = cell_type), shape = 8) +
+               aes(PC1, PC2, colour = cell_type), shape = 8, size = 0.75) + scale_y_reverse() + 
     scale_color_manual(values = c(col_vector, metadata(sce_early_RA)$colour_vector_RA))
 
 # Plot marker gene expression
@@ -134,13 +125,13 @@ Gfra1 <- ggplot() +
       geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
                                  PC2 = pca$x[1:ncol(sce.spermatogonia),2],
                                 Gfra1 = logcounts(sce.spermatogonia)[
-                                    rowData(sce.spermatogonia)$Symbol == "Gfra1",]), aes(PC1, PC2, colour = Gfra1)) + 
+                                    rowData(sce.spermatogonia)$Symbol == "Gfra1",]), aes(PC1, PC2, colour = Gfra1), size = 0.5) + scale_y_reverse() + 
                                     scale_colour_viridis()
 Id4 <- ggplot() +
       geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
                                  PC2 = pca$x[1:ncol(sce.spermatogonia),2],
                                 Id4 = logcounts(sce.spermatogonia)[
-                                    rowData(sce.spermatogonia)$Symbol == "Id4",]), aes(PC1, PC2, colour = Id4)) + 
+                                    rowData(sce.spermatogonia)$Symbol == "Id4",]), aes(PC1, PC2, colour = Id4), size = 0.5) + scale_y_reverse() + 
                                     scale_colour_viridis()
 
 # Nanos 3 and ZBTB16 for undifferentiated spermatogonia
@@ -148,14 +139,14 @@ Nanos3 <- ggplot() +
       geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
                                  PC2 = pca$x[1:ncol(sce.spermatogonia),2],
                                 Nanos3 = logcounts(sce.spermatogonia)[
-                                    rowData(sce.spermatogonia)$Symbol == "Nanos3",]), aes(PC1, PC2, colour = Nanos3)) + 
+                                    rowData(sce.spermatogonia)$Symbol == "Nanos3",]), aes(PC1, PC2, colour = Nanos3), size = 0.5) + scale_y_reverse() + 
                                     scale_colour_viridis()
 
 Zbtb16 <- ggplot() +
       geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
                                  PC2 = pca$x[1:ncol(sce.spermatogonia),2],
                                 Zbtb16 = logcounts(sce.spermatogonia)[
-                                    rowData(sce.spermatogonia)$Symbol == "Zbtb16",]), aes(PC1, PC2, colour = Zbtb16)) + 
+                                    rowData(sce.spermatogonia)$Symbol == "Zbtb16",]), aes(PC1, PC2, colour = Zbtb16), size = 0.5) + scale_y_reverse() + 
                                     scale_colour_viridis()
 
 # Stra8 as a marker for differentiating spemratogonia
@@ -164,7 +155,7 @@ Stra8 <- ggplot() +
       geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
                                  PC2 = pca$x[1:ncol(sce.spermatogonia),2],
                                 Stra8 = logcounts(sce.spermatogonia)[
-                                    rowData(sce.spermatogonia)$Symbol == "Stra8",]), aes(PC1, PC2, colour = Stra8)) + 
+                                    rowData(sce.spermatogonia)$Symbol == "Stra8",]), aes(PC1, PC2, colour = Stra8), size = 0.5) + scale_y_reverse() +
                                     scale_colour_viridis()
 
 # Dmrtb1 medites mitosis-to-meiosis transition
@@ -172,12 +163,12 @@ Dmrtb1 <- ggplot() +
       geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
                                  PC2 = pca$x[1:ncol(sce.spermatogonia),2],
                                 Dmrtb1 = logcounts(sce.spermatogonia)[
-                                    rowData(sce.spermatogonia)$Symbol == "Dmrtb1",]), aes(PC1, PC2, colour = Dmrtb1)) + 
+                                    rowData(sce.spermatogonia)$Symbol == "Dmrtb1",]), aes(PC1, PC2, colour = Dmrtb1), size = 0.5) + scale_y_reverse() + 
                                     scale_colour_viridis()
 
 legend_RA <- plot_grid(get_legend(cluster_RA + theme(legend.position = "right")))
 
-A <- plot_grid(sample + theme(legend.position=c(.8,.8)), cluster + theme(legend.position=c(.8,.8)), cluster_RA + theme(legend.position= "NULL"), legend_RA,  Gfra1 + theme(legend.position=c(.8,.8)), Zbtb16 + theme(legend.position=c(.8,.8)), Stra8 + theme(legend.position=c(.8,.8)), Dmrtb1 + theme(legend.position=c(.8,.8)), ncol = 4, nrow = 2)
+A <- plot_grid(sample + theme(legend.position=c(.8,.3)), cluster + theme(legend.position=c(.8,.2)), cluster_RA + theme(legend.position= "NULL"), legend_RA,  Gfra1 + theme(legend.position=c(.8,.3)), Zbtb16 + theme(legend.position=c(.8,.3)), Stra8 + theme(legend.position=c(.8,.3)), Dmrtb1 + theme(legend.position=c(.8,.3)), ncol = 4, nrow = 2)
 
 
 ```
@@ -228,7 +219,7 @@ prank <- PT(rd = pca$x[1:ncol(sce.spermatogonia),1:3], clusters = clusters, col_
 # Find marker genes to visualize
 spermatogonia.markers <- spermatogonia.markers[c("Undiff_1",
                                                  "Undiff_2",
-                                                 "Undiff_3",
+                                                 "Undiff_to_Diff",
                                                  "Diff_A",
                                                  "Diff_In_B",
                                                  "pL")]
@@ -332,19 +323,19 @@ Gfra1.p5 <- ggplot(data.frame(PC1 = pca$x[,1],
                   PC2 = pca$x[,2],
                   Gfra1 = logcounts(spermatogonia.P5)[
                     rowData(spermatogonia.P5)$Symbol == "Gfra1",])) +
-  geom_point(aes(PC1, PC2, colour = Gfra1)) + scale_colour_viridis()
+  geom_point(aes(PC1, PC2, colour = Gfra1), size = 0.5) + scale_colour_viridis()
 
 Stra8.p5 <- ggplot(data.frame(PC1 = pca$x[,1],
                   PC2 = pca$x[,2],
                   Stra8 = logcounts(spermatogonia.P5)[
                     rowData(spermatogonia.P5)$Symbol == "Stra8",])) +
-  geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
+  geom_point(aes(PC1, PC2, colour = Stra8), size = 0.5) + scale_colour_viridis()
 
 Eif2s2.p5 <- ggplot(data.frame(PC1 = pca$x[,1],
                   PC2 = pca$x[,2],
                   Eif2s2 = logcounts(spermatogonia.P5)[
                     rowData(spermatogonia.P5)$Symbol == "Eif2s2",])) +
-  geom_point(aes(PC1, PC2, colour = Eif2s2)) + scale_colour_viridis()
+  geom_point(aes(PC1, PC2, colour = Eif2s2), size = 0.5) + scale_colour_viridis()
 
 
 spermatogonia.markers.P5 <- marker.detection(spermatogonia.P5, 
@@ -355,7 +346,7 @@ write.xlsx(spermatogonia.markers.P5, "../../../Dropbox (Cambridge University)/SS
 legend_B <- plot_grid(get_legend(p5.cluster), get_legend(Gfra1.p5) , get_legend(Stra8.p5), get_legend(Eif2s2.p5), ncol = 4 , nrow = 1)
 B_plot <- plot_grid(p5.cluster + theme(legend.position= "NONE"), Gfra1.p5 + theme(legend.position= "NONE"), Stra8.p5 + theme(legend.position= "NONE"), Eif2s2.p5 + theme(legend.position= "NONE"), ncol = 4, nrow = 1)
 B <- plot_grid(B_plot, legend_B, ncol = 1, nrow = 2)
-final <- plot_grid(A, B, ncol = 1, nrow = 2, rel_heights = c(3,1))
+final <- plot_grid(A, B, ncol = 1, nrow = 2)
 
 ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3/Fig_3.pdf",
        final, width = 15, height = 12.5)
