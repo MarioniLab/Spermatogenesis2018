@@ -244,5 +244,5 @@ tSNE_RA <- ggplot() + geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):
                                        levels(colData(sce)$AnnotatedClusters)))  
 
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_2/Fig_2_RA_cells.pdf", tSNE_RA,
-       width = 7, height = 5)
+       width = 8, height = 5)
 ```
