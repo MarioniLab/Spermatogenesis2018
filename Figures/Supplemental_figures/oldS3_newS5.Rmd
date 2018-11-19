@@ -1,0 +1,328 @@
+---
+title: "Figure S3"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script recapitulates the visualization of all juvenile samples and 
+plots marker genes for the P10 sample.
+
+# Load data and libraries
+
+```{r data, message=FALSE}
+# Libraries
+library(scater)
+library(ggplot2)
+library(reshape2)
+library(plyr)
+library(openxlsx)
+library(cowplot)
+library(RColorBrewer)
+library(pheatmap)
+library(viridis)
+source("../Functions/auxiliary.R")
+
+# Single cell data
+sce.all <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+
+sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0")) & 
+                     colData(sce.all)$AnnotatedClusters != "Outliers"]
+```
+
+# Visualize somatic cells from P5 and P10 sample before batch correction
+
+```{r}
+sce.somatic <- sce.all[,grepl("P5|P10", colData(sce.all)$Sample) &
+                                       colData(sce.all)$AnnotatedClusters != "Spermatogonia" &
+                                        colData(sce.all)$AnnotatedClusters != "Spermatocytes_1"]
+sce.somatic <- normalize(sce.somatic)
+
+# Compute PCA
+pca.somatic <- runPCA(sce.somatic)
+ggplot(data.frame(PC1 = reducedDims(pca.somatic)$PCA[,1],
+                  PC2 = reducedDims(pca.somatic)$PCA[,2],
+                  samples = colData(pca.somatic)$Sample)) +
+  geom_point(aes(PC1, PC2, colour = samples)) + 
+  scale_color_manual(values = c("#1f78b4", "#e31a1c"))
+
+ggplot(data.frame(PC1 = reducedDims(pca.somatic)$PCA[,1],
+                  PC2 = reducedDims(pca.somatic)$PCA[,2],
+                  cell_type = colData(pca.somatic)$AnnotatedClusters)) +
+  geom_point(aes(PC1, PC2, colour = cell_type)) + 
+  scale_color_manual(values = metadata(sce.somatic)$color_vector)
+
+# Compute tSNE
+set.seed(123)
+tsne.somatic <- runTSNE(sce.somatic)
+# Visualize samples
+ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
+                  tsne2 = reducedDims(tsne.somatic)$TSNE[,2],
+                  samples = colData(tsne.somatic)$Sample)) +
+  geom_point(aes(tsne1, tsne2, colour = samples)) + 
+  scale_color_manual(values = c("#1f78b4", "#e31a1c"))
+# Visualize individual libraries
+ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
+                  tsne2 = reducedDims(tsne.somatic)$TSNE[,2],
+                  library = colData(tsne.somatic)$Library)) +
+    geom_point(aes(tsne1, tsne2, colour = library)) + 
+    scale_color_manual(values = c("#1f78b4", "#FF9100", "#e31a1c"))
+# Visualize cell types
+ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
+                  tsne2 = reducedDims(tsne.somatic)$TSNE[,2],
+                  cell_type = colData(sce.somatic)$AnnotatedClusters)) +
+    geom_point(aes(tsne1, tsne2, colour = cell_type)) + 
+    scale_color_manual(values = metadata(sce.somatic)$color_vector)
+# Visualize gene expression
+ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
+                  tsne2 = reducedDims(tsne.somatic)$TSNE[,2],
+                  gene = logcounts(sce.somatic)[rowData(sce.somatic)$Symbol == "Dlk1",]))               + geom_point(aes(tsne1, tsne2, colour = gene), size = 0.5) +
+    scale_color_viridis()
+
+# Differential expression between somatic cells types from P5 and P10
+genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+rownames(genenames) <- genenames$Gene.stable.ID
+
+results.DE <- list()
+cur_groups <- c("Sertoli", "Leydig", 
+                "Immature_Leydig_1", "Immature_Leydig_2", 
+                "Immature_Leydig_3", "PTM", "Endothelial_cells", 
+                "Interstitial_tMg")
+for(i in cur_groups){
+  sce.test <- sce.somatic[,colData(sce.somatic)$AnnotatedClusters == i]
+  sce.test <- sce.test[Matrix::rowMeans(logcounts(sce.test)) > 0.1,]
+  sce.test <- normalize(sce.test)
+  
+  # Sum counts with each batch and group
+  mat <- matrix(data = NA, ncol = length(unique(colData(sce.test)$Library)), 
+                nrow = nrow(counts(sce.test)))
+  rownames(mat) <- rownames(counts(sce.test))
+  colnames(mat) <- unique(paste(colData(sce.test)$Sample, 
+                                colData(sce.test)$Library, sep = "_"))
+  
+  for(j in colnames(mat)){
+    cur_batch <- unlist(strsplit(j, "_"))[2]
+    mat[,j] <- Matrix::rowSums(counts(sce.test)[,colData(sce.test)$Library == cur_batch]) 
+  }
+  
+  # Perform differential testing
+  y <- DGEList(counts=mat,
+               group=sapply(colnames(mat), 
+                            function(n){unlist(strsplit(n, "_"))[1]}))
+  y <- calcNormFactors(y)
+  design <- model.matrix(~0+sapply(colnames(mat), function(n){unlist(strsplit(n, "_"))[1]}))
+  colnames(design) <- c("P5", "P10")
+  y <- estimateDisp(y,design)
+  
+  fit <- glmQLFit(y,design, robust = TRUE)
+  qlf <- glmTreat(fit,coef=2, lfc = 0.5, 
+                  contrast = makeContrasts(P5 - P10, levels = design))
+  cur_markers <- topTags(qlf, n = nrow(qlf$table))$table
+  
+  markers.P5 <- cur_markers[cur_markers$FDR < 0.1 & cur_markers$logFC < 0,]
+  markers.P5$Genename <- rowData(sce.test)$Symbol[match(rownames(markers.P5),
+                                                                 rowData(sce.test)$ID)]
+  markers.P10 <- cur_markers[cur_markers$FDR < 0.1 & cur_markers$logFC > 0,]
+  markers.P10$Genename <- rowData(sce.test)$Symbol[match(rownames(markers.P10),
+                                                                 rowData(sce.test)$ID)]
+  results.DE[[paste("Group_", i, "_P5", sep = "")]] <- markers.P5
+  results.DE[[paste("Group_", i, "_P10", sep = "")]] <- markers.P10
+}
+
+write.xlsx(results.DE, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Analysis/Somatic_cells_P5_P10.xlsx")
+
+
+```
+
+
+# Visualize batch corrected data
+```{r}
+# Plot sample distribution across somatic cells
+sample_col_vector <- c("P5"= "#e31a1c", "P10"="#1f78b4")
+somatic_samples <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.somatic)$TSNE[,1],
+                             tSNE2 = reducedDims(sce.somatic)$TSNE[,2],
+                             sample = colData(sce.somatic)$Sample)) +     
+                            geom_point(aes(tSNE1, tSNE2, colour = sample), size = 0.5) + 
+                          scale_color_manual(values = sample_col_vector)
+
+# Plot different somatic cell types
+somatic_tsne <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.somatic)$TSNE[,1],
+                             tSNE2 = reducedDims(sce.somatic)$TSNE[,2],
+                             cell_type = colData(sce.somatic)$AnnotatedClusters)) +     geom_point(aes(tSNE1, tSNE2, colour = cell_type), size = 0.5) + scale_color_manual(values = metadata(sce.somatic)$color_vector)
+
+# Plot marker gene expression
+
+ggplot(data = data.frame(tSNE1 = reducedDims(sce.somatic)$TSNE[,1],
+                             tSNE2 = reducedDims(sce.somatic)$TSNE[,2],
+                             gene = logcounts(sce.somatic)[rowData(sce.somatic)$Symbol == "Slk1",]))               + geom_point(aes(tSNE1, tSNE2, colour = gene), size = 0.5) +
+              scale_color_viridis()
+
+ggplot(data = data.frame(tSNE1 = reducedDims(sce.somatic)$TSNE[,1],
+                             tSNE2 = reducedDims(sce.somatic)$TSNE[,2],
+                             cell_type = colData(sce.somatic)$AnnotatedClusters)) +     geom_point(aes(tSNE1, tSNE2, colour = cell_type), size = 0.5) + scale_color_manual(values = metadata(sce.somatic)$color_vector)
+
+# Combine plots
+cluster_legend <- get_legend(P5.P10.tsne + theme(legend.position="bottom"))
+A <- plot_grid(P5.P10.sample + theme(legend.position = c(.05, .8)), P5.P10.tsne + theme(legend.position = "none"), ncol = 2)
+final <- plot_grid(A, cluster_legend, nrow = 2, rel_heights = c(4,1))
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S3/Fig_S3.pdf",
+       final, width = 15, height = 7.5)
+
+```
+
+# Collect marker genes for somatic cells in P10 
+
+```{r}
+sce.single <- split.sce(sce = sce.somatic, 
+                        groups = unique(colData(sce.somatic)$Library), 
+                        colData.name = "Library")
+
+# Use P10 as first sample
+corrected <- batch.correction(sce.single[c("do17821", "do26386", "do26387")])
+
+sce.somatic <- do.call(cbind, sce.single[c("do17821", "do26386", "do26387")])
+
+
+# Find marker genes
+somatic.markers <- marker.detection(sce.somatic,
+                                    as.character(colData(sce.somatic)$AnnotatedClusters))
+
+# Save this list as Table S1
+write.xlsx(somatic.markers, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S3.xlsx")
+
+```
+
+# Visualize marker genes for P10
+
+```{r}
+# Calculate distance on logcounts
+HVgenes <- HVG(cur_sce)
+
+# Create distance metric
+cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(cur_sce)[HVgenes,]), 
+                                  method = "spearman"))/2))
+
+top.markers <- as.character(unlist(lapply(somatic.markers,
+                                          function(n){n$GeneName[1:5]})))
+
+# Genes to visualize
+genes <- c(#Spermatocytes
+          "Sycp1", top.markers[42:45],
+          #Spermatogonia
+           "Dmrt1", top.markers[46:49],
+          #Leydig
+           "Insl3", top.markers[c(26, 28:30)],
+          #Sertoli
+           "Gstm6", top.markers[c(36:38, 40)],
+          #Macrophages
+           "Fcer1g", top.markers[c(21:22, 24:25)],
+          #PTM
+           "Acta2", top.markers[c(32:35)],
+          #Immature_Leydig3
+           "Dlk1", top.markers[c(16, 18:20)],
+           #Endothelial cells
+           "Col4a1", top.markers[c(1, 3:5)],
+          #Immature_Leydig1
+          "Inhba", top.markers[7:10],
+          #Immature_Leydig2
+          "Dcn", top.markers[12:15])
+
+genes <- c("Cst12", top.markers[26:29],  
+           "Sycp1", top.markers[32:35],
+           "Dmrt1", top.markers[c(36,38:40)],
+           "Dlk1", top.markers[6:9],
+           "Col4a3", top.markers[21:24],
+           "Tm4sf1", top.markers[1:4],
+           "Insl3", top.markers[c(16:17, 19,20)],
+           "Cd14", top.markers[11:14])
+
+# Heatmap
+# Visualize in heatmap
+for.heatmap <- logcounts(cur_sce)[match(genes, rowData(cur_sce)$Symbol),]
+rownames(for.heatmap) <- genes
+colnames(for.heatmap) <- paste(colData(cur_sce)$Barcode, 
+                               colData(cur_sce)$Library, sep = "")
+
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S3/Somatic_markers_heatmap.pdf", 
+    onefile = FALSE, width = 7, height = 10)
+pheatmap(for.heatmap, cluster_rows = FALSE,
+         clustering_distance_cols = cur_dist,
+         scale = "row", 
+         annotation_col = 
+           data.frame(row.names = colnames(for.heatmap),
+                        cell_type = colData(cur_sce)$AnnotatedClusters,
+                      sample = colData(cur_sce)$Sample),
+         color = colorRampPalette(c("#053061", "#4393c3", 
+                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
+         show_colnames = FALSE, 
+         annotation_colors = list(cell_type = 
+      metadata(cur_sce)$color_vector[names(metadata(cur_sce)$color_vector) %in%
+                                       unique(colData(cur_sce)$AnnotatedClusters)]),
+      clustering_method = "ward.D2",
+      cellheight = 8, fontsize = 7)
+dev.off()
+```
+
+# PCA of spermatogonia with early spermatocytes
+
+First we batch correct the counts.
+
+```{r}
+sce.spg.sc1 <- sce.all[,grepl("P1", colData(sce.all)$Sample) &
+                            grepl("Spermatogonia|Spermatocytes_1",
+                                  colData(sce.all)$AnnotatedClusters)]
+sce.spg.sc1 <- normalize(sce.spg.sc1)
+rm(sce.all)
+
+sce.single <- split.sce(sce = sce.spg.sc1, 
+                        groups = unique(colData(sce.spg.sc1)$Library), 
+                        colData.name = "Library")
+
+corrected <- batch.correction(sce.single)
+```
+
+```{r}
+# PCA on spermatogonia and earliest spermatocytes from P10 and P15
+pca.spg.sc1  <- prcomp(t(corrected))
+
+# Visalize PCA with marker genes
+
+Stra8.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
+                  PC2 = pca.spg.sc1$x[,2],
+                  Stra8 = logcounts(sce.spg.sc1)[
+                    rowData(sce.spg.sc1)$Symbol == "Stra8",])) +
+  geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
+
+H2afx.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
+                  PC2 = pca.spg.sc1$x[,2],
+                  H2afx = logcounts(sce.spermatogonia.p10.15)[
+                    rowData(sce.spermatogonia.p10.15)$Symbol == "H2afx",])) +
+  geom_point(aes(PC1, PC2, colour = H2afx)) + scale_colour_viridis()
+
+p.clusters <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
+                  PC2 = pca.spg.sc1$x[,2],
+                  clusters = colData(sce.spg.sc1)$AnnotatedClusters)) +
+  geom_point(aes(PC1, PC2, colour = clusters)) + 
+  scale_colour_manual(values = metadata(sce.spg.sc1)$color_vector)
+
+```
+
+# Save final figure
+
+```{r final}
+
+final <- plot_grid(P10.tsne, NULL,
+                   p.clusters, ncol = 2, nrow = 2)
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Fig_S3.pdf", 
+       final, width = 15, height = 10)
+```
