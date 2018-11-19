@@ -170,8 +170,15 @@ sce <- normalize(sce)
 # Select cells from RA blocked cells that are represented in adult trajectory
 sce_all_RA <- sce_RA[,colData(sce_RA)$cell_type %in% 
                        c("A1", "ln", "TypeBS", "TypeBG2M", "G1", "L", "Z", "eP", "mP", "mPL", 
-                         "lPL", "lP", "D", "MI", "MII", "RS1o2", "RS3o4", "RS5o6", "RS7o8")]
+                         "ePL", "lPL", "lP", "D", "MI", "MII", "RS1o2", "RS3o4", "RS5o6", "RS7o8")]
 sce_all_RA <- normalize(sce_all_RA)
+
+# Order the cells based on development
+colData(sce_all_RA)$cell_type <- factor(colData(sce_all_RA)$cell_type,
+                                        levels = c("A1", "ln", "TypeBS", "TypeBG2M", 
+                                                   "G1", "L", "Z", "ePL", "mPL", "lPL", "eP", 
+                                                   "mP", "lP", "D", "MI", "MII", "RS1o2", 
+                                                   "RS3o4", "RS5o6", "RS7o8"))
 
 # Batch correction
 sce.single <- split.sce(sce = sce, groups = unique(colData(sce)$Library), 
@@ -209,28 +216,33 @@ colour_vector_RA <- c("A1" = "#67001f",
 
 col_vector <- c(metadata(sce)$color_vector, colour_vector_RA)
 
-tSNE_RA <- ggplot() +
-  geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),1],
+#tSNE_RA <- ggplot() +
+#  geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),1],
+#                  tSNE2 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),2],
+#                  cell_type = colData(sce_all_RA)$cell_type),
+#             aes(tSNE1, tSNE2, colour = cell_type), size = 1.5, shape = 8) +
+#  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce),1],
+#                  tSNE2 = tsne$Y[1:ncol(sce),2],
+#                  cluster = colData(sce)$AnnotatedClusters),
+#             aes(tSNE1, tSNE2, colour = cluster), size = 0.5) + 
+#  scale_color_manual(values = col_vector)
+
+tSNE_RA <- ggplot() + geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),1],
                   tSNE2 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),2],
                   cell_type = colData(sce_all_RA)$cell_type),
-             aes(tSNE1, tSNE2, colour = cell_type), size = 1.5, shape = 8) +
+             aes(tSNE1, tSNE2), fill = "black", size = 3.5, shape = 21) +
+    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),2],
+                  cell_type = colData(sce_all_RA)$cell_type),
+             aes(tSNE1, tSNE2, colour = cell_type), size = 2.8, shape = 16) +
   geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce),1],
                   tSNE2 = tsne$Y[1:ncol(sce),2],
                   cluster = colData(sce)$AnnotatedClusters),
-             aes(tSNE1, tSNE2, colour = cluster), size = 0.5) + 
-  scale_color_manual(values = col_vector)
-
-ggplot() +
-  geom_point(data = data.frame(PC1 = pca$x[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),1],
-                  PC2 = pca$x[(ncol(sce)+1):(ncol(sce)+ncol(sce_all_RA)),2],
-                  cell_type = colData(sce_all_RA)$cell_type),
-             aes(PC1, PC2, colour = cell_type, size = 1.5, alpha = 0.75), shape = 8) +
-  geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce),1],
-                  PC2 = pca$x[1:ncol(sce),2],
-                  cluster = colData(sce)$AnnotatedClusters),
-             aes(PC1, PC2, colour = cluster)) + 
-  scale_color_manual(values = col_vector)
+             aes(tSNE1, tSNE2, colour = cluster), size = 1) + 
+  scale_color_manual(values = col_vector,
+                     breaks=c(levels(colData(sce_all_RA)$cell_type),
+                                       levels(colData(sce)$AnnotatedClusters)))  
 
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_2/Fig_2_RA_cells.pdf", tSNE_RA,
-       width = 250, units = "mm", height = 130)
+       width = 7, height = 5)
 ```
