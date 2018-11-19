@@ -14,6 +14,8 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+This script performs mapping of juvenile samples onto the adult, random forrest classification of bulk RNA-Seq data and mapping ot retinoic acid (RA) blocked cells onto the adult samples.
+
 # Load data and libraries
 
 ```{r data, message=FALSE}
