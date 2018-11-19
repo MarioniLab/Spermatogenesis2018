@@ -14,7 +14,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This script performs mapping of juvenile samples onto the adult, random forrest classification of bulk RNA-Seq data and mapping ot retinoic acid (RA) blocked cells onto the adult samples.
+This script performs visualization of juvenile samples mapped onto the adult trajectory, random forrest classification of bulk RNA-Seq data and mapping ot retinoic acid (RA) blocked cells onto the adult samples.
 
 # Load data and libraries
 
@@ -41,7 +41,7 @@ sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0"))]
 # Bulk data
 bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
 
-# Meta info
+# Meta info for bulk data
 meta <- read.table("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/BulkSamples_stats.txt", sep = "\t")
 ```
 
@@ -76,7 +76,7 @@ proportions.p <- ggplot(cur_df.melt) +
   theme(panel.background = element_blank(), axis.title = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12)) +
-  scale_size_area(max_size = 15) + guides(colour = FALSE)
+  scale_size_area(max_size = 15) + guides(fill = FALSE)
 
 # Save plot
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_2/Fig_2_proportions.pdf", proportions.p,
