@@ -32,9 +32,6 @@ source("../Functions/auxiliary.R")
 
 # Single cell data
 sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-
-# Read in markers for spermatogonia
-sperm.markers <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_3/Spermatogonia_Top15.xlsx")
 ```
 
 # Visualize spermatogonia from P10 and P15 and RA syncrhonised cells 

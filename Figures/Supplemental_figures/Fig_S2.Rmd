@@ -81,9 +81,19 @@ P5.batches <- ggplot(data.frame(tSNE1 = reducedDims(P5)$TSNE[,1],
 # Visualize all samples together
 
 ```{r}
-# tSNE all samples
+# tSNE all samples 
 cur_color_vector <- brewer.pal(10,"Paired")
 
+# Before batch correction
+# Highly variable genes
+HVgenes <- HVG(sce = sce.all[Matrix::rowMeans(logcounts(sce.all)) > 0.1,])
+
+set.seed(12345)
+pca <- prcomp_irlba(t(logcounts(sce.all[HVgenes,])), n = 50)
+tsne <- Rtsne(pca$x, pca = FALSE)
+reducedDims(sce.all)$TSNE <- tsne$Y
+
+# After batch correction
 samples <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
                          tSNE2 = reducedDims(sce.all)$TSNE[,2],
                          sample = colData(sce.all)$Sample)) +
