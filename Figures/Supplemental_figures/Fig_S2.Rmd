@@ -29,6 +29,8 @@ library(cowplot)
 library(RColorBrewer)
 library(pheatmap)
 library(viridis)
+library(irlba)
+library(Rtsne)
 source("../../Functions/auxiliary.R")
 
 # Single cell data
@@ -91,7 +93,18 @@ HVgenes <- HVG(sce = sce.all[Matrix::rowMeans(logcounts(sce.all)) > 0.1,])
 set.seed(12345)
 pca <- prcomp_irlba(t(logcounts(sce.all[HVgenes,])), n = 50)
 tsne <- Rtsne(pca$x, pca = FALSE)
-reducedDims(sce.all)$TSNE <- tsne$Y
+
+samples.before <- ggplot(data = data.frame(tSNE1 = tsne$Y[,1],
+                         tSNE2 = tsne$Y[,2],
+                         sample = colData(sce.all)$Sample)) +
+    geom_point(aes(tSNE1, tSNE2, colour = sample), size = 0.5) +
+    scale_color_manual(values = cur_color_vector) + 
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.text = element_blank(), axis.ticks = element_blank(),
+          axis.title = element_text(size = 12, face = "bold"), 
+          line = element_blank()) + ggtitle("Samples")
 
 # After batch correction
 samples <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
@@ -124,10 +137,11 @@ cluster <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.all)$TSNE[,1],
 # Save final figure
 
 ```{r final}
-A <- plot_grid(adult.batches + theme(legend.position = c(.8,.9)), P5.batches + theme(legend.position = c(.8,.9)), ncol = 1, nrow = 2)
-B <- plot_grid(samples + theme(legend.position=c(.01,.05)), cluster + theme(legend.position = "none"), ncol = 1, nrow =2)
-final <- plot_grid(A, B, ncol = 2, nrow = 1, rel_widths=c(2,3))
+A <- plot_grid(adult.batches + theme(legend.position = c(.8,.9)), P5.batches + theme(legend.position = c(.8,.9)), ncol = 2, nrow = 1)
+B <- plot_grid(samples.before + theme(legend.position="none"), samples + theme(legend.position=c(.01,.05)), ncol = 2, nrow =1)
+C <- plot_grid(cluster + theme(legend.position="none"), NULL, ncol = 2, nrow =1)
+final <- plot_grid(A, B, C, ncol = 1, nrow = 3)
 
 ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S2/Fig_S2.pdf", 
-       final, width = 15, height = 15)
+       final, width = 15, height = 20)
 ```
