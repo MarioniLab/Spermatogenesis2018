@@ -1,5 +1,5 @@
 ---
-title: "Figure S3"
+title: "Figure S2"
 author: "Nils Eling"
 date: "`r Sys.Date()`"
 output: 
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S2.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -29,11 +29,11 @@ library(cowplot)
 library(RColorBrewer)
 library(pheatmap)
 library(viridis)
-source("../Functions/auxiliary.R")
+source("../../Functions/auxiliary.R")
 
 # Single cell data
-sce.all <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-sce.all <- sce.all[,!(colData(sce.all)$AnnotatedClusters %in% c(paste("NA", 1:5, sep = ""), "Outliers"))]
+sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.all <- sce.all[,colData(sce.all)$AnnotatedClusters != "Outliers"]
 ```
 
 # Visualize the two batches for adult B6 and P5
@@ -50,7 +50,7 @@ adult.batches <- ggplot(data.frame(tSNE1 = reducedDims(B6)$TSNE[,1],
                   tSNE2 = reducedDims(B6)$TSNE[,2],
                   batch = colData(B6)$Library)) + 
   geom_point(aes(tSNE1, tSNE2, colour = batch, size = batch)) +
-  scale_colour_manual(values = c("black", "red")) +
+  scale_colour_manual(values = c("dodgerblue4", "firebrick1")) +
   scale_size_manual(values = c(3,1)) + 
   theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
@@ -69,7 +69,7 @@ P5.batches <- ggplot(data.frame(tSNE1 = reducedDims(P5)$TSNE[,1],
                   tSNE2 = reducedDims(P5)$TSNE[,2],
                   batch = colData(P5)$Library)) + 
   geom_point(aes(tSNE1, tSNE2, colour = batch, size = batch)) +
-  scale_colour_manual(values = c("black", "red")) +
+  scale_colour_manual(values = c("dodgerblue", "firebrick4")) +
   scale_size_manual(values = c(3,1)) + 
   theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
@@ -118,6 +118,6 @@ A <- plot_grid(adult.batches + theme(legend.position = c(.8,.9)), P5.batches + t
 B <- plot_grid(samples + theme(legend.position=c(.01,.05)), cluster + theme(legend.position = "none"), ncol = 1, nrow =2)
 final <- plot_grid(A, B, ncol = 2, nrow = 1, rel_widths=c(2,3))
 
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S2/Fig_S2.pdf", 
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S2/Fig_S2.pdf", 
        final, width = 15, height = 15)
 ```
