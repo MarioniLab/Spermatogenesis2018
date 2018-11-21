@@ -27,6 +27,7 @@ library(viridis)
 library(pheatmap)
 library(irlba)
 library(Rtsne)
+library(randomForest)
 source("../Functions/auxiliary.R")
 
 # Single cell data
@@ -51,6 +52,12 @@ sce_RA <- sce_RA[match(intersect(rownames(sce_RA), rowData(sce)$Symbol),
 rownames(sce_RA) <- rownames(sce)
 rowData(sce_RA)$Symbol <- rowData(sce)$Symbol
 rowData(sce_RA)$ID <- rowData(sce)$ID
+
+# Bulk data
+bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
+
+# Meta info for bulk data
+meta <- read.table("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/BulkSamples_stats.txt", sep = "\t")
 ```
 
 # Map RA cells to germ cells of P15 sample
@@ -127,6 +134,61 @@ Lep.Zygot.markers <- marker.detection(sce,
                                   as.character(colData(sce)$P15Clusters))
 
 write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S5.xlsx")
+```
+
+# Random forrest mapping of bulk RNA-Seq data
+
+```{r}
+# Select marker genes
+cur_markers <- as.character(unlist(lapply(Lep.Zygot.markers, function(n){rownames(n)[1:50]})))
+cur_markers <- cur_markers[cur_markers %in% rownames(bulk)]
+
+# Train the classifier on P15 data 
+labels <- factor(colData(sce)$P15Clusters,
+                    levels = levels(colData(sce)$P15Clusters)[
+                      levels(colData(sce)$P15Clusters) %in%
+                        unique(colData(sce)$P15Clusters)])
+
+# Create training and testing datasets
+set.seed(1234)
+sam <- sample(1:ncol(sce), 4000)
+
+train.data <- as.matrix(logcounts(sce)[cur_markers,sam])
+train.labels <- labels[sam] 
+test.data <- as.matrix(logcounts(sce)[cur_markers,-sam])
+test.labels <- labels[-sam] 
+
+# Scale the counts prior to training
+# Z score
+train.data.Z <- t(apply(train.data, 1, function(n){(n - mean(n))/sd(n)}))
+test.data.Z <- t(apply(test.data, 1, function(n){(n - mean(n))/sd(n)}))
+
+# Random forrest
+Tree <- randomForest(x = t(as.matrix(train.data.Z)), y = train.labels, 
+                     xtest = t(as.matrix(test.data.Z)), 
+                     ytest = test.labels, keep.forest = TRUE)
+
+# Prediction 
+# Select only bulk data from P6 - P20
+cur_bulk <- bulk[,rownames(meta)[1:15]]
+cur_meta <- meta[rownames(meta)[1:15],]
+new.data <- log2(cur_bulk[cur_markers,] + 1)
+new.data.Z <- t(apply(new.data, 1, function(n){(n - mean(n))/sd(n)}))
+
+pred.bulk <- predict(object = Tree, newdata = t(new.data.Z), type="prob")
+
+# Collect day info on libraries
+df <- data.frame(library = rownames(pred.bulk),
+                 day = as.numeric(sub(" days", "", cur_meta[rownames(pred.bulk),"Age"])))
+
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/Fig_4_bulkmapping_heatmap.pdf", 
+    onefile = FALSE)
+pheatmap(pred.bulk[order(df$day),], cluster_cols = FALSE, cluster_rows = FALSE,
+         col = inferno(100),
+         annotation_row = data.frame(row.names = rownames(pred.bulk),
+                    sample = factor(df$day, levels = unique(df$day)[order(unique(df$day))])),
+         labels_row = df$day[order(df$day)], border_color = NA)
+dev.off()
 ```
 
 # Save final figure
