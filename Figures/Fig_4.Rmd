@@ -57,7 +57,8 @@ rowData(sce_RA)$ID <- rowData(sce)$ID
 
 ```{r}
 # Select Early germ cells from RA blocked cells
-sce_early_RA <- sce_RA[,grepl("TypeB|A1|ePL|G1|mPL|eP|mP|lPL|Z|L|ln", colData(sce_RA)$cell_type)]
+sce_early_RA <- sce_RA[,grepl("TypeB|A1|ePL|G1|mPL|eP|mP|lPL|Z|L|ln|lP", colData(sce_RA)$cell_type) &
+                         colData(sce_RA)$cell_type != "Spo11KOL1"]
 
 sce <- normalize(sce)
 sce_early_RA <- normalize(sce_early_RA)
@@ -78,7 +79,7 @@ corrected <- mnnCorrect(as.matrix(logcounts(sce)[genes,]),
                         as.matrix(logcounts(sce_early_RA)[genes,]), 
                         cos.norm.in=TRUE, cos.norm.out=TRUE, sigma=0.1)
 # Visualization
-set.seed(123)
+set.seed(222)
 pca <- prcomp_irlba(t(do.call("cbind", corrected$corrected)), n = 50)
 tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
 
@@ -93,111 +94,39 @@ emptyDrops <- ggplot() +
                   tSNE2 = cur_tsne[sce$AnnotatedClusters != "NewCell",2],
                   clusters = sce$AnnotatedClusters[sce$AnnotatedClusters != "NewCell"]),
              aes(tSNE1, tSNE2, colour = clusters)) +
-            scale_colour_manual(values = metadata(sce)$color_vector)
-```
-
-```{r}
-cur_sce <- normalize(cur_sce)
-
-HVgenes <- HVG(cur_sce)
-
-pca  <- prcomp(t(logcounts(cur_sce)[HVgenes,]))
-
-p.clusters <- ggplot(data.frame(PC1 = pca$x[,1],
-                  PC2 = pca$x[,2],
-                  clusters = colData(cur_sce)$P15Clusters)) +
-  geom_point(aes(PC1, PC2, colour = clusters)) + 
-  scale_colour_manual(values = metadata(cur_sce)$colour_vector.P15) +
+            scale_colour_manual(values = metadata(sce)$color_vector) +
   guides(colour = FALSE)
 
-p.nogenes <- ggplot(data.frame(PC1 = pca$x[,1],
-                  PC2 = pca$x[,2],
-                  no.genes = nexprs(cur_sce, detection_limit = 0))) +
-  geom_point(aes(PC1, PC2, colour = no.genes)) + 
-  scale_color_gradientn(colours = inferno(100))
+# Number of genes expressed
+no.genes <- nexprs(sce, detection_limit = 0)
+number_genes <- ggplot() +
+  geom_point(data = data.frame(tSNE1 = cur_tsne[,1],
+                  tSNE2 = cur_tsne[,2],
+                  genes = no.genes),
+             aes(tSNE1, tSNE2, colour = genes)) +
+            scale_colour_gradientn(colours = inferno(100))
 
-Lep.Zygot.markers <- marker.detection(sce.P15, 
-                                  as.character(colData(sce.P15)$P15Clusters))
-
-write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S5.xlsx")
+# Plot emptyDrops clustering with RA cells
+empty_drops_clustered <- ggplot() +
+  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce),1],
+                  tSNE2 = tsne$Y[1:ncol(sce),2],
+                  cluster = colData(sce)$P15Clusters),
+             aes(tSNE1, tSNE2, colour = cluster)) + 
+    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_early_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_early_RA)),2],
+                  cell_type = colData(sce_early_RA)$cell_type),
+             aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
+  scale_color_manual(values = c(metadata(sce)$colour_vector.P15,
+                                metadata(sce_early_RA)$colour_vector_RA, "NewCell" = "black"))
 ```
 
-# Visualize RA blocked cells on empty drops
+# Find marker genes
 
 ```{r}
-# Select only the germ cells
-sce.P15 <- sce[,grepl("Pachytene|Differentiating|Zygotene|Leptotene|Undifferentiated", colData(sce)$P15Clusters) &
-                 colData(sce)$AnnotatedClusters != "Outliers"]
+Lep.Zygot.markers <- marker.detection(sce, 
+                                  as.character(colData(sce)$P15Clusters))
 
-# Select Early germ cells from RA blocked cells
-sce_early_RA <- sce_RA[,grepl("TypeB|A1|ePL|G1|mPL|eP|mP|lPL|Z|L|ln|Spo11KOL1", colData(sce_RA)$cell_type)]
-sce_early_RA <- sce_early_RA[intersect(rownames(sce_early_RA), rownames(sce.P15)),]
-sce.P15 <- sce.P15[rownames(sce_early_RA),]
-
-sce.P15 <- normalize(sce.P15)
-sce_early_RA <- normalize(sce_early_RA)
-
-# Batch correction
-# Calculate highly variable genes
-HVG.genes <- lapply(list(sce.P15, sce_early_RA), function(n){
-    HVG <- trendVar(n, use.spikes = FALSE)
-    decomposeVar(n, HVG)
-  })
-  
-HVG.df <- do.call("combineVar", HVG.genes)
-HVG.df <- HVG.df[order(HVG.df$bio, decreasing = TRUE),]
-genes <- rownames(HVG.df)[1:1000]
-  
-# Batch correction
-corrected <- mnnCorrect(as.matrix(logcounts(sce.P15)[genes,]),
-                        as.matrix(logcounts(sce_early_RA)[genes,]), 
-                        cos.norm.in=TRUE, cos.norm.out=TRUE, sigma=0.1)
-
-# Assign mutual nearest neighbours in P15 sample with cell identity from RA blocked cells
-new.cellID <- vector(length = ncol(sce.P15))
-new.cellID[as.integer(corrected$pairs[[2]]$other.cell)] <- sce_early_RA$cell_type[as.integer(corrected$pairs[[2]]$current.cell)]
-new.cellID[new.cellID == "FALSE"] <- "NewCell"
-colData(sce.P15)$RA_blocked_identity <- new.cellID
-
-# Visualization
-set.seed(111)
-pca <- prcomp_irlba(t(do.call("cbind", corrected$corrected)), n = 50)
-tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
-
-# CellRanger threshold
-empty_drops <- ggplot() +
-  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
-                  tSNE2 = tsne$Y[1:ncol(sce.P15),2],
-                  cluster = colData(sce.P15)$AnnotatedClusters),
-             aes(tSNE1, tSNE2, colour = cluster)) + 
-  scale_color_manual(values = c(metadata(sce.P15)$color_vector,
-                                metadata(sce_early_RA)$colour_vector_RA, "NewCell" = "black"))
-
-# CellRanger threshold with RA mapped cells
-empty_drops_RA <- ggplot() +
-  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
-                  tSNE2 = tsne$Y[1:ncol(sce.P15),2],
-                  cluster = colData(sce.P15)$AnnotatedClusters),
-             aes(tSNE1, tSNE2, colour = cluster)) + 
-    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),1],
-                  tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
-                  cell_type = colData(sce_early_RA)$cell_type),
-             aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
-  scale_color_manual(values = c(metadata(sce.P15)$color_vector,
-                                metadata(sce_early_RA)$colour_vector_RA, "NewCell" = "black"))
-
-# EmptyDrops threshold
-empty_drops_clustered <- ggplot() +
-  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
-                  tSNE2 = tsne$Y[1:ncol(sce.P15),2],
-                  cluster = colData(sce.P15)$P15Clusters),
-             aes(tSNE1, tSNE2, colour = cluster)) + 
-    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),1],
-                  tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
-                  cell_type = colData(sce_early_RA)$cell_type),
-             aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
-  scale_color_manual(values = c(metadata(sce.P15)$colour_vector.P15,
-                                metadata(sce_early_RA)$colour_vector_RA, "NewCell" = "black"))
+write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S5.xlsx")
 ```
 
 # Save final figure
