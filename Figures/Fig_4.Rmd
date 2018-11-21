@@ -119,10 +119,14 @@ empty_drops_clustered <- ggplot() +
                   tSNE2 = tsne$Y[1:ncol(sce),2],
                   cluster = colData(sce)$P15Clusters),
              aes(tSNE1, tSNE2, colour = cluster)) + 
+      geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_early_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_early_RA)),2],
+                  cell_type = colData(sce_early_RA)$cell_type),
+             aes(tSNE1, tSNE2, size = 2.5)) +
     geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_early_RA)),1],
                   tSNE2 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_early_RA)),2],
                   cell_type = colData(sce_early_RA)$cell_type),
-             aes(tSNE1, tSNE2, colour = cell_type, size = 3)) +
+             aes(tSNE1, tSNE2, colour = cell_type), size = 2.3) +
   scale_color_manual(values = c(metadata(sce)$colour_vector.P15,
                                 metadata(sce_early_RA)$colour_vector_RA, "NewCell" = "black"))
 ```
@@ -191,54 +195,66 @@ pheatmap(pred.bulk[order(df$day),], cluster_cols = FALSE, cluster_rows = FALSE,
 dev.off()
 ```
 
-# Save final figure
-
-```{r save}
-A <- plot_grid(Gfra1 + theme(legend.position=c(.05,.8)), Nanos3+ theme(legend.position=c(.05,.8)), Stra8+ theme(legend.position=c(.05,.8)), Dmrtb1+ theme(legend.position=c(.05,.8)), samples+ theme(legend.position=c(.05,.8)), p.clusters + theme(legend.position=c(.05,.8)), ncol = 6)
-B_legend1 <- get_legend(empty_drops + theme(legend.position="bottom"))
-B_legend2 <- get_legend(empty_drops_RA + theme(legend.position="bottom"))
-B_legend3 <- get_legend(empty_drops_clustered + theme(legend.position = "bottom"))
-B <- plot_grid(empty_drops+ theme(legend.position="none"), empty_drops_RA+ theme(legend.position="none"), empty_drops_clustered+ theme(legend.position="none"), B_legend1, B_legend2, B_legend3, ncol = 3, nrow = 2, rel_heights = c(4,1))
-final <- plot_grid(A, B, nrow=2, rel_heights = c(1,2))
-
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3/Fig_3.pdf",
-       final, width = 25, height = 20)
-```
-
-# Save final figure
-
-```{r save}
-A <- plot_grid(emptyDrops, emptyDrops.P15, p.clusters, p.nogenes,
-               ncol = 4, nrow = 1, 
-               labels = c("A", "B", "C"))
-B <- plot_grid(emptyDrops.Sycp1, emptyDrops.H2afx, emptyDrops.Hormad1, emptyDrops.no.genes,
-               ncol = 4, nrow = 1, 
-               labels = c("D", NULL, NULL))
-final <- plot_grid(A, B, C,
-                   ncol = 1, nrow = 2)
-
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Fig_S4.pdf", final,
-       width = 20, height = 12)
-```
-
-# Save versions of the plots that have figure legends
+# Heatmap of marker genes
 
 ```{r}
-emptyDrops <- ggplot() +
-  geom_point(data = df2, aes(tsne1, tsne2, colour = batch), size = 0.5) +
-  geom_point(data = df1, aes(tsne1, tsne2, colour = batch), size = 0.5) +
-  scale_color_manual(values = metadata(sce)$color_vector)
+# First we order the cells based on their differerentiation trajectory
+prank <- PT(rd = pca$x[1:ncol(sce),1:10], clusters = colData(sce)$P15Clusters, 
+            col_vector = metadata(sce)$colour_vector.P15)
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/emptyDrops_labels.pdf", emptyDrops,
-       width = 7, height = 7)
+# Find marker genes to visualize
+Lep.Zygot.markers <- Lep.Zygot.markers[c("Undifferentiated_Spermatogonia",
+                                                 "Differentiating_Spermatogonia_1",
+                                                 "Differentiating_Spermatogonia_2",
+                                                 "Leptotene",
+                                                 "Zygotene",
+                                                 "Pachytene_1",
+                                         "Pachytene_2")]
 
-emptyDrops.P15 <- ggplot() +
-  geom_point(data = df2[grepl("P15", df2$sample),], 
-             aes(tsne1, tsne2, colour = P15), size = 0.5) +
-  geom_point(data = df1[grepl("P15", df1$sample),], 
-             aes(tsne1, tsne2, colour = P15), size = 0.5) +
-  scale_color_manual(values = metadata(sce)$colour_vector.P15) 
+markers <- data.frame(symbol = unlist(lapply(Lep.Zygot.markers, 
+                                             function(n){n[1:5,"GeneName"]})),
+                      ID = unlist(lapply(Lep.Zygot.markers, 
+                                             function(n){rownames(n)[1:5]})),
+                      group = rep(names(Lep.Zygot.markers), each = 5))
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/emptyDrops.P15_labels.pdf", emptyDrops.P15,
-       width = 7, height = 7)
+# Collect count for heatmap
+for.heatmap <- logcounts(sce)[match(markers$symbol, 
+                                                         rowData(sce)$Symbol),
+                                      order(prank[,"rank"], decreasing = TRUE)]
+colnames(for.heatmap) <- paste(colData(sce)$Library[
+  order(prank[,"rank"], decreasing = TRUE)],
+  colData(sce)$Barcode[
+  order(prank[,"rank"], decreasing = TRUE)], sep = "_")
+rownames(for.heatmap) <- markers$symbol
+
+# Visualize top genes in form of heatmap
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/EmptyDrops_heatmap_P15.pdf", onefile = FALSE, width = 10, height = 15)
+pheatmap(for.heatmap, 
+         cluster_rows = FALSE, cluster_cols = FALSE,
+         scale = "row", 
+         show_colnames = FALSE, gaps_row = seq(5,30, 5),
+         cellheight = 8, fontsize = 7,
+         color = colorRampPalette(c("#053061", "#4393c3", 
+                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_col = data.frame(row.names = colnames(for.heatmap),
+                                     cell_type = colData(sce)$P15Clusters[order(prank[,"rank"], 
+                                                                decreasing = TRUE)]),
+         annotation_row = data.frame(row.names = rownames(for.heatmap),
+                                     gene_list = markers$group),
+         annotation_colors = list(cell_type = metadata(sce)$colour_vector.P15,
+                                  gene_list = metadata(sce)$colour_vector.P15))
+dev.off()
+```
+
+# Save final figure
+
+```{r save}
+B_legend1 <- get_legend(empty_drops_clustered + theme(legend.position="right"))
+final <- plot_grid(emptyDrops,
+               number_genes + theme(legend.position = "right"),
+               empty_drops_clustered + theme(legend.position = "none"),
+               B_legend1,  ncol = 2, nrow = 2)
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/Fig_4.pdf",
+       final, width = 15, height = 15)
 ```
