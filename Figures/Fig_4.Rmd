@@ -25,20 +25,78 @@ library(openxlsx)
 library(cowplot)
 library(viridis)
 library(pheatmap)
+library(irlba)
+library(Rtsne)
 source("../Functions/auxiliary.R")
 
 # Single cell data
 sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+
+# Read in RA blocked cells
+sce_RA <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_RA.rds")
+
+# Select germ cells from P15
+sce <- sce[,colData(sce)$Sample == "P15"]
+sce <- sce[,grepl("Pachytene|Differentiating|Zygotene|Leptotene|Undifferentiated", 
+                          colData(sce)$P15Clusters) &
+                 colData(sce)$AnnotatedClusters != "Outliers" &
+             colData(sce)$AnnotatedClusters != "Sertoli"]
+
+# Match the genesnames
+sce <- sce[match(intersect(rownames(sce_RA), 
+                          rowData(sce)$Symbol), rowData(sce)$Symbol),]
+sce_RA <- sce_RA[match(intersect(rownames(sce_RA), rowData(sce)$Symbol), 
+                       rownames(sce_RA)),]
+
+rownames(sce_RA) <- rownames(sce)
+rowData(sce_RA)$Symbol <- rowData(sce)$Symbol
+rowData(sce_RA)$ID <- rowData(sce)$ID
 ```
 
-# Marker genes and PCA at P15
+# Map RA cells to germ cells of P15 sample
 
 ```{r}
-sce.P15 <- sce[,colData(sce)$Sample == "P15"]
-sce.P15 <- normalize(sce.P15)
+# Select Early germ cells from RA blocked cells
+sce_early_RA <- sce_RA[,grepl("TypeB|A1|ePL|G1|mPL|eP|mP|lPL|Z|L|ln", colData(sce_RA)$cell_type)]
 
-# PCA of P15 germ cells
-cur_sce <- sce.P15[,grepl("Leptotene|Zygotene|Sperm|Pachytene", colData(sce.P15)$P15Clusters)]
+sce <- normalize(sce)
+sce_early_RA <- normalize(sce_early_RA)
+
+# Batch correction
+# Calculate highly variable genes
+HVG.genes <- lapply(list(sce, sce_early_RA), function(n){
+    HVG <- trendVar(n, use.spikes = FALSE)
+    decomposeVar(n, HVG)
+  })
+  
+HVG.df <- do.call("combineVar", HVG.genes)
+HVG.df <- HVG.df[order(HVG.df$bio, decreasing = TRUE),]
+genes <- rownames(HVG.df)[1:1000]
+  
+# Batch correction
+corrected <- mnnCorrect(as.matrix(logcounts(sce)[genes,]),
+                        as.matrix(logcounts(sce_early_RA)[genes,]), 
+                        cos.norm.in=TRUE, cos.norm.out=TRUE, sigma=0.1)
+# Visualization
+set.seed(123)
+pca <- prcomp_irlba(t(do.call("cbind", corrected$corrected)), n = 50)
+tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
+
+# Plot cellRanger and emptyDrops distribution
+cur_tsne <- tsne$Y[1:ncol(sce),]
+emptyDrops <- ggplot() +
+  geom_point(data = data.frame(tSNE1 = cur_tsne[sce$AnnotatedClusters == "NewCell",1],
+                  tSNE2 = cur_tsne[sce$AnnotatedClusters == "NewCell",2],
+                  clusters = sce$AnnotatedClusters[sce$AnnotatedClusters == "NewCell"]),
+             aes(tSNE1, tSNE2, colour = clusters)) +
+    geom_point(data = data.frame(tSNE1 = cur_tsne[sce$AnnotatedClusters != "NewCell",1],
+                  tSNE2 = cur_tsne[sce$AnnotatedClusters != "NewCell",2],
+                  clusters = sce$AnnotatedClusters[sce$AnnotatedClusters != "NewCell"]),
+             aes(tSNE1, tSNE2, colour = clusters)) +
+            scale_colour_manual(values = metadata(sce)$color_vector)
+```
+
+```{r}
 cur_sce <- normalize(cur_sce)
 
 HVgenes <- HVG(cur_sce)
@@ -67,10 +125,6 @@ write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Cambridge University)/SST_sperm
 # Visualize RA blocked cells on empty drops
 
 ```{r}
-# P15 data
-sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
-sce <- sce[,grepl("P15", colData(sce)$Sample)]
-
 # Select only the germ cells
 sce.P15 <- sce[,grepl("Pachytene|Differentiating|Zygotene|Leptotene|Undifferentiated", colData(sce)$P15Clusters) &
                  colData(sce)$AnnotatedClusters != "Outliers"]
