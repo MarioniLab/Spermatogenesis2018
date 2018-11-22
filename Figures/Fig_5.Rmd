@@ -202,8 +202,7 @@ cors$logFC.Spermatids <- DE$Spermatocytes$logFC.Spermatids[match(cors$gene2,
 cors.out <- cors[order(cors$rho, decreasing = TRUE),]
 cors.out <- cors.out[cors$FDR < 0.1 & (cors$rho > 0.3 | cors$rho < -0.3), ]
 
-write.xlsx(cors, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S6.xlsx")
-
+write.xlsx(cors, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S6.xlsx")
 ```
 
 # Enrichment analysis for fertility genes
@@ -216,7 +215,7 @@ library(tabulizer)
 # There are pages which are diffucult to read in: 1, 16, 18, 21, 
 # We extracted the information on these pages by hand
 fertility.genes <- tabulizer::extract_tables("https://media.nature.com/original/nature-assets/nm/journal/v14/n11/extref/nm.f.1895-S1.pdf", pages = c(2:15, 17, 19, 20, 22))
-fertility.genes.1 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/NatMed_fertility_remaining.xlsx")
+fertility.genes.1 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_5/NatMed_fertility_remaining.xlsx")
 
 # Parse the output and save in new data.frame
 fertility.genes.clean <- lapply(fertility.genes, function(n){
@@ -285,7 +284,7 @@ p.stats <- ggplot(df.stats.red) + geom_col(aes(factor(Celltype,
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
   ylab("-log10(BH-corrected p-value)")
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/Fig_4_enrichment.pdf", 
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_5/Fig_5_enrichment.pdf", 
        p.stats, width = 5, height = 4)
 
 # See if genes are enriched in all marker genes
@@ -324,9 +323,10 @@ rownames(for.heatmap) <- markers
 colnames(for.heatmap) <- colData(sce.spermatocytes)$Barcode[order(prank[,"rank"])]
 
 # Marker genes to label
-to.label <- c("Hmgb2", "Tex101", "Cks2", "Sycp1", "Sycp2", "Piwil1", "Ybx2", "Pou5f2", "Cdk1", "Aurka", "H3f3b")
+to.label <- c("Hmgb2", "Tex101", "Cks2", "Sycp1", "Sycp2", "Piwil1", "Ybx2", "Pou5f2", "Cdk1", "Aurka", "H3f3b", 
+              "Spc25")
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/Fig_4_MarkerGenes.pdf", onefile = FALSE, height = 5, width = 10)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_5/Fig_5_MarkerGenes.pdf", onefile = FALSE, height = 5, width = 10)
 pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE,
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100), 
@@ -339,7 +339,7 @@ pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
                                   enrichment = viridis(100)),
          annotation_row = data.frame(row.names = rownames(for.heatmap),
                                      cell_type = factor(rep(rownames(df.stats.red), each = 15),
-                                                        labels = rownames(df.stats.red)),
+                                                        levels = rownames(df.stats.red)),
                                      infertility = df.fertility[rownames(for.heatmap),"Sex"],
                                      enrichment = rep(-log10(df.stats.red$BHvalue), each = 15),
                                      label = ifelse(rownames(for.heatmap) %in% to.label, "Yes", "No")), 
@@ -388,7 +388,7 @@ proportions.p <- ggplot(cur_df.melt) + geom_point(aes(group, rev(sample), size =
         axis.text.y = element_text(size = 12))
 
 # Save plot
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/CellTypeProportion_Tc1.pdf",
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_5/CellTypeProportion_Tc1.pdf",
        proportions.p, width = 10, height = 5)
 
 # Statistical testing between conditions
@@ -397,7 +397,7 @@ sample.counts <- sample.counts[,1:22]
 overall.counts <- plyr::count(df = df, vars = "sample")$freq
 
 y <- DGEList(counts = t(sample.counts), lib.size = overall.counts, 
-               group = c(rep("Tc0", 3), rep("Tc1", 4)))
+               group = c(rep("Tc0", 3), rep("Tc1", 3)))
 design <- model.matrix(~0+y$samples$group)
 colnames(design) <- c("Tc0", "Tc1")
 y <- estimateDisp(y,design)
