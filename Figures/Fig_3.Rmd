@@ -312,10 +312,10 @@ clusters <- igraph::cluster_louvain(g)$membership
 
 
 # Change cluster labels
-clusters[clusters == 1] <- "Prospermatogonia"
-clusters[clusters == 2] <- "Undiff_1"
-clusters[clusters == 3] <- "Diff"
-clusters[clusters == 4] <- "Undiff_2"
+clusters[clusters == 1] <- "Diff"
+clusters[clusters == 2] <- "Prospermatogonia"
+clusters[clusters == 3] <- "Undiff_2"
+clusters[clusters == 4] <- "Undiff_1"
 
 
 col_vector <- c("Prospermatogonia" = "#7A9606",
