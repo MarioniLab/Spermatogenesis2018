@@ -277,7 +277,7 @@ colnames(for.heatmap) <- paste(colData(sce.spermatogonia)$Library[
 rownames(for.heatmap) <- markers$symbol
 
 # Visualize top genes in form of heatmap
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Spermatogonia_heatmap_P10_P15.pdf", onefile = FALSE, width = 10, height = 15)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3/Spermatogonia_heatmap_P10_P15.pdf", onefile = FALSE, width = 10, height = 15)
 pheatmap(for.heatmap, 
          cluster_rows = FALSE, cluster_cols = FALSE,
          scale = "row", 
