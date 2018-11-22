@@ -233,8 +233,15 @@ A <- plot_grid(sample + theme(legend.position=c(.8,.3)), cluster + theme(legend.
 # Find marker genes for these groups
 
 ```{r}
+# Making sure to test across all detected genes
+sce.spermatogonia <- sce[,grepl("P10|P15", colData(sce)$Sample) &
+                                       colData(sce)$AnnotatedClusters == "Spermatogonia"]
+sce.spermatogonia <- sce.spermatogonia[rowMeans(counts(sce.spermatogonia)) > 0,]
+sce.spermatogonia <- normalize(sce.spermatogonia)
+
 spermatogonia.markers <- marker.detection(sce.spermatogonia, 
-                                          clusters)
+                                          as.character(clusters),
+                                          blocking = sce.spermatogonia$Sample)
 
 write.xlsx(spermatogonia.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S4.xlsx")
 ```
@@ -293,10 +300,11 @@ dev.off()
 ```{r}
 spermatogonia.P5 <- sce[,grepl("P5", colData(sce)$Sample) &
                                        colData(sce)$AnnotatedClusters == "Spermatogonia"]
+spermatogonia.P5 <- spermatogonia.P5[rowMeans(counts(spermatogonia.P5)) > 0,]
 spermatogonia.P5 <- normalize(spermatogonia.P5)
 
 # Visualize non-batch corrected data
-HVgenes <- HVG(sce = spermatogonia.P5[Matrix::rowMeans(logcounts(spermatogonia.P5)) > 0.1,])
+HVgenes <- HVG(sce = spermatogonia.P5)
 pca.P5 <- prcomp(t(logcounts(spermatogonia.P5)[HVgenes,]))
 ggplot(data.frame(PC1 = pca.P5$x[,1],
                   PC2 = pca.P5$x[,2],
@@ -312,10 +320,10 @@ clusters <- igraph::cluster_louvain(g)$membership
 
 
 # Change cluster labels
-clusters[clusters == 1] <- "Diff"
-clusters[clusters == 2] <- "Prospermatogonia"
-clusters[clusters == 3] <- "Undiff_2"
-clusters[clusters == 4] <- "Undiff_1"
+clusters[clusters == 1] <- "Prospermatogonia"
+clusters[clusters == 2] <- "Undiff_2"
+clusters[clusters == 3] <- "Undiff_1"
+clusters[clusters == 4] <- "Diff"
 
 
 col_vector <- c("Prospermatogonia" = "#7A9606",
