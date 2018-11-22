@@ -44,14 +44,14 @@ sce <- sce[,grepl("Pachytene|Differentiating|Zygotene|Leptotene|Undifferentiated
              colData(sce)$AnnotatedClusters != "Sertoli"]
 
 # Match the genesnames
-sce <- sce[match(intersect(rownames(sce_RA), 
+sce.P15 <- sce[match(intersect(rownames(sce_RA), 
                           rowData(sce)$Symbol), rowData(sce)$Symbol),]
-sce_RA <- sce_RA[match(intersect(rownames(sce_RA), rowData(sce)$Symbol), 
+sce_RA <- sce_RA[match(intersect(rownames(sce_RA), rowData(sce.P15)$Symbol), 
                        rownames(sce_RA)),]
 
-rownames(sce_RA) <- rownames(sce)
-rowData(sce_RA)$Symbol <- rowData(sce)$Symbol
-rowData(sce_RA)$ID <- rowData(sce)$ID
+rownames(sce_RA) <- rownames(sce.P15)
+rowData(sce_RA)$Symbol <- rowData(sce.P15)$Symbol
+rowData(sce_RA)$ID <- rowData(sce.P15)$ID
 
 # Bulk data
 bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
@@ -67,12 +67,12 @@ meta <- read.table("../../../Dropbox (Cambridge University)/SST_spermatocytes/An
 sce_early_RA <- sce_RA[,grepl("TypeB|A1|ePL|G1|mPL|eP|mP|lPL|Z|L|ln|lP", colData(sce_RA)$cell_type) &
                          colData(sce_RA)$cell_type != "Spo11KOL1"]
 
-sce <- normalize(sce)
+sce.P15 <- normalize(sce.P15)
 sce_early_RA <- normalize(sce_early_RA)
 
 # Batch correction
 # Calculate highly variable genes
-HVG.genes <- lapply(list(sce, sce_early_RA), function(n){
+HVG.genes <- lapply(list(sce.P15, sce_early_RA), function(n){
     HVG <- trendVar(n, use.spikes = FALSE)
     decomposeVar(n, HVG)
   })
@@ -82,7 +82,7 @@ HVG.df <- HVG.df[order(HVG.df$bio, decreasing = TRUE),]
 genes <- rownames(HVG.df)[1:1000]
   
 # Batch correction
-corrected <- mnnCorrect(as.matrix(logcounts(sce)[genes,]),
+corrected <- mnnCorrect(as.matrix(logcounts(sce.P15)[genes,]),
                         as.matrix(logcounts(sce_early_RA)[genes,]), 
                         cos.norm.in=TRUE, cos.norm.out=TRUE, sigma=0.1)
 # Visualization
@@ -91,21 +91,21 @@ pca <- prcomp_irlba(t(do.call("cbind", corrected$corrected)), n = 50)
 tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
 
 # Plot cellRanger and emptyDrops distribution
-cur_tsne <- tsne$Y[1:ncol(sce),]
+cur_tsne <- tsne$Y[1:ncol(sce.P15),]
 emptyDrops <- ggplot() +
-  geom_point(data = data.frame(tSNE1 = cur_tsne[sce$AnnotatedClusters == "NewCell",1],
-                  tSNE2 = cur_tsne[sce$AnnotatedClusters == "NewCell",2],
-                  clusters = sce$AnnotatedClusters[sce$AnnotatedClusters == "NewCell"]),
+  geom_point(data = data.frame(tSNE1 = cur_tsne[sce.P15$AnnotatedClusters == "NewCell",1],
+                  tSNE2 = cur_tsne[sce.P15$AnnotatedClusters == "NewCell",2],
+                  clusters = sce.P15$AnnotatedClusters[sce.P15$AnnotatedClusters == "NewCell"]),
              aes(tSNE1, tSNE2, colour = clusters)) +
     geom_point(data = data.frame(tSNE1 = cur_tsne[sce$AnnotatedClusters != "NewCell",1],
-                  tSNE2 = cur_tsne[sce$AnnotatedClusters != "NewCell",2],
-                  clusters = sce$AnnotatedClusters[sce$AnnotatedClusters != "NewCell"]),
+                  tSNE2 = cur_tsne[sce.P15$AnnotatedClusters != "NewCell",2],
+                  clusters = sce.P15$AnnotatedClusters[sce.P15$AnnotatedClusters != "NewCell"]),
              aes(tSNE1, tSNE2, colour = clusters)) +
-            scale_colour_manual(values = metadata(sce)$color_vector) +
+            scale_colour_manual(values = metadata(sce.P15)$color_vector) +
   guides(colour = FALSE)
 
 # Number of genes expressed
-no.genes <- nexprs(sce, detection_limit = 0)
+no.genes <- nexprs(sce.P15, detection_limit = 0)
 number_genes <- ggplot() +
   geom_point(data = data.frame(tSNE1 = cur_tsne[,1],
                   tSNE2 = cur_tsne[,2],
@@ -115,25 +115,26 @@ number_genes <- ggplot() +
 
 # Plot emptyDrops clustering with RA cells
 empty_drops_clustered <- ggplot() +
-  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce),1],
-                  tSNE2 = tsne$Y[1:ncol(sce),2],
-                  cluster = colData(sce)$P15Clusters),
+  geom_point(data = data.frame(tSNE1 = tsne$Y[1:ncol(sce.P15),1],
+                  tSNE2 = tsne$Y[1:ncol(sce.P15),2],
+                  cluster = colData(sce.P15)$P15Clusters),
              aes(tSNE1, tSNE2, colour = cluster)) + 
-      geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_early_RA)),1],
-                  tSNE2 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_early_RA)),2],
+      geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
                   cell_type = colData(sce_early_RA)$cell_type),
              aes(tSNE1, tSNE2, size = 2.5)) +
-    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_early_RA)),1],
-                  tSNE2 = tsne$Y[(ncol(sce)+1):(ncol(sce)+ncol(sce_early_RA)),2],
+    geom_point(data = data.frame(tSNE1 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),1],
+                  tSNE2 = tsne$Y[(ncol(sce.P15)+1):(ncol(sce.P15)+ncol(sce_early_RA)),2],
                   cell_type = colData(sce_early_RA)$cell_type),
              aes(tSNE1, tSNE2, colour = cell_type), size = 2.3) +
-  scale_color_manual(values = c(metadata(sce)$colour_vector.P15,
+  scale_color_manual(values = c(metadata(sce.P15)$colour_vector.P15,
                                 metadata(sce_early_RA)$colour_vector_RA, "NewCell" = "black"))
 ```
 
 # Find marker genes
 
 ```{r}
+sce <- sce[rowMeans(counts(sce)) > 0,]
 Lep.Zygot.markers <- marker.detection(sce, 
                                   as.character(colData(sce)$P15Clusters))
 
@@ -211,11 +212,18 @@ Lep.Zygot.markers <- Lep.Zygot.markers[c("Undifferentiated_Spermatogonia",
                                                  "Pachytene_1",
                                          "Pachytene_2")]
 
-markers <- data.frame(symbol = unlist(lapply(Lep.Zygot.markers, 
-                                             function(n){n[1:5,"GeneName"]})),
-                      ID = unlist(lapply(Lep.Zygot.markers, 
-                                             function(n){rownames(n)[1:5]})),
-                      group = rep(names(Lep.Zygot.markers), each = 5))
+# Hand picked markers from gene lists
+cur_markers <- c("Egr4", "Sox4", "Sohlh1", 
+                 "Uchl1", "Stra8", "Dmrt1",
+                 "Ccnd1", "Plk1", "Esx1",
+                 "Prss50", "Smc3", "Tex15", "Smc1b", "Syce2", "Dmc1", "Prdm9", "Fbxw2", "Brca2", "Rec8",
+                 "Ly6k", "Sycp3", "Sycp1", "Tex101", "Emc7", "Rad51ap2", "Syce3", "H2afx", "Sycp2", "Meiob",
+                 "Clgn", "Hormad1", "Cntd1", "Tdrd9", "Piwil2", "Atr", "Scmh1", "Catsperb", "Kdm3a" , "Msh4",
+                 "Spata16", "Spink2", "Pgam2", "Nme5", "Tex40")
+
+markers <- data.frame(symbol = cur_markers,
+                      ID = rowData(sce)$ID[match(cur_markers, rowData(sce)$Symbol)],
+                      group = rep(names(Lep.Zygot.markers), c(3,3,3,10,10,10,5)))
 
 # Collect count for heatmap
 for.heatmap <- logcounts(sce)[match(markers$symbol, 
