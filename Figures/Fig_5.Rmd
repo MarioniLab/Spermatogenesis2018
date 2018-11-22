@@ -1,5 +1,5 @@
 ---
-title: "Figure 4"
+title: "Figure 5"
 author: "nils Eling"
 date: "`r Sys.Date()`"
 output: 
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_4/Fig_4.html') })
+        encoding = encoding, output_file = '/Users/eling01/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Fig_5.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -48,6 +48,7 @@ sce <- normalize(sce)
 
 ```{r PT}
 sce.spermatocytes <- sce[, colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[2:9]]
+sce.spermatocytes <- sce.spermatocytes[Matrix::rowMeans(counts(sce.spermatocytes)) > 0,]
 sce.spermatocytes <- normalize(sce.spermatocytes)
 
 # Compute HVG
@@ -61,7 +62,7 @@ prank <- PT(rd = pca$x[,1:3], clusters = colData(sce.spermatocytes)$AnnotatedClu
             col_vector = metadata(sce.spermatocytes)$color_vector)
 
 ```
-
+# Visualize number of genes expressed and marker genes
 
 ```{r}
 PT <-  prank[,"rank"]
@@ -165,7 +166,7 @@ Tcte2.p <- ggplot(data.frame(x = PT,
         axis.line.x = element_blank())
 
 spermatocytes.p <- plot_grid(p.number.genes, Hormad1.p, Sycp3.p, Pou5f2.p, Tcte2.p, ncol = 1, nrow = 5)
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/Fig_4.pdf", 
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_5/Fig_5.pdf", 
        spermatocytes.p, width = 6, height = 8)
 ```
 
