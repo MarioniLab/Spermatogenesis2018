@@ -91,7 +91,7 @@ marker.detection <- function(sce, clusters){
   # Collect group specific markers
   markers.spec <- lapply(cur_markers, function(n){
     if(!is.na(n$Top[1])){
-    cur_n <- n[n$FDR < 0.1 & apply(as.matrix(n[,3:ncol(n)]), 1, function(x){sum(x > 0)}) == ncol(n) - 2,]
+    cur_n <- n[n$FDR < 0.1 & apply(as.matrix(n[,4:ncol(n)]), 1, function(x){sum(x > 0)}) == ncol(n) - 3,]
       if(nrow(cur_n) > 0){
         cur_n$GeneName <- rowData(sce)$Symbol[match(rownames(cur_n), rowData(sce)$ID)]
       }
@@ -111,7 +111,7 @@ PT <- function(rd, clusters, col_vector,
     if(!is.null(exclude)){
       cur_rd <- rd[!exclude,]
       
-      cur_lin <- principal.curve(cur_rd)
+      cur_lin <- principal_curve(cur_rd)
       
       plot(cur_rd, col = col_vector[clusters[!exclude]], 
            pch = 16, type = "p")
@@ -129,7 +129,7 @@ PT <- function(rd, clusters, col_vector,
     else{
       cur_rd <- rd
       
-      cur_lin <- principal.curve(cur_rd)
+      cur_lin <- principal_curve(cur_rd)
       
       plot(cur_rd, col = col_vector[clusters], 
            pch = 16, type = "p")
