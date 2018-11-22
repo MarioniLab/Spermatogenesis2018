@@ -84,10 +84,10 @@ DTC <- function(sce, HVG.genes, minClusterSize = 10, deepSplit = 0){
 }
 
 #### Find specifc marker genes
-marker.detection <- function(sce, clusters){
+marker.detection <- function(sce, clusters, blocking = NULL){
   # User scran function findMarkers to perform differential expression
-  cur_markers <- findMarkers(sce, clusters)
-  
+  cur_markers <- findMarkers(sce, clusters, block = blocking)
+
   # Collect group specific markers
   markers.spec <- lapply(cur_markers, function(n){
     if(!is.na(n$Top[1])){
