@@ -140,7 +140,7 @@ PT <- function(rd, clusters, col_vector,
       colnames(mat.out) <- c(colnames(cur_rd), "rank", "lambda")
       
       mat.out[,1:ncol(cur_rd)] <- cur_lin$s
-      mat.out[,"rank"] <- order(cur_lin$tag)
+      mat.out[,"rank"] <- order(cur_lin$ord)
       mat.out[,"lambda"] <- cur_lin$lambda
       
       mat.out
