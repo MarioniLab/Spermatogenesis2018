@@ -36,6 +36,7 @@ sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analys
 # Also exclude endothelia cells since only one cell was detected
 sce <- sce[,colData(sce)$Sample == "B6" & !(colData(sce)$AnnotatedClusters %in% 
                                              c("Outliers", "Endothelial_cells"))]
+sce <- sce[Matrix::rowMeans(counts(sce)) > 0,]
 sce <- normalize(sce)
 ```
 
