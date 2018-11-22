@@ -240,7 +240,7 @@ pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results
 pheatmap(for.heatmap, 
          cluster_rows = FALSE, cluster_cols = FALSE,
          scale = "row", 
-         show_colnames = FALSE, gaps_row = seq(5,30, 5),
+         show_colnames = FALSE, gaps_row = c(3,6,9,19,29,39),
          cellheight = 8, fontsize = 7,
          color = colorRampPalette(c("#053061", "#4393c3", 
                                     "#f7f7f7", "#d6604d", "#67001f"))(100),
