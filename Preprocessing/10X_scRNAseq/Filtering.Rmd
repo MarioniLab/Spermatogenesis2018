@@ -84,9 +84,9 @@ colData(sce.do17816)$Sample <- rep("B6", ncol(sce.do17816))
 colData(sce.do17816)$Library <- rep("do17816", ncol(sce.do17816))
 
 # Tc0
-sce.do15984 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15984/Mus_human_chr21/")
-colData(sce.do15984)$Sample <- rep("Tc0", ncol(sce.do15984))
-colData(sce.do15984)$Library <- rep("do15984", ncol(sce.do15984))
+sce.do15983 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do15983)$Sample <- rep("Tc0", ncol(sce.do15983))
+colData(sce.do15983)$Library <- rep("do15983", ncol(sce.do15983))
 
 sce.do17622 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17622/filtered_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do17622)$Sample <- rep("Tc0", ncol(sce.do17622))
@@ -97,9 +97,9 @@ colData(sce.do18199)$Sample <- rep("Tc0", ncol(sce.do18199))
 colData(sce.do18199)$Library <- rep("do18199", ncol(sce.do18199))
 
 # Tc1
-sce.do15983 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15983/filtered_gene_bc_matrices/Mus_human_chr21/")
-colData(sce.do15983)$Sample <- rep("Tc1", ncol(sce.do15983))
-colData(sce.do15983)$Library <- rep("do15983", ncol(sce.do15983))
+sce.do15984 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do15984/filtered_gene_bc_matrices/Mus_human_chr21/")
+colData(sce.do15984)$Sample <- rep("Tc1", ncol(sce.do15984))
+colData(sce.do15984)$Library <- rep("do15984", ncol(sce.do15984))
 
 sce.do17623 <- read10xCounts("../../../../Google Drive File Stream/My Drive/Christina/Tc1_single_cell/data/raw_reads/10X/do17623/filtered_gene_bc_matrices/Mus_human_chr21/")
 colData(sce.do17623)$Sample <- rep("Tc1", ncol(sce.do17623))
@@ -118,8 +118,8 @@ colData(sce.do18198)$Library <- rep("do18198", ncol(sce.do18198))
 
 ```{r Other}
 # Merge all datasets
-sce.all <- cbind(sce.do17815, sce.do17816, sce.do15984, sce.do17622, sce.do18199,
-                 sce.do15983, sce.do17623, sce.do18197, sce.do18198, sce.do26386,
+sce.all <- cbind(sce.do17815, sce.do17816, sce.do15983, sce.do17622, sce.do18199,
+                 sce.do15984, sce.do17623, sce.do18197, sce.do18198, sce.do26386,
                  sce.do26387, sce.do17821, sce.do18195, sce.do17824, sce.do18196,
                  sce.do17825, sce.do17827)
 rm(list = setdiff(ls(), "sce.all"))
@@ -293,6 +293,11 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   tsne2 = reducedDims(sce.all)$TSNE[,2],
                   gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "PDXK"],])) +
   geom_point(aes(tsne1, tsne2, colour = gene))
+
+for(i in unique(sce.all$Library)){
+  print(i)
+  print(sum(counts(sce.all[grepl("ENSG", rowData(sce.all)$ID),sce.all$Library == i])))
+}
 
 # Library size
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
