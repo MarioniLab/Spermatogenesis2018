@@ -326,7 +326,7 @@ cur_sce <- sce.all[,sce.all$Sample == "P10"]
 # Plot gene expression
 ggplot(data.frame(tsne1 = reducedDims(cur_sce)$TSNE[,1],
                   tsne2 = reducedDims(cur_sce)$TSNE[,2],
-                  gene = logcounts(cur_sce)[rowData(sce.P15)$ID[rowData(cur_sce)$Symbol == "Tm4sf1"],])) +
+                  gene = logcounts(cur_sce)[rowData(cur_sce)$ID[rowData(cur_sce)$Symbol == "Tm4sf1"],])) +
   geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
 
 
@@ -401,7 +401,83 @@ colData(sce.all)$BroadClusters <- as.factor(new.clusters)
 # Cluster somatic cells
 
 ```{r somatic}
+cur_sce <- sce.all[,new.clusters == "Somatic"]
+cur_sce <- cur_sce[Matrix::rowMeans(counts(cur_sce)) > 0,]
 
+# Split datasets into batches
+sce.single <- split.sce(sce = cur_sce, groups = unique(colData(cur_sce)$Library), 
+                        colData.name = "Library")
+
+# Order libraries from P5 upwards
+sce.single <- sce.single[c("do26386", "do26387", "do17821", "do18195", "do17824",
+                           "do18196", "do17825", "do17827", "do17815", "do17816",
+                           "do15983", "do17622", "do18199", "do15984",
+                           "do17623", "do18197", "do18198")]
+cur_sce <- do.call("cbind", sce.single)
+
+# Batch correction
+corrected <- batch.correction(sce.single)
+rm(sce.single)
+
+# Calculate tSNE
+set.seed(777)
+cur_pca <- prcomp_irlba(t(corrected), n = 50)
+cur_tsne <- Rtsne(cur_pca$x, pca = FALSE, perplexity = 100)
+
+# Cluster on corrected data
+set.seed(1234)
+g <- buildSNNGraph(corrected, k = 10, pc.approx=TRUE)
+clusters <- igraph::cluster_louvain(g)$membership
+
+# Visualize clusters
+ggplot(data.frame(tsne1 = cur_tsne$Y[,1],
+                  tsne2 = cur_tsne$Y[,2],
+                  cluster = as.factor(clusters))) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) +
+  scale_color_manual(values = c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(8, "Set3")))
+
+# Visualize samples
+ggplot(data.frame(tsne1 = cur_tsne$Y[,1],
+                  tsne2 = cur_tsne$Y[,2],
+                  cluster = as.factor(cur_sce$Sample))) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) +
+  scale_color_manual(values = col_vector)
+
+# Find marker genes
+cur_markers <- marker.detection(cur_sce, clusters)
+
+# Plot gene expression
+# Cst12 - Sertoli, Col4a3 - PTM, Cd14 - tMg, Dlk1 - Immature Leydig, Tm4sf1 - Endothelial cells, Insl3 - Leydig
+ggplot(data.frame(tsne1 = cur_tsne$Y[,1],
+                  tsne2 = cur_tsne$Y[,2],
+                  gene = logcounts(cur_sce)[rowData(cur_sce)$ID[rowData(cur_sce)$Symbol == "Meig1"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Rename clusters
+new.vector.somatic <- clusters
+new.vector.somatic[new.vector.somatic == 1] <- "Outliers"
+new.vector.somatic[new.vector.somatic == 2] <- "Fetal_Leydig_1"
+new.vector.somatic[new.vector.somatic == 3] <- "Fetal_Leydig_1"
+new.vector.somatic[new.vector.somatic == 4] <- "Fetal_Leydig_2"
+new.vector.somatic[new.vector.somatic == 5] <- "Fetal_Leydig_1"
+new.vector.somatic[new.vector.somatic == 6] <- "Outliers"
+new.vector.somatic[new.vector.somatic == 7] <- "PTM"
+new.vector.somatic[new.vector.somatic == 8] <- "Leydig_1"
+new.vector.somatic[new.vector.somatic == 9] <- "Interstitial_tMg"
+new.vector.somatic[new.vector.somatic == 10] <- "Outliers"
+new.vector.somatic[new.vector.somatic == 11] <- "Leydig_2"
+new.vector.somatic[new.vector.somatic == 12] <- "Outliers"
+new.vector.somatic[new.vector.somatic == 13] <- "Fetal_Leydig_1"
+new.vector.somatic[new.vector.somatic == 14] <- "Endothelial_cells"
+new.vector.somatic[new.vector.somatic == 15] <- "Outliers"
+new.vector.somatic[new.vector.somatic == 16] <- "Adult_sertoli"
+new.vector.somatic[new.vector.somatic == 17] <- "Fetal_sertoli"
+names(new.vector.somatic) <- paste(cur_sce$Library, cur_sce$Barcode, sep = "_")
+
+# Create AnnotatedClusters vector
+AnnotatedClusters <- as.character(colData(sce.all)$BroadClusters)
+names(AnnotatedClusters) <- paste(sce.all$Library, sce.all$Barcode, sep = "_")
+AnnotatedClusters[AnnotatedClusters == "Somatic"] <- as.character(new.vector.somatic[names(AnnotatedClusters)[AnnotatedClusters == "Somatic"]])
 ```
 
 ```{r}
