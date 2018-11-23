@@ -308,7 +308,7 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
 # Number genes expressed
 ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   tsne2 = reducedDims(sce.all)$TSNE[,2],
-                  gene = colData(sce.all)$total_features)) +
+                  gene = colData(sce.all)$total_features_by_counts)) +
   geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
 
 # Mitochondrial genes
@@ -321,39 +321,25 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                                                 mt$Gene.stable.ID,])/
                     Matrix::colSums(counts(sce.all)))) + geom_point(aes(tsne1, tsne2, colour = mito)) + scale_colour_viridis()
 
-# Stra8 
-ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
-                  tsne2 = reducedDims(sce.all)$TSNE[,2],
-                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Stra8"],])) +
-  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+cur_sce <- sce.all[,sce.all$Sample == "P10"]
 
-# Defb19 
-ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
-                  tsne2 = reducedDims(sce.all)$TSNE[,2],
-                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Defb19"],])) +
-  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
-
-# Cd14 
-ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
-                  tsne2 = reducedDims(sce.all)$TSNE[,2],
-                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Cd14"],])) +
-  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
-
-# Insl3 
-ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
-                  tsne2 = reducedDims(sce.all)$TSNE[,2],
-                  gene = logcounts(sce.all)[rowData(sce.all)$ID[rowData(sce.all)$Symbol == "Mroh4"],])) +
+# Plot gene expression
+ggplot(data.frame(tsne1 = reducedDims(cur_sce)$TSNE[,1],
+                  tsne2 = reducedDims(cur_sce)$TSNE[,2],
+                  gene = logcounts(cur_sce)[rowData(sce.P15)$ID[rowData(cur_sce)$Symbol == "Tm4sf1"],])) +
   geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
 
 
 # Cst12 - Sertoli, Col4a3 - PTM, Cd14 - tMg, Dlk1 - Immature Leydig, Tm4sf1 - Endothelial cells, Insl3 - Leydig
 ```
 
-# Clustering
+# Broad clustering
+
+We first broadly cluster the cells into somatic and germ cells.
 
 ```{r clustering}
-g <- buildSNNGraph(metadata(sce.all)$corrected, k = 3, pc.approx = TRUE)
-
+set.seed(1234)
+g <- buildSNNGraph(metadata(sce.all)$corrected, k = 5, pc.approx=TRUE)
 clusters <- igraph::cluster_louvain(g)$membership
 
 clusters[clusters %in% as.numeric(names(table(clusters))[table(clusters) < 30])] <- "Outliers"
@@ -368,62 +354,57 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
                   cluster = as.factor(clusters))) +
   geom_point(aes(tsne1, tsne2, colour = cluster)) +
   scale_color_manual(values = col_vector)
-
-
-# Visualize sample
-ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
-                  tsne2 = reducedDims(sce.all)$TSNE[,2],
-                  cluster = as.factor(colData(sce.all)$Sample))) +
-  geom_point(aes(tsne1, tsne2, colour = cluster)) +
-  scale_color_manual(values = col_vector)
-
-colData(sce.all)$Clusters <- clusters
-
-# Find marker genes
-markers <- marker.detection(sce.all, colData(sce.all)$Clusters)
-write.xlsx(markers, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/DE/Marker_genes_all_cells.xlsx")
 ```
 
-# Annotation of clusters
+# Annotation of broad clusters
 
 ```{r annotation}
-new.clusters <- colData(sce.all)$Clusters
-new.clusters[new.clusters == 1] <- "S9"
-new.clusters[new.clusters == 2] <- "S7"
-new.clusters[new.clusters == 4] <- "S14"
-new.clusters[new.clusters == 5] <- "S4"
-new.clusters[new.clusters == 8] <- "S10"
-new.clusters[new.clusters == 9] <- "S1"
-new.clusters[new.clusters == 10] <- "S5"
-new.clusters[new.clusters == 11] <- "Outliers"
-new.clusters[new.clusters == 12] <- "Outliers"
-new.clusters[new.clusters == 13] <- "S2"
-new.clusters[new.clusters == 14] <- "S3"
-new.clusters[new.clusters == 15] <- "Spermatocytes_6"
-new.clusters[new.clusters == 16] <- "S6"
-new.clusters[new.clusters == 18] <- "Spermatocytes_7"
-new.clusters[new.clusters == 19] <- "Leydig"
-new.clusters[new.clusters == 20] <- "PTM"
-new.clusters[new.clusters == 21] <- "Fetal_Leydig_2"
-new.clusters[new.clusters == 22] <- "Interstitial_tMg"
-new.clusters[new.clusters == 23] <- "Fetal_Leydig_1"
-new.clusters[new.clusters == 24] <- "Fetal_Leydig_3"
-new.clusters[new.clusters == 25] <- "Spermatogonia"
-new.clusters[new.clusters == 26] <- "Outliers"
-new.clusters[new.clusters == 27] <- "Outliers"
-new.clusters[new.clusters == 28] <- "Spermatocytes_2"
-new.clusters[new.clusters == 29] <- "Spermatocytes_3"
-new.clusters[new.clusters == 30] <- "Endothelial_cells"
-new.clusters[new.clusters == 31] <- "S8"
-new.clusters[new.clusters == 32] <- "Spermatocytes_1"
-new.clusters[new.clusters == 33] <- "S11"
-new.clusters[new.clusters == 34] <- "Sertoli"
-new.clusters[new.clusters == 35] <- "Outliers"
-new.clusters[new.clusters == 36] <- "Spermatocytes_4"
-new.clusters[new.clusters == 39] <- "S13"
-new.clusters[new.clusters == 40] <- "Spermatocytes_5"
-new.clusters[new.clusters == 41] <- "S12"
+# Annotate Germ cells and somatic cells first
+new.clusters <- clusters
+new.clusters[new.clusters == 1] <- "Germ"
+new.clusters[new.clusters == 2] <- "Germ"
+new.clusters[new.clusters == 3] <- "Germ"
+new.clusters[new.clusters == 4] <- "Germ"
+new.clusters[new.clusters == 5] <- "Germ"
+new.clusters[new.clusters == 6] <- "Germ"
+new.clusters[new.clusters == 7] <- "Germ"
+new.clusters[new.clusters == 8] <- "Germ"
+new.clusters[new.clusters == 9] <- "Outliers"
+new.clusters[new.clusters == 10] <- "Somatic"
+new.clusters[new.clusters == 11] <- "Somatic"
+new.clusters[new.clusters == 12] <- "Somatic"
+new.clusters[new.clusters == 13] <- "Somatic"
+new.clusters[new.clusters == 14] <- "Somatic"
+new.clusters[new.clusters == 15] <- "Germ"
+new.clusters[new.clusters == 16] <- "Germ"
+new.clusters[new.clusters == 17] <- "Germ"
+new.clusters[new.clusters == 18] <- "Germ"
+new.clusters[new.clusters == 19] <- "Germ"
+new.clusters[new.clusters == 20] <- "Germ"
+new.clusters[new.clusters == 21] <- "Outliers"
+new.clusters[new.clusters == 22] <- "Somatic"
+new.clusters[new.clusters == 23] <- "Germ"
+new.clusters[new.clusters == 24] <- "Germ"
+new.clusters[new.clusters == 25] <- "Germ"
+new.clusters[new.clusters == 26] <- "Germ"
+new.clusters[new.clusters == 27] <- "Germ"
 
+ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
+                  tsne2 = reducedDims(sce.all)$TSNE[,2],
+                  cluster = as.factor(new.clusters))) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) +
+  scale_color_manual(values = c("blue", "red", "black"))
+
+colData(sce.all)$BroadClusters <- as.factor(new.clusters)
+```
+
+# Cluster somatic cells
+
+```{r somatic}
+
+```
+
+```{r}
 colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
       levels = c("Spermatogonia_1", "Spermatogonia_2", "Spermatocytes_1",
                  "Spermatocytes_2","Spermatocytes_3","Spermatocytes_4",
@@ -432,21 +413,6 @@ colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
                  "S10", "S11", "S12", "S13", "S14", "Sertoli", "Leydig", 
                  "Fetal_Leydig_1", "Fetal_Leydig_2", "Fetal_Leydig_3", "PTM", "Endothelial_cells", 
                  "Interstitial_tMg", "Outliers"))
-
-# Add number of properly annotated cells to dataframe
-cur_stats <- melt(table(colData(sce.all)$Sample[!(colData(sce.all)$AnnotatedClusters %in% 
-                                  c(paste("NA", 1:5, sep = ""), "Outliers"))], 
-                        colData(sce.all)$Library[!(colData(sce.all)$AnnotatedClusters %in% 
-                                  c(paste("NA", 1:5, sep = ""), "Outliers"))]))
-cur_stats <- cur_stats[cur_stats$value > 0,]
-cur_stats <- cur_stats[order(cur_stats$Var1),]
-stats.df <- read.table("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/CellRangerFiltering_stats.txt", 
-            sep = "\t")
-stats.df$ProperlyAnnotated <- cur_stats$value
-
-# Save dataframe
-write.table(stats.df, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/CellRangerFiltering_stats.txt", 
-            sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE)
 
 colour_vector <- c("Spermatogonia_1" = "#046735", 
                    "Spermatogonia_2" = "#04331A",
@@ -488,6 +454,26 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
   scale_color_manual(values = colour_vector)
 
 metadata(sce.all)$color_vector <- colour_vector
+
+# S4 contains contaminating cells
+
+# Spermatocytes 3 contains tMg cells
+
+# Add number of properly annotated cells to dataframe
+cur_stats <- melt(table(colData(sce.all)$Sample[!(colData(sce.all)$AnnotatedClusters %in% 
+                                  c(paste("NA", 1:5, sep = ""), "Outliers"))], 
+                        colData(sce.all)$Library[!(colData(sce.all)$AnnotatedClusters %in% 
+                                  c(paste("NA", 1:5, sep = ""), "Outliers"))]))
+cur_stats <- cur_stats[cur_stats$value > 0,]
+cur_stats <- cur_stats[order(cur_stats$Var1),]
+stats.df <- read.table("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/CellRangerFiltering_stats.txt", 
+            sep = "\t")
+stats.df$ProperlyAnnotated <- cur_stats$value
+
+# Save dataframe
+write.table(stats.df, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/CellRangerFiltering_stats.txt", 
+            sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE)
+
 ```
 
 # Save normalized and raw counts for ArrayExpress
