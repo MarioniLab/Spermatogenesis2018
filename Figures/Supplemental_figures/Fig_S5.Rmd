@@ -14,4 +14,103 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This script shows gene expression in Spermatogonia of P5
+# Visualize spermatogonia from P5
+
+```{r}
+spermatogonia.P5 <- sce[,grepl("P5", colData(sce)$Sample) &
+                                       colData(sce)$AnnotatedClusters == "Spermatogonia"]
+spermatogonia.P5 <- spermatogonia.P5[rowMeans(counts(spermatogonia.P5)) > 0,]
+spermatogonia.P5 <- normalize(spermatogonia.P5)
+
+# Visualize non-batch corrected data
+HVgenes <- HVG(sce = spermatogonia.P5)
+pca.P5 <- prcomp(t(logcounts(spermatogonia.P5)[HVgenes,]))
+ggplot(data.frame(PC1 = pca.P5$x[,1],
+                  PC2 = pca.P5$x[,2],
+                  libraries = colData(spermatogonia.P5)$Library)) +
+  geom_point(aes(PC1, PC2, colour =  libraries)) + 
+  scale_color_manual(values = c( "#FF9100", "#e31a1c"))
+
+# We don't need to batch correct the P5 samples since there is no batch effect
+set.seed(123)
+g <- buildSNNGraph(logcounts(spermatogonia.P5)[HVgenes,], k = 15, 
+                   pc.approx = TRUE)
+clusters <- igraph::cluster_louvain(g)$membership
+
+
+# Change cluster labels
+clusters[clusters == 1] <- "Prospermatogonia"
+clusters[clusters == 2] <- "Undiff_2"
+clusters[clusters == 3] <- "Undiff_1"
+clusters[clusters == 4] <- "Diff"
+
+
+col_vector <- c("Prospermatogonia" = "#7A9606",
+                "Undiff_1" = "#0D3D21",
+                "Undiff_2" = "#076E38",
+                "Diff" = "#5FA37D")
+
+p5.cluster <- ggplot(data.frame(PC1 = pca.P5$x[,1],
+                  PC2 = pca.P5$x[,2],
+                  clusters = as.factor(clusters))) +
+            geom_point(aes(PC1, PC2, colour = clusters)) + 
+            scale_colour_manual(values = col_vector)
+
+# Plot marker gene expression
+gene <- "Gfra1"
+cur_expr <- logcounts(spermatogonia.P5)[rowData(spermatogonia.P5)$Symbol == gene,] > 0
+Gfra1.p5 <- ggplot() +
+  geom_point(data = data.frame(PC1 = pca.P5$x[!cur_expr,1],
+                                 PC2 = pca.P5$x[!cur_expr,2],
+                                gene = logcounts(spermatogonia.P5)[
+                                    rowData(spermatogonia.P5)$Symbol == gene,!cur_expr]), 
+                 aes(PC1, PC2, colour = gene)) +
+  geom_point(data = data.frame(PC1 = pca.P5$x[cur_expr,1],
+                                 PC2 = pca.P5$x[cur_expr,2],
+                                gene = logcounts(spermatogonia.P5)[
+                                    rowData(spermatogonia.P5)$Symbol == gene,cur_expr]), 
+                 aes(PC1, PC2, colour = gene)) + scale_colour_viridis()
+
+gene <- "Stra8"
+cur_expr <- logcounts(spermatogonia.P5)[rowData(spermatogonia.P5)$Symbol == gene,] > 0
+Stra8.p5 <- ggplot() +
+  geom_point(data = data.frame(PC1 = pca.P5$x[!cur_expr,1],
+                                 PC2 = pca.P5$x[!cur_expr,2],
+                                gene = logcounts(spermatogonia.P5)[
+                                    rowData(spermatogonia.P5)$Symbol == gene,!cur_expr]), 
+                 aes(PC1, PC2, colour = gene)) +
+  geom_point(data = data.frame(PC1 = pca.P5$x[cur_expr,1],
+                                 PC2 = pca.P5$x[cur_expr,2],
+                                gene = logcounts(spermatogonia.P5)[
+                                    rowData(spermatogonia.P5)$Symbol == gene,cur_expr]), 
+                 aes(PC1, PC2, colour = gene)) + scale_colour_viridis()
+
+
+gene <- "Eif2s2"
+cur_expr <- logcounts(spermatogonia.P5)[rowData(spermatogonia.P5)$Symbol == gene,] > 0
+Eif2s2.p5 <- ggplot() +
+  geom_point(data = data.frame(PC1 = pca.P5$x[!cur_expr,1],
+                                 PC2 = pca.P5$x[!cur_expr,2],
+                                gene = logcounts(spermatogonia.P5)[
+                                    rowData(spermatogonia.P5)$Symbol == gene,!cur_expr]), 
+                 aes(PC1, PC2, colour = gene)) +
+  geom_point(data = data.frame(PC1 = pca.P5$x[cur_expr,1],
+                                 PC2 = pca.P5$x[cur_expr,2],
+                                gene = logcounts(spermatogonia.P5)[
+                                    rowData(spermatogonia.P5)$Symbol == gene,cur_expr]), 
+                 aes(PC1, PC2, colour = gene)) + scale_colour_viridis()
+
+
+spermatogonia.markers.P5 <- marker.detection(spermatogonia.P5, 
+                                          clusters)
+write.xlsx(spermatogonia.markers.P5, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S4_P5.xlsx")
+
+
+legend_B <- plot_grid(get_legend(p5.cluster), get_legend(Gfra1.p5) , get_legend(Stra8.p5), get_legend(Eif2s2.p5), ncol = 4 , nrow = 1)
+B_plot <- plot_grid(p5.cluster + theme(legend.position= "NONE"), Gfra1.p5 + theme(legend.position= "NONE"), Stra8.p5 + theme(legend.position= "NONE"), Eif2s2.p5 + theme(legend.position= "NONE"), ncol = 4, nrow = 1)
+B <- plot_grid(B_plot, legend_B, ncol = 1, nrow = 2, rel_heights = c(2,1))
+final <- plot_grid(A, B, ncol = 1, nrow = 2, rel_heights = c(2,1))
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3/Fig_3.pdf",
+       final, width = 15, height = 12.5)
+```
