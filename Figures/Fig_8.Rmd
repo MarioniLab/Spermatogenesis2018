@@ -306,6 +306,10 @@ for(i in 1:length(genes)){
 # Gene Tracks specifically for Akap4 and Cypt1
 
 ```{r}
+# Find promoter regions +- 1000bp
+cur_prom <- promoters(genes(EnsDb.Mmusculus.v79), 
+                  upstream = 10000, downstream = 5000)
+
 # Akap4
 cur_gene <- "ENSMUSG00000050089"
 cur_name <- elementMetadata(cur_prom)$gene_name[
@@ -336,7 +340,7 @@ for (i in 1:length(bam.files.K4)) {
 collected.K4 <- collected.K4[c(1,3,2,4)]
 
 
-  pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Akap4_forFigure_spermatocytes.pdf", 
+  pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/Akap4_forFigure_spermatocytes.pdf", 
             sep = ""),
       width = 12, height = 7)
   plotTracks(c(gax, c(collected.K9[1:2], collected.K4[1:2]),
@@ -345,7 +349,7 @@ collected.K4 <- collected.K4[c(1,3,2,4)]
      from=start(cur_region), to=end(cur_region), showId=TRUE)
   dev.off()
   
-pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Akap4_forFigure_spermatids.pdf", 
+pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/Akap4_forFigure_spermatids.pdf", 
             sep = ""),
       width = 12, height = 7)
   plotTracks(c(gax, c(collected.K9[3:4], collected.K4[3:4]),
@@ -384,7 +388,7 @@ for (i in 1:length(bam.files.K4)) {
 collected.K4 <- collected.K4[c(1,3,2,4)]
 
 
-  pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Cypt1_forFigure_spermatocytes.pdf", 
+  pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/Cypt1_forFigure_spermatocytes.pdf", 
             sep = ""),
       width = 12, height = 7)
   plotTracks(c(gax, c(collected.K9[1:2], collected.K4[1:2]),
@@ -393,7 +397,7 @@ collected.K4 <- collected.K4[c(1,3,2,4)]
      from=start(cur_region), to=end(cur_region), showId=TRUE)
   dev.off()
   
-pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Cypt1_forFigure_spermatids.pdf", 
+pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/Cypt1_forFigure_spermatids.pdf", 
             sep = ""),
       width = 12, height = 7)
   plotTracks(c(gax, c(collected.K9[3:4], collected.K4[3:4]),

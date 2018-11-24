@@ -1,0 +1,121 @@
+---
+title: "Figure S9"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S9.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load data and libraries
+
+```{r data, message=FALSE}
+library(scater)
+library(plyr)
+library(reshape2)
+library(pheatmap)
+library(viridis)
+library(plot3D)
+library(ggsci)
+library(cowplot)
+library(openxlsx)
+library(VennDiagram)
+source("../Functions/auxiliary.R")
+
+# Read in sce data
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- sce[,grepl("B6", colData(sce)$Sample) & 
+             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
+sce <- normalize(sce)
+
+# Read in gene annotations
+genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+rownames(genenames) <- genenames$Gene.stable.ID
+
+# Read in gene annotations
+spermatid.spec <- read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
+```
+
+# Read in the BLAST hits for the different multicopy genes
+
+```{r}
+files <- as.list(list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Multicopy/Mapping", full.names = TRUE))
+names(files) <- sapply(list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Multicopy/Mapping"), function(n){unlist(strsplit(n, "\\."))[1]})
+
+# Filter genes that lay on chromosome X
+mc_gene_table <- lapply(files, function(n){
+  cur_file <- read.csv(n, stringsAsFactors = FALSE)
+  cur_file <- cur_file[sapply(cur_file[,"Genomic.Location"], function(n){unlist(strsplit(n, "\\:"))[1]}) == "X",]
+  cur_file
+})
+
+# Return gene names
+mc_genes <- lapply(mc_gene_table, function(n){
+  cur_genes <- n$Overlapping.Gene.s.
+  cur_genes <- cur_genes[cur_genes != ""]
+  unique(cur_genes)
+})
+
+df.multi <- data.frame(gene_group = rep(names(mc_genes), as.numeric(sapply(mc_genes, length))),
+                 genes = as.character(unlist(sapply(mc_genes, function(n){n}))), 
+                 stringsAsFactors = FALSE)
+```
+
+# Visualize metagenes of multicopy genes
+
+```{r}
+# Collect normalized expression counts of multicopy genes
+m <- match(as.character(df.multi$genes), rowData(sce)$Symbol)
+df.multi <- df.multi[!is.na(m),]
+for.heatmap <- logcounts(sce)[m[!is.na(m)],]
+rownames(for.heatmap) <- rowData(sce)$Symbol[match(rownames(for.heatmap),
+                                                   rowData(sce)$ID)]
+
+mat.meta <- matrix(data = NA, ncol = ncol(for.heatmap), nrow = length(unique(df.multi$gene_group)))
+colnames(mat.meta) <- paste(colData(sce)$Library, colData(sce)$Barcode, sep = "")
+rownames(mat.meta) <- unique(df.multi$gene_group)
+
+for(i in unique(df.multi$gene_group)){
+  if(sum(df.multi$gene_group == i) > 1){
+    mat.meta[i,] <- Matrix::colSums(2^((for.heatmap)[df.multi$gene_group == i,]) - 1)
+  }
+  else{
+    mat.meta[i,] <- 2^((for.heatmap)[df.multi$gene_group == i,]) - 1
+  }
+}
+
+# Average this per cell type
+
+# Build mean expression matrix
+df <- as.data.frame(t(as.matrix(mat.meta)))
+df$groups <- colData(sce)$AnnotatedClusters
+df.melt <- melt(df, id.vars = "groups")
+
+# Collect mean expression for each gene in each group
+mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
+mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
+rownames(mat.for.heatmap) <- mat.for.heatmap$variable
+mat.for.heatmap <- mat.for.heatmap[,-1]
+
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S7/MultiCopy_meta.pdf",   width = 7, height = 5)
+pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE, 
+         cluster_rows = FALSE,
+         color = viridis(100),
+         annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
+                  cell_type = colnames(mat.for.heatmap)),
+         annotation_colors = list(cell_type = metadata(sce)$color_vector),
+         #scale = "row", 
+         border_color = NA, cellheight = 8, fontsize = 7)
+dev.off()
+
+```
+
+
+

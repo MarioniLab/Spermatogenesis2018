@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S7/Fig_S7.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S7.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -22,100 +22,95 @@ library(plyr)
 library(reshape2)
 library(pheatmap)
 library(viridis)
-library(plot3D)
+
 library(ggsci)
 library(cowplot)
 library(openxlsx)
-library(VennDiagram)
 source("../Functions/auxiliary.R")
 
 # Read in sce data
 sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-sce <- sce[,grepl("B6", colData(sce)$Sample) & 
+sce <- sce[,grepl("Tc0|Tc1", colData(sce)$Sample) & 
              colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
 sce <- normalize(sce)
 
 # Read in gene annotations
 genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 rownames(genenames) <- genenames$Gene.stable.ID
-
-# Read in gene annotations
-spermatid.spec <- read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
 ```
 
-# Read in the BLAST hits for the different multicopy genes
+# Differential expression analysis
+
+The differential expression analysis is performed in the Tc0-Tc1_DE.Rmd script.
+Here, we will only visualize the outcome.
 
 ```{r}
-files <- as.list(list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Multicopy/Mapping", full.names = TRUE))
-names(files) <- sapply(list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Multicopy/Mapping"), function(n){unlist(strsplit(n, "\\."))[1]})
+results.DE <- list()
+p.list <- list()
+cur_groups <- c("Spermatocytes_1", "Spermatocytes_2", 
+                "Spermatocytes_3", "Spermatocytes_4", 
+                "Spermatocytes_5", "Spermatocytes_6", "Spermatocytes_7", 
+                "Meiosis", "S1", "S2", "S3", "S4", "S5", "S6", "S7",
+                "S8", "S9", "S10", "S11", "S12", "S13", "S14")
 
-# Filter genes that lay on chromosome X
-mc_gene_table <- lapply(files, function(n){
-  cur_file <- read.csv(n, stringsAsFactors = FALSE)
-  cur_file <- cur_file[sapply(cur_file[,"Genomic.Location"], function(n){unlist(strsplit(n, "\\:"))[1]}) == "X",]
-  cur_file
-})
-
-# Return gene names
-mc_genes <- lapply(mc_gene_table, function(n){
-  cur_genes <- n$Overlapping.Gene.s.
-  cur_genes <- cur_genes[cur_genes != ""]
-  unique(cur_genes)
-})
-
-df.multi <- data.frame(gene_group = rep(names(mc_genes), as.numeric(sapply(mc_genes, length))),
-                 genes = as.character(unlist(sapply(mc_genes, function(n){n}))), 
-                 stringsAsFactors = FALSE)
-```
-
-# Visualize metagenes of multicopy genes
-
-```{r}
-# Collect normalized expression counts of multicopy genes
-m <- match(as.character(df.multi$genes), rowData(sce)$Symbol)
-df.multi <- df.multi[!is.na(m),]
-for.heatmap <- logcounts(sce)[m[!is.na(m)],]
-rownames(for.heatmap) <- rowData(sce)$Symbol[match(rownames(for.heatmap),
-                                                   rowData(sce)$ID)]
-
-mat.meta <- matrix(data = NA, ncol = ncol(for.heatmap), nrow = length(unique(df.multi$gene_group)))
-colnames(mat.meta) <- paste(colData(sce)$Library, colData(sce)$Barcode, sep = "")
-rownames(mat.meta) <- unique(df.multi$gene_group)
-
-for(i in unique(df.multi$gene_group)){
-  if(sum(df.multi$gene_group == i) > 1){
-    mat.meta[i,] <- Matrix::colSums(2^((for.heatmap)[df.multi$gene_group == i,]) - 1)
+for(i in cur_groups){
+  sce.test <- sce[,colData(sce)$AnnotatedClusters == i]
+  sce.test <- sce.test[Matrix::rowMeans(logcounts(sce.test)) > 0.1,]
+  sce.test <- normalize(sce.test)
+  
+  # Sum counts with each batch and group
+  mat <- matrix(data = NA, ncol = length(unique(colData(sce.test)$Library)), 
+                nrow = nrow(counts(sce.test)))
+  rownames(mat) <- rownames(counts(sce.test))
+  colnames(mat) <- unique(paste(colData(sce.test)$Sample, 
+                                colData(sce.test)$Library, sep = "_"))
+  
+  for(j in colnames(mat)){
+    cur_batch <- unlist(strsplit(j, "_"))[2]
+    mat[,j] <- Matrix::rowSums(counts(sce.test)[,colData(sce.test)$Library == cur_batch]) 
   }
-  else{
-    mat.meta[i,] <- 2^((for.heatmap)[df.multi$gene_group == i,]) - 1
-  }
+  
+  # Perform differential testing
+  y <- DGEList(counts=mat,
+               group=sapply(colnames(mat), 
+                            function(n){unlist(strsplit(n, "_"))[1]}))
+  y <- calcNormFactors(y)
+  design <- model.matrix(~0+sapply(colnames(mat), function(n){unlist(strsplit(n, "_"))[1]}))
+  colnames(design) <- c("Tc0", "Tc1")
+  y <- estimateDisp(y,design)
+  
+  fit <- glmQLFit(y,design, robust = TRUE)
+  qlf <- glmTreat(fit,coef=2, lfc = 0.5, 
+                  contrast = makeContrasts(Tc1 - Tc0, levels = design))
+  cur_markers <- topTags(qlf, n = nrow(qlf$table))$table
+  
+  cur_p <- ggplot(data.frame(cur_markers[cur_markers$FDR < 0.1,],
+                              Tc1_Tc0 = factor(ifelse(grepl("ENSG",
+                              rownames(cur_markers[cur_markers$FDR < 0.1,])), 
+                                                      "Chr21",
+                                                      "Mouse"), 
+                                               levels = c("Chr21", "Mouse")))) + 
+    geom_point(aes(logCPM, logFC, colour = Tc1_Tc0), size = 3) + 
+    ylim(c(-22, 22)) + xlim(c(0, 8)) + geom_hline(yintercept = 0.5, lty = 2) + 
+    geom_hline(yintercept = -0.5, lty = 2) +
+    scale_colour_manual(values = c("Chr21" = "coral4", 
+                                   "Mouse" = "steelblue")) +
+    guides(colour = FALSE) + ggtitle(i)
+  p.list[[i]] <- cur_p
+  
 }
-
-# Average this per cell type
-
-# Build mean expression matrix
-df <- as.data.frame(t(as.matrix(mat.meta)))
-df$groups <- colData(sce)$AnnotatedClusters
-df.melt <- melt(df, id.vars = "groups")
-
-# Collect mean expression for each gene in each group
-mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
-mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
-rownames(mat.for.heatmap) <- mat.for.heatmap$variable
-mat.for.heatmap <- mat.for.heatmap[,-1]
-
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S7/MultiCopy_meta.pdf",   width = 7, height = 5)
-pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE, 
-         cluster_rows = FALSE,
-         color = viridis(100),
-         annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
-                  cell_type = colnames(mat.for.heatmap)),
-         annotation_colors = list(cell_type = metadata(sce)$color_vector),
-         #scale = "row", 
-         border_color = NA, cellheight = 8, fontsize = 7)
-dev.off()
-
 ```
 
+# Save final figure
 
+```{r}
+final <- plot_grid(p.list[[1]], p.list[[2]], p.list[[3]], p.list[[4]],
+                   p.list[[5]], p.list[[6]], p.list[[7]], p.list[[8]],
+                   p.list[[9]], p.list[[10]], p.list[[11]], p.list[[12]],
+                   p.list[[13]], p.list[[14]], p.list[[15]], p.list[[16]],
+                   p.list[[17]], p.list[[18]], p.list[[19]], p.list[[20]],
+                   p.list[[21]], p.list[[22]], ncol = 4, nrow = 6)
 
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S5/Fig_S5.pdf", final,
+       height = 18, width = 15)
+```
