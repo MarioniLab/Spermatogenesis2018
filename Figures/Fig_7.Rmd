@@ -1,5 +1,5 @@
 ---
-title: "Figure 6"
+title: "Figure 7"
 author: "Nils Eling"
 date: "`r Sys.Date()`"
 output: 
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -42,7 +42,7 @@ rownames(genenames) <- genenames$Gene.stable.ID
 bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
 
 # Meta info
-meta <- as.data.frame(read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S1.xlsx", sheet = 2))
+meta <- as.data.frame(read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S1.xlsx", sheet = 2))
 
 # Read in gene annotation
 Rnf8 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 1)
@@ -147,7 +147,7 @@ out.df$Genename <- genenames[rownames(out.df),2]
 out.df$Spermatid_specific <- ifelse(out.df$logFC > 5 & out.df$FDR < 0.1, TRUE, FALSE)
 out.df <- out.df[order(out.df$logFC, decreasing = TRUE),]
 
-write.xlsx(out.df, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8_bulkDetection.xlsx")
+write.xlsx(out.df, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S8_bulkDetection.xlsx")
 ```
 
 Visualize the heatmap
@@ -164,7 +164,7 @@ cur_df <- data.frame(row.names = rownames(bulk.X),
                                             "TRUE", "FALSE"))
 
 # Full heatmap
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Bulk_heatmap_X.pdf", 
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_7/Bulk_heatmap_X.pdf", 
     width = 7, height = 12)
 pheatmap(log2(bulk.X + 1), 
          cluster_cols = FALSE, 
@@ -210,7 +210,6 @@ cur_mat[2,2] <- sum(!as.logical(cur_df$spermatid_specific) & !as.logical(cur_df$
 # Odds ratio
 (cur_mat[1,1]/cur_mat[1,2])/(cur_mat[2,1]/cur_mat[2,2])
 fisher.test(cur_mat, alternative = "greater")
-
 ```
 
 # Visualize spermatid specific genes on X for single cells
