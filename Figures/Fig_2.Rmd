@@ -55,7 +55,7 @@ df <- data.frame(sample = sub("_.*", "", colData(sce.all)$Sample),
 
 proportions <- with(df, table(sample, group))/plyr::count(df = df, vars = "sample")$freq
 
-# Sum across Fetal Leydig cells
+# Sum across Leydig and Fetal Leydig cells
 proportions <- cbind(proportions, rowSums(proportions[,grepl("Fetal_Leydig", colnames(proportions))]))
 proportions <- proportions[c("B6", "P5", "P10", "P15", "P20", "P25", "P30", "P35"),
                            c(1:22, 23, 24, 32)]

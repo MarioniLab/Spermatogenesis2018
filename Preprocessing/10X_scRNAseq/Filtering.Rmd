@@ -32,7 +32,7 @@ library(dynamicTreeCut)
 library(RColorBrewer)
 library(reshape2)
 library(openxlsx)
-
+source("../../Functions/auxiliary.R")
 
 # Read in data - Single cell experiment object per batch
 # P5
@@ -255,7 +255,6 @@ sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes
 # Batch correction
 
 ```{r correction}
-source("../../Functions/auxiliary.R")
 # Split datasets into batches
 sce.single <- split.sce(sce = sce.all, groups = unique(colData(sce.all)$Library), 
                         colData.name = "Library")
@@ -396,6 +395,7 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
   scale_color_manual(values = c("blue", "red", "black"))
 
 colData(sce.all)$BroadClusters <- as.factor(new.clusters)
+saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```
 
 # Cluster somatic cells
@@ -470,9 +470,26 @@ new.vector.somatic[new.vector.somatic == 12] <- "Outliers"
 new.vector.somatic[new.vector.somatic == 13] <- "Fetal_Leydig_1"
 new.vector.somatic[new.vector.somatic == 14] <- "Endothelial_cells"
 new.vector.somatic[new.vector.somatic == 15] <- "Outliers"
-new.vector.somatic[new.vector.somatic == 16] <- "Sertoli"
-new.vector.somatic[new.vector.somatic == 17] <- "Outliers"
+new.vector.somatic[new.vector.somatic == 16] <- "Outliers"
+new.vector.somatic[new.vector.somatic == 17] <- "Sertoli"
 names(new.vector.somatic) <- paste(cur_sce$Library, cur_sce$Barcode, cur_sce$Sample, sep = "_")
+
+# Visualize clusters
+colour_vector <- c("Sertoli" = "#643F18",
+                   "Leydig_1" = "#985D25",
+                   "Leydig_2" = "#A58D81",
+                   "Fetal_Leydig_1" = "#ceb0a1",
+                   "Fetal_Leydig_2" = "#7a685f",
+                   "PTM" = "#C48C58", 
+                   "Endothelial_cells" = "#FFDFB2",
+                   "Interstitial_tMg" = "#F36E20",
+                   "Outliers" = "#067277")
+
+ggplot(data.frame(tsne1 = cur_tsne$Y[,1],
+                  tsne2 = cur_tsne$Y[,2],
+                  cluster = as.factor(new.vector.somatic))) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) +
+  scale_color_manual(values = colour_vector)
 
 # Create AnnotatedClusters vector
 AnnotatedClusters <- as.character(colData(sce.all)$BroadClusters)
@@ -485,6 +502,8 @@ AnnotatedClusters[AnnotatedClusters == "Somatic"] <- as.character(new.vector.som
 ```{r somatic}
 cur_sce <- sce.all[,new.clusters == "Germ"]
 cur_sce <- cur_sce[Matrix::rowMeans(counts(cur_sce)) > 0,]
+rm(sce.all)
+gc()
 
 # Split datasets into batches
 sce.single <- split.sce(sce = cur_sce, groups = unique(colData(cur_sce)$Library), 
@@ -497,6 +516,7 @@ sce.single <- sce.single[c("do17815", "do17816", "do15983", "do17622", "do18199"
 cur_sce <- cur_sce[,match(unlist(lapply(sce.single, 
                                         function(n){paste(n$Library, n$Barcode, n$Sample, sep = "_")})),
                           paste(cur_sce$Library, cur_sce$Barcode, cur_sce$Sample, sep = "_"))]
+gc()
 
 # Batch correction
 corrected <- batch.correction(sce.single)
@@ -559,6 +579,35 @@ new.vector.germ[new.vector.germ == 21] <- "Outliers"
 new.vector.germ[new.vector.germ == 22] <- "Spermatogonia"
 new.vector.germ[new.vector.germ == 23] <- "Outliers"
 
+# Visualize clusters
+colour_vector <- c("Spermatogonia" = "#046735",
+                   "Spermatocytes_1" = "#FBDCEA", 
+                   "Spermatocytes_2" = "#F2B2D1",
+                   "Spermatocytes_3" = "#E86FAA", 
+                   "Spermatocytes_4" = "#D31281",
+                   "Spermatocytes_5" = "#9A1C59",
+                   "Spermatocytes_6" = "#7E2678",
+                   "Spermatocytes_7" = "#502269",
+                   "Spermatocytes_8" = "#240f2f",
+                   "S1" = "#B3A9D3",
+                   "S2" = "#D8DAEC",
+                   "S3" = "#9595C9",
+                   "S4" = "#6167AF",
+                   "S5" = "#2A348B",
+                   "S6" = "#282B69",
+                   "S7" = "#171447",
+                   "S8" = "#22232B",
+                   "S9" = "#444A5E",
+                   "S10" = "#606B89",
+                   "S11" = "#737884",
+                   "Outliers" = "#067277")
+
+ggplot(data.frame(tsne1 = cur_tsne$Y[,1],
+                  tsne2 = cur_tsne$Y[,2],
+                  cluster = as.factor(new.vector.germ))) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) +
+  scale_color_manual(values = colour_vector)
+
 names(new.vector.germ) <- paste(cur_sce$Library, cur_sce$Barcode, cur_sce$Sample, sep = "_")
 
 # Create AnnotatedClusters vector
@@ -566,6 +615,7 @@ AnnotatedClusters[AnnotatedClusters == "Germ"] <- as.character(new.vector.germ[n
 ```
 
 ```{r}
+sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 colData(sce.all)$AnnotatedClusters <- factor(AnnotatedClusters,
       levels = c("Spermatogonia", "Spermatocytes_1",
                  "Spermatocytes_2","Spermatocytes_3","Spermatocytes_4",
@@ -636,7 +686,7 @@ write.table(colData(sce.all), "../../../../Desktop/cell_metadata.txt")
 ```
 
 ```{r}
-saveRDS(sce, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```
 
