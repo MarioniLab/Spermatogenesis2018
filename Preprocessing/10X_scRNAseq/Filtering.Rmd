@@ -470,8 +470,8 @@ new.vector.somatic[new.vector.somatic == 12] <- "Outliers"
 new.vector.somatic[new.vector.somatic == 13] <- "Fetal_Leydig_1"
 new.vector.somatic[new.vector.somatic == 14] <- "Endothelial_cells"
 new.vector.somatic[new.vector.somatic == 15] <- "Outliers"
-new.vector.somatic[new.vector.somatic == 16] <- "Adult_sertoli"
-new.vector.somatic[new.vector.somatic == 17] <- "Fetal_sertoli"
+new.vector.somatic[new.vector.somatic == 16] <- "Sertoli"
+new.vector.somatic[new.vector.somatic == 17] <- "Outliers"
 names(new.vector.somatic) <- paste(cur_sce$Library, cur_sce$Barcode, cur_sce$Sample, sep = "_")
 
 # Create AnnotatedClusters vector
@@ -571,7 +571,7 @@ colData(sce.all)$AnnotatedClusters <- factor(AnnotatedClusters,
                  "Spermatocytes_2","Spermatocytes_3","Spermatocytes_4",
                  "Spermatocytes_5","Spermatocytes_6","Spermatocytes_7", "Spermatocytes_8", 
                  "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9",
-                 "S10", "S11", "Fetal_sertoli", "Adult_sertoli", "Leydig_1", "Leydig_2", 
+                 "S10", "S11", "Sertoli", "Leydig_1", "Leydig_2", 
                  "Fetal_Leydig_1", "Fetal_Leydig_2", "PTM", "Endothelial_cells", 
                  "Interstitial_tMg", "Outliers"))
 
@@ -595,8 +595,7 @@ colour_vector <- c("Spermatogonia" = "#046735",
                    "S9" = "#444A5E",
                    "S10" = "#606B89",
                    "S11" = "#737884",
-                   "Fetal_sertoli" = "#a26627",
-                   "Adult_sertoli" = "#643F18",
+                   "Sertoli" = "#643F18",
                    "Leydig_1" = "#985D25",
                    "Leydig_2" = "#A58D81",
                    "Fetal_Leydig_1" = "#ceb0a1",
@@ -637,7 +636,7 @@ write.table(colData(sce.all), "../../../../Desktop/cell_metadata.txt")
 ```
 
 ```{r}
-saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+saveRDS(sce, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 ```
 
