@@ -472,22 +472,107 @@ new.vector.somatic[new.vector.somatic == 14] <- "Endothelial_cells"
 new.vector.somatic[new.vector.somatic == 15] <- "Outliers"
 new.vector.somatic[new.vector.somatic == 16] <- "Adult_sertoli"
 new.vector.somatic[new.vector.somatic == 17] <- "Fetal_sertoli"
-names(new.vector.somatic) <- paste(cur_sce$Library, cur_sce$Barcode, sep = "_")
+names(new.vector.somatic) <- paste(cur_sce$Library, cur_sce$Barcode, cur_sce$Sample, sep = "_")
 
 # Create AnnotatedClusters vector
 AnnotatedClusters <- as.character(colData(sce.all)$BroadClusters)
-names(AnnotatedClusters) <- paste(sce.all$Library, sce.all$Barcode, sep = "_")
+names(AnnotatedClusters) <- paste(sce.all$Library, sce.all$Barcode, sce.all$Sample, sep = "_")
 AnnotatedClusters[AnnotatedClusters == "Somatic"] <- as.character(new.vector.somatic[names(AnnotatedClusters)[AnnotatedClusters == "Somatic"]])
 ```
 
+# Cluster germ cells
+
+```{r somatic}
+cur_sce <- sce.all[,new.clusters == "Germ"]
+cur_sce <- cur_sce[Matrix::rowMeans(counts(cur_sce)) > 0,]
+
+# Split datasets into batches
+sce.single <- split.sce(sce = cur_sce, groups = unique(colData(cur_sce)$Library), 
+                        colData.name = "Library")
+
+# Order libraries from P5 upwards
+sce.single <- sce.single[c("do17815", "do17816", "do15983", "do17622", "do18199", "do15984",
+                           "do17623", "do18197", "do18198", "do17827", "do17825", "do18196",
+                           "do17824", "do18195", "do17821", "do26386", "do26387")]
+cur_sce <- cur_sce[,match(unlist(lapply(sce.single, 
+                                        function(n){paste(n$Library, n$Barcode, n$Sample, sep = "_")})),
+                          paste(cur_sce$Library, cur_sce$Barcode, cur_sce$Sample, sep = "_"))]
+
+# Batch correction
+corrected <- batch.correction(sce.single)
+rm(sce.single)
+
+# Calculate tSNE
+set.seed(777)
+cur_pca <- prcomp_irlba(t(corrected), n = 50)
+cur_tsne <- Rtsne(cur_pca$x, pca = FALSE, perplexity = 200)
+
+# Cluster on corrected data
+set.seed(1234)
+g <- buildSNNGraph(corrected, k = 5, pc.approx=TRUE)
+clusters <- igraph::cluster_louvain(g)$membership
+
+# Visualize clusters
+ggplot(data.frame(tsne1 = cur_tsne$Y[,1],
+                  tsne2 = cur_tsne$Y[,2],
+                  cluster = as.factor(clusters))) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) +
+  scale_color_manual(values = c(brewer.pal(8, "Set1"), brewer.pal(8, "Set2"), brewer.pal(8, "Set3")))
+
+# Visualize samples
+ggplot(data.frame(tsne1 = cur_tsne$Y[,1],
+                  tsne2 = cur_tsne$Y[,2],
+                  cluster = as.factor(cur_sce$Sample))) +
+  geom_point(aes(tsne1, tsne2, colour = cluster)) +
+  scale_color_manual(values = col_vector)
+
+# Plot gene expression
+# Cst12 - Sertoli, Col4a3 - PTM, Cd14 - tMg, Dlk1 - Immature Leydig, Tm4sf1 - Endothelial cells, Insl3 - Leydig
+ggplot(data.frame(tsne1 = cur_tsne$Y[,1],
+                  tsne2 = cur_tsne$Y[,2],
+                  gene = logcounts(cur_sce)[rowData(cur_sce)$ID[rowData(cur_sce)$Symbol == "Meig1"],])) +
+  geom_point(aes(tsne1, tsne2, colour = gene)) + scale_colour_viridis()
+
+# Rename clusters
+new.vector.germ <- clusters
+new.vector.germ[new.vector.germ == 1] <- "S11"
+new.vector.germ[new.vector.germ == 2] <- "Spermatocytes_4"
+new.vector.germ[new.vector.germ == 3] <- "S7"
+new.vector.germ[new.vector.germ == 4] <- "Spermatocytes_5"
+new.vector.germ[new.vector.germ == 5] <- "S6"
+new.vector.germ[new.vector.germ == 6] <- "Outliers"
+new.vector.germ[new.vector.germ == 7] <- "S1"
+new.vector.germ[new.vector.germ == 8] <- "Spermatocytes_2"
+new.vector.germ[new.vector.germ == 9] <- "S9"
+new.vector.germ[new.vector.germ == 10] <- "S2"
+new.vector.germ[new.vector.germ == 11] <- "Spermatocytes_8"
+new.vector.germ[new.vector.germ == 12] <- "S8"
+new.vector.germ[new.vector.germ == 13] <- "Spermatocytes_6"
+new.vector.germ[new.vector.germ == 14] <- "S10"
+new.vector.germ[new.vector.germ == 15] <- "S4"
+new.vector.germ[new.vector.germ == 16] <- "Spermatocytes_7"
+new.vector.germ[new.vector.germ == 17] <- "S3"
+new.vector.germ[new.vector.germ == 18] <- "Spermatocytes_1"
+new.vector.germ[new.vector.germ == 19] <- "S5"
+new.vector.germ[new.vector.germ == 20] <- "Spermatocytes_3"
+new.vector.germ[new.vector.germ == 21] <- "Outliers"
+new.vector.germ[new.vector.germ == 22] <- "Spermatogonia"
+new.vector.germ[new.vector.germ == 23] <- "Outliers"
+
+names(new.vector.germ) <- paste(cur_sce$Library, cur_sce$Barcode, cur_sce$Sample, sep = "_")
+
+# Create AnnotatedClusters vector
+AnnotatedClusters[AnnotatedClusters == "Germ"] <- as.character(new.vector.germ[names(AnnotatedClusters)[AnnotatedClusters == "Germ"]])
+```
+
 ```{r}
-colData(sce.all)$AnnotatedClusters <- factor(new.clusters,
-      levels = c("Spermatogonia_1", "Spermatogonia_2", "Spermatocytes_1",
+colData(sce.all)$AnnotatedClusters <- factor(AnnotatedClusters,
+      levels = c("Spermatogonia", "Spermatocytes_1",
                  "Spermatocytes_2","Spermatocytes_3","Spermatocytes_4",
-                 "Spermatocytes_5","Spermatocytes_6","Spermatocytes_7", 
+                 "Spermatocytes_5","Spermatocytes_6","Spermatocytes_7", "Spermatocytes_8", 
                  "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9",
-                 "S10", "S11", "S12", "S13", "S14", "Sertoli", "Leydig", 
-                 "Fetal_Leydig_1", "Fetal_Leydig_2", "Fetal_Leydig_3", "PTM", "Endothelial_cells", 
+                 "S10", "S11", "Fetal_sertoli", "Sertoli", "Leydig_1", "Leydig_2", 
+                 "Fetal_Leydig_1", "Fetal_Leydig_2", "PTM", "Endothelial_cells", 
                  "Interstitial_tMg", "Outliers"))
 
 colour_vector <- c("Spermatogonia_1" = "#046735", 
@@ -530,10 +615,6 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
   scale_color_manual(values = colour_vector)
 
 metadata(sce.all)$color_vector <- colour_vector
-
-# S4 contains contaminating cells
-
-# Spermatocytes 3 contains tMg cells
 
 # Add number of properly annotated cells to dataframe
 cur_stats <- melt(table(colData(sce.all)$Sample[!(colData(sce.all)$AnnotatedClusters %in% 
