@@ -66,7 +66,7 @@ Here, we visualize the histone variants taken from Kennani et al. Epigenetics & 
 
 ```{r hist-var}
 # Read in histone variants
-Hist.all <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Mouse_histones_annotated.xlsx")
+Hist.all <- read.xlsx("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Mouse_histones_annotated.xlsx")
 rownames(Hist.all) <- Hist.all$Ensembl.Gene.ID
 
 # Collect data for heatmap plotting
@@ -79,7 +79,7 @@ colnames(for.heatmap) <- paste(colData(sce.spermatids)$Barcode[order(prank[,"ran
                                sep = "_")
 
 # Plot these genes over pseudotime
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Fig_5_HistoneVariants.pdf", onefile = FALSE)
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/HistoneVariants.pdf", onefile = FALSE)
 pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
          cluster_rows = FALSE, cluster_cols = FALSE, 
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
@@ -172,5 +172,5 @@ final <- plot_grid(p.clusters, H3f3a.tsne, H3f3b.tsne,
           NULL, H3f3a.box, H3f3b.box,
           Hist1h4a.tsne, Hist1h4a.box, NULL, ncol = 3,
           nrow = 3)
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S6/Fig_S6.pdf", final, width = 12, height = 12)
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/Fig_S8.pdf", final, width = 12, height = 12)
 ```
