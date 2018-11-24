@@ -297,3 +297,154 @@ wilcox.test(for.plot$Spermatocytes.K27.P28[for.plot$spermatid_specific == TRUE],
 wilcox.test(for.plot$Spermatids.K27.P28[for.plot$spermatid_specific == TRUE],
             for.plot$Spermatids.K27.P28[for.plot$spermatid_specific == FALSE])
 ```
+
+# Akap4 and Cypt1 signal
+
+Here, we visualize the signal of Akap4 and Cypt1 over the different timepoints.
+
+# Gene Tracks specifically for Akap4 and Cypt1
+
+```{r}
+# Find promoter regions +- 1000bp
+cur_prom <- promoters(genes(EnsDb.Mmusculus.v79), 
+                  upstream = 10000, downstream = 5000)
+
+# Akap4
+cur_gene <- "ENSMUSG00000050089"
+cur_name <- elementMetadata(cur_prom)$gene_name[
+    elementMetadata(cur_prom)$gene_id == cur_gene]
+
+cur_region <- cur_prom[elementMetadata(cur_prom)$gene_id == cur_gene]
+
+# P24
+collected.K9.P24 <- list()
+lib.sizes <- colSums(assays(bins.K9.P24)$counts)/1e6
+for (i in 1:length(bam.files.K9.P24)) {
+    reads <- extractReads(bam.file=bam.files.K9.P24[i], cur_region, param=param)
+    cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+    collected.K9.P24[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,5),
+         name=bam.files.K9.P24[i],  col.axis="black", col.title="black",
+         fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+collected.K9.P24 <- collected.K9.P24[c(1,3,2,4)]
+
+collected.K4.P24 <- list()
+lib.sizes <- colSums(assays(bins.K4.P24)$counts)/1e6
+for (i in 1:length(bam.files.K4.P24)) {
+    reads <- extractReads(bam.file=bam.files.K4.P24[i], cur_region, param=param)
+    cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+    collected.K4.P24[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,5),
+         name=bam.files.K4.P24[i],  col.axis="black", col.title="black",
+         fill="dark blue", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+collected.K4.P24 <- collected.K4.P24[c(1,3,2,4)]
+
+
+pdf(paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/Akap4_P24_spermatocytes.pdf", 
+            sep = ""),
+      width = 12, height = 7)
+  plotTracks(c(gax, c(collected.K9.P24[1:2], collected.K4.P24[1:2]),
+                                    GeneRegionTrack(gr)),
+             chromosome=as.character(seqnames(cur_region)),
+     from=start(cur_region), to=end(cur_region), showId=TRUE)
+  dev.off()
+  
+pdf(paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/Akap4_P24_spermatids.pdf", 
+            sep = ""),
+      width = 12, height = 7)
+  plotTracks(c(gax, c(collected.K9.P24[3:4], collected.K4.P24[3:4]),
+                                    GeneRegionTrack(gr)),
+             chromosome=as.character(seqnames(cur_region)),
+     from=start(cur_region), to=end(cur_region), showId=TRUE)
+dev.off()
+
+# P28
+collected.K9.P28 <- list()
+lib.sizes <- colSums(assays(bins.K9.P28)$counts)/1e6
+for (i in 1:length(bam.files.K9.P28)) {
+    reads <- extractReads(bam.file=bam.files.K9.P28[i], cur_region, param=param)
+    cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+    collected.K9.P28[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,5),
+         name=bam.files.K9.P28[i],  col.axis="black", col.title="black",
+         fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+collected.K9.P28 <- collected.K9.P28[c(1,3,2,4)]
+
+collected.K4.P28 <- list()
+lib.sizes <- colSums(assays(bins.K4.P28)$counts)/1e6
+for (i in 1:length(bam.files.K4.P28)) {
+    reads <- extractReads(bam.file=bam.files.K4.P28[i], cur_region, param=param)
+    cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+    collected.K4.P28[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,5),
+         name=bam.files.K4.P28[i],  col.axis="black", col.title="black",
+         fill="dark blue", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+collected.K4.P28 <- collected.K4.P28[c(1,3,2,4)]
+
+
+pdf(paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/Akap4_P28_spermatocytes.pdf", 
+            sep = ""),
+      width = 12, height = 7)
+  plotTracks(c(gax, c(collected.K9.P28[1:2], collected.K4.P28[1:2]),
+                                    GeneRegionTrack(gr)),
+             chromosome=as.character(seqnames(cur_region)),
+     from=start(cur_region), to=end(cur_region), showId=TRUE)
+  dev.off()
+  
+pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/Akap4_P28_spermatids.pdf", 
+            sep = ""),
+      width = 12, height = 7)
+  plotTracks(c(gax, c(collected.K9.P28[3:4], collected.K4.P28[3:4]),
+                                    GeneRegionTrack(gr)),
+             chromosome=as.character(seqnames(cur_region)),
+     from=start(cur_region), to=end(cur_region), showId=TRUE)
+dev.off()
+
+# Cypt1
+cur_gene <- "ENSMUSG00000023257"
+cur_name <- elementMetadata(cur_prom)$gene_name[
+    elementMetadata(cur_prom)$gene_id == cur_gene]
+
+cur_region <- cur_prom[elementMetadata(cur_prom)$gene_id == cur_gene]
+
+collected.K9 <- list()
+lib.sizes <- colSums(assays(bins.K9)$counts)/1e6
+for (i in 1:length(bam.files.K9)) {
+    reads <- extractReads(bam.file=bam.files.K9[i], cur_region, param=param)
+    cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+    collected.K9[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,5),
+         name=bam.files.K9[i],  col.axis="black", col.title="black",
+         fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+collected.K9 <- collected.K9[c(1,3,2,4)]
+
+collected.K4 <- list()
+lib.sizes <- colSums(assays(bins.K4)$counts)/1e6
+for (i in 1:length(bam.files.K4)) {
+    reads <- extractReads(bam.file=bam.files.K4[i], cur_region, param=param)
+    cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+    collected.K4[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,5),
+         name=bam.files.K4[i],  col.axis="black", col.title="black",
+         fill="dark blue", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+collected.K4 <- collected.K4[c(1,3,2,4)]
+
+
+  pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/Cypt1_forFigure_spermatocytes.pdf", 
+            sep = ""),
+      width = 12, height = 7)
+  plotTracks(c(gax, c(collected.K9[1:2], collected.K4[1:2]),
+                                    GeneRegionTrack(gr)),
+             chromosome=as.character(seqnames(cur_region)),
+     from=start(cur_region), to=end(cur_region), showId=TRUE)
+  dev.off()
+  
+pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/Cypt1_forFigure_spermatids.pdf", 
+            sep = ""),
+      width = 12, height = 7)
+  plotTracks(c(gax, c(collected.K9[3:4], collected.K4[3:4]),
+                                    GeneRegionTrack(gr)),
+             chromosome=as.character(seqnames(cur_region)),
+     from=start(cur_region), to=end(cur_region), showId=TRUE)
+dev.off()
+```
