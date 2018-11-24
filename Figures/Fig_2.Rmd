@@ -56,10 +56,13 @@ df <- data.frame(sample = sub("_.*", "", colData(sce.all)$Sample),
 proportions <- with(df, table(sample, group))/plyr::count(df = df, vars = "sample")$freq
 
 # Sum across Leydig and Fetal Leydig cells
-proportions <- cbind(proportions, rowSums(proportions[,grepl("Fetal_Leydig", colnames(proportions))]))
+proportions <- cbind(proportions, 
+                     rowSums(proportions[,grepl("Fetal_Leydig", colnames(proportions))]),
+                     rowSums(proportions[,colnames(proportions) == "Leydig_1" |
+                                           colnames(proportions) == "Leydig_2"]))
 proportions <- proportions[c("B6", "P5", "P10", "P15", "P20", "P25", "P30", "P35"),
-                           c(1:22, 23, 24, 32)]
-colnames(proportions)[25] <- "Fetal_Leydig" 
+                           c(1:20, 21, 30, 31)]
+colnames(proportions)[c(22, 23)] <- c("Fetal_Leydig", "Leydig") 
 ```
 
 # Visualize percentages for germ cells
@@ -72,7 +75,8 @@ levels(cur_df.melt$Var2) <- colnames(proportions)
 proportions.p <- ggplot(cur_df.melt) + 
   geom_point(aes(Var2, rev(Var1), size = value, fill = Var2), shape = 22) +
   scale_fill_manual(values = c(metadata(sce.all)$color_vector,
-        "Fetal_Leydig" = as.character(metadata(sce.all)$color_vector["Fetal_Leydig_1"]))) + 
+        "Fetal_Leydig" = as.character(metadata(sce.all)$color_vector["Fetal_Leydig_1"]),
+        "Leydig" = as.character(metadata(sce.all)$color_vector["Leydig_1"]))) + 
   theme(panel.background = element_blank(), axis.title = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12)) +
@@ -94,6 +98,15 @@ and the top 50 marker genes for each group. The training is performed on adult B
 marker.genes <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.rds")
 cur_markers <- as.character(unlist(lapply(marker.genes, function(n){rownames(n)[1:50]})))
 cur_markers <- cur_markers[cur_markers %in% rownames(bulk)]
+
+#mat <- matrix(NA, nrow = ncol(bulk), ncol = length(marker.genes))
+#rownames(mat) <- colnames(bulk)
+#colnames(mat) <- names(marker.genes)
+#for(i in names(marker.genes)){
+#  cur_genes <- rownames(marker.genes[[i]])[1:50]
+#  cur_genes <- cur_genes[cur_genes %in% rownames(bulk)]
+#  mat[,i] <- colSums(log2(bulk[cur_genes,] + 1))
+#}
 
 # Train the classifier on adult B6 - remove outliers, unannotated cells and endothelia cells
 sce.B6 <- sce.all[,grepl("B6", colData(sce.all)$Sample) & 
@@ -188,9 +201,9 @@ sce.single$RA <- sce_all_RA
 corrected <- batch.correction(sce.single)
 
 # Visualization
-set.seed(123)
+set.seed(111)
 pca <- prcomp_irlba(t(corrected), n = 50)
-tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
+tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 80)
 
 # Create new colour vector
 colour_vector_RA <- c("A1" = "#67001f",

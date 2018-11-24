@@ -81,11 +81,11 @@ g <- buildSNNGraph(corrected[,1:ncol(sce.spermatogonia)], k = 15, pc.approx = TR
 clusters <- igraph::cluster_louvain(g)$membership
 
 clusters[clusters == 1] <- "Diff_In_B"
-clusters[clusters == 2] <- "Diff_A"
-clusters[clusters == 3] <- "pL"
-clusters[clusters == 4] <- "Undiff_2"
+clusters[clusters == 2] <- "Undiff_2"
+clusters[clusters == 3] <- "Diff_A"
+clusters[clusters == 4] <- "Undiff_1"
 clusters[clusters == 5] <- "Undiff_to_Diff"
-clusters[clusters == 6] <- "Undiff_1"
+clusters[clusters == 6] <- "pL"
 clusters <- factor(clusters,
                    levels = c("Undiff_1", "Undiff_2", "Undiff_to_Diff",
                               "Diff_A", "Diff_In_B", "pL"))
