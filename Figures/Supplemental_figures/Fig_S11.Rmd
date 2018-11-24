@@ -15,6 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 This script recapitulates the replicated analysis of K4 and K9 marks at P24 and P28 and visualizes temporal peak patterns for Akap4 and Cypt1.
+We also analyse the K27 data here.
 It also visualizes the enrichment of histone marks from Hammoud et. al. CSC.
 
 # Load data and libraries
@@ -67,8 +68,16 @@ bam.files.K9.P28 <- list.files("../../../../Dropbox (Cambridge University)/SST_s
 bam.files.K4.P24 <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K4me3/", full.names = TRUE,
                         pattern = paste(".+JP24.+bam$", sep = ""))
 
-# K4 files P24
+# K4 files P28
 bam.files.K4.P28 <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K4me3/", full.names = TRUE,
+                        pattern = paste(".+JP28.+bam$", sep = ""))
+
+# K27 files P24
+bam.files.K27.P26 <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K27ac/", full.names = TRUE,
+                        pattern = paste(".+JP26.+bam$", sep = ""))
+
+# K27 files P28
+bam.files.K27.P28 <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K27ac/", full.names = TRUE,
                         pattern = paste(".+JP28.+bam$", sep = ""))
 
 # Define conditions
@@ -96,6 +105,8 @@ bins.K9.P24 <- windowCounts(bam.files.K9.P24, bin = TRUE, width = 1000, param=pa
 bins.K9.P28 <- windowCounts(bam.files.K9.P28, bin = TRUE, width = 1000, param=param)
 bins.K4.P24 <- windowCounts(bam.files.K4.P24, bin = TRUE, width = 1000, param=param)
 bins.K4.P28 <- windowCounts(bam.files.K4.P28, bin = TRUE, width = 1000, param=param)
+bins.K27.P26 <- windowCounts(bam.files.K27.P26, bin = TRUE, width = 1000, param=param)
+bins.K27.P28 <- windowCounts(bam.files.K27.P28, bin = TRUE, width = 1000, param=param)
 ```
 
 # Count reads in promoter regions
@@ -105,71 +116,184 @@ prom.X.K9.P24 <- regionCounts(bam.files.K9.P24, regions = prom.X, param=param)
 prom.X.K9.P28 <- regionCounts(bam.files.K9.P28, regions = prom.X, param=param)
 prom.X.K4.P24 <- regionCounts(bam.files.K4.P24, regions = prom.X, param=param)
 prom.X.K4.P28 <- regionCounts(bam.files.K4.P28, regions = prom.X, param=param)
+prom.X.K27.P26 <- regionCounts(bam.files.K27.P26, regions = prom.X, param=param)
+prom.X.K27.P28 <- regionCounts(bam.files.K27.P28, regions = prom.X, param=param)
+
 
 # Generate RPM per promoter - each promoter is 2200bp wide
-cur_counts.K9 <- assays(prom.X.K9)$counts
-cur_rpm.K9 <- t(t(cur_counts.K9)/(colSums(assays(bins.K9)$counts)/1000000))
+cur_counts.K9.P24 <- assays(prom.X.K9.P24)$counts
+cur_rpm.K9.P24 <- t(t(cur_counts.K9.P24)/(colSums(assays(bins.K9.P24)$counts)/1000000))
 
-cur_counts.K4 <- assays(prom.X.K4)$counts
-cur_rpm.K4 <- t(t(cur_counts.K4)/(colSums(assays(bins.K4)$counts)/1000000))
+cur_counts.K9.P28 <- assays(prom.X.K9.P28)$counts
+cur_rpm.K9.P28 <- t(t(cur_counts.K9.P28)/(colSums(assays(bins.K9.P28)$counts)/1000000))
+
+cur_counts.K4.P24 <- assays(prom.X.K4.P24)$counts
+cur_rpm.K4.P24 <- t(t(cur_counts.K4.P24)/(colSums(assays(bins.K4.P24)$counts)/1000000))
+
+cur_counts.K4.P28 <- assays(prom.X.K4.P28)$counts
+cur_rpm.K4.P28 <- t(t(cur_counts.K4.P28)/(colSums(assays(bins.K4.P28)$counts)/1000000))
+
+cur_counts.K27.P26 <- assays(prom.X.K27.P26)$counts
+cur_rpm.K27.P26 <- t(t(cur_counts.K27.P26)/(colSums(assays(bins.K27.P26)$counts)/1000000))
+
+cur_counts.K27.P28 <- assays(prom.X.K27.P28)$counts
+cur_rpm.K27.P28 <- t(t(cur_counts.K27.P28)/(colSums(assays(bins.K27.P28)$counts)/1000000))
 
 # Compute average between spermatocytes and spermatids
-df <- data.frame(Spermatocytes.K9 = rowMeans(cur_rpm.K9[,c(1,3)]),
-                 Spermatids.K9 = rowMeans(cur_rpm.K9[,c(2,4)]),
-                 avg.K9 = rowMeans(cur_rpm.K9),
-                 Spermatocytes.K4 = rowMeans(cur_rpm.K4[,c(1,3)]),
-                 Spermatids.K4 = rowMeans(cur_rpm.K4[,c(2,4)]),
-                 avg.K4 = rowMeans(cur_rpm.K4))
+df <- data.frame(Spermatocytes.K9.P24 = rowMeans(cur_rpm.K9.P24[,c(1,3)]),
+                 Spermatids.K9.P24 = rowMeans(cur_rpm.K9.P24[,c(2,4)]),
+                 Spermatocytes.K4.P24 = rowMeans(cur_rpm.K4.P24[,c(1,3)]),
+                 Spermatids.K4.P24 = rowMeans(cur_rpm.K4.P24[,c(2,4)]),
+                 Spermatocytes.K9.P28 = rowMeans(cur_rpm.K9.P28[,c(1,3)]),
+                 Spermatids.K9.P28 = rowMeans(cur_rpm.K9.P28[,c(2,4)]),
+                 Spermatocytes.K4.P28 = rowMeans(cur_rpm.K4.P28[,c(1,3)]),
+                 Spermatids.K4.P28 = rowMeans(cur_rpm.K4.P28[,c(2,4)]),
+                 Spermatocytes.K27.P26 = cur_rpm.K27.P26[,1],
+                 Spermatids.K27.P26 = rowMeans(cur_rpm.K27.P26[,c(2,3)]),
+                 Spermatocytes.K27.P28 = rowMeans(cur_rpm.K27.P28[,c(1,3)]),
+                 Spermatids.K27.P28 = rowMeans(cur_rpm.K27.P28[,c(2,4)]))
 df$Symbol <- genenames[rownames(df),2]
 
-# Order based on K9 signal in spermatocytes
-df <- df[order(df$Spermatocytes.K9, decreasing = TRUE),]
+# Order based on K9 signal in spermatocytes at P24
+df <- df[order(df$Spermatocytes.K9.P24, decreasing = TRUE),]
 
 # Annotate genenames
 df$spermatid_specific <- spermatid.specific[rownames(df),"Spermatid_specific"]
-df$Rnf8 <- df$Symbol %in% K27writers.Rnf8$gene_id
-df$Scml2 <- df$Symbol %in% K27writers.Scml2$gene_id
 
 # Plot results
 for.plot <- df[!is.na(df$spermatid_specific),]
-spermatid.spec.K9.spermatocytes <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
-                            log2(Spermatocytes.K9 + 1),
+
+# K9 spermatocytes P24
+spermatid.spec.K9.spermatocytes.P24 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatocytes.K9.P24 + 1),
                             fill = spermatid_specific)) + 
   scale_fill_jama() + ylim(c(0,5))
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/K9_spermatocytes_X_promoters.pdf", 
-       spermatid.spec.K9.spermatocytes, width = 4, height = 4)
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K9_spermatocytes_P24_X_promoters.pdf", 
+       spermatid.spec.K9.spermatocytes.P24, width = 4, height = 4)
 
-spermatid.spec.K9.spermatids <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
-                            log2(Spermatids.K9 + 1),
+# K9 spermatids P24
+spermatid.spec.K9.spermatids.P24 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatids.K9.P24 + 1),
                             fill = spermatid_specific)) + 
   scale_fill_jama()+ ylim(c(0,5))
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/K9_spermatids_X_promoters.pdf", 
-       spermatid.spec.K9.spermatids, width = 4, height = 4)
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K9_spermatids_P24_X_promoters.pdf", 
+       spermatid.spec.K9.spermatids.P24, width = 4, height = 4)
 
-spermatid.spec.K4.spermatocytes <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
-                            log2(Spermatocytes.K4 + 1),
+# K9 spermatocytes P28
+spermatid.spec.K9.spermatocytes.P28 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatocytes.K9.P28 + 1),
                             fill = spermatid_specific)) + 
   scale_fill_jama() + ylim(c(0,5))
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/K4_spermatocytes_X_promoters.pdf", 
-       spermatid.spec.K4.spermatocytes, width = 4, height = 4)
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K9_spermatocytes_P28_X_promoters.pdf", 
+       spermatid.spec.K9.spermatocytes.P28, width = 4, height = 4)
 
-spermatid.spec.K4.spermatids <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
-                            log2(Spermatids.K4 + 1),
+# K9 spermatids P28
+spermatid.spec.K9.spermatids.P28 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatids.K9.P28 + 1),
+                            fill = spermatid_specific)) + 
+  scale_fill_jama()+ ylim(c(0,5))
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K9_spermatids_P28_X_promoters.pdf", 
+       spermatid.spec.K9.spermatids.P28, width = 4, height = 4)
+
+# K4 spermatocytes P24
+spermatid.spec.K4.spermatocytes.P24 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatocytes.K4.P24 + 1),
                             fill = spermatid_specific)) + 
   scale_fill_jama() + ylim(c(0,5))
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/K4_spermatids_X_promoters.pdf", 
-       spermatid.spec.K4.spermatids, width = 4, height = 4)
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K4_spermatocytes_P24_X_promoters.pdf", 
+       spermatid.spec.K4.spermatocytes.P24, width = 4, height = 4)
+
+# K4 spermatids P24
+spermatid.spec.K4.spermatids.P24 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatids.K4.P24 + 1),
+                            fill = spermatid_specific)) + 
+  scale_fill_jama() + ylim(c(0,5))
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K4_spermatids_P24_X_promoters.pdf", 
+       spermatid.spec.K4.spermatids.P24, width = 4, height = 4)
+
+# K4 spermatocytes P28
+spermatid.spec.K4.spermatocytes.P28 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatocytes.K4.P28 + 1),
+                            fill = spermatid_specific)) + 
+  scale_fill_jama() + ylim(c(0,5))
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K4_spermatocytes_P28_X_promoters.pdf", 
+       spermatid.spec.K4.spermatocytes.P28, width = 4, height = 4)
+
+# K4 spermatids P28
+spermatid.spec.K4.spermatids.P28 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatids.K4.P28 + 1),
+                            fill = spermatid_specific)) + 
+  scale_fill_jama() + ylim(c(0,5))
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K4_spermatids_P28_X_promoters.pdf", 
+       spermatid.spec.K4.spermatids.P28, width = 4, height = 4)
+
+# K27 spermatocytes P26
+spermatid.spec.K27.spermatocytes.P26 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatocytes.K27.P26 + 1),
+                            fill = spermatid_specific)) + 
+  scale_fill_jama() + ylim(c(0,5))
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K27_spermatocytes_P26_X_promoters.pdf", 
+       spermatid.spec.K27.spermatocytes.P26, width = 4, height = 4)
+
+# K27 spermatids P26
+spermatid.spec.K27.spermatids.P26 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatids.K27.P26 + 1),
+                            fill = spermatid_specific)) + 
+  scale_fill_jama()+ ylim(c(0,5))
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K27_spermatids_P26_X_promoters.pdf", 
+       spermatid.spec.K27.spermatids.P26, width = 4, height = 4)
+
+# K27 spermatocytes P28
+spermatid.spec.K27.spermatocytes.P28 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatocytes.K27.P28 + 1),
+                            fill = spermatid_specific)) + 
+  scale_fill_jama() + ylim(c(0,5))
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K27_spermatocytes_P28_X_promoters.pdf", 
+       spermatid.spec.K27.spermatocytes.P28, width = 4, height = 4)
+
+# K27 spermatids P28
+spermatid.spec.K27.spermatids.P28 <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatids.K27.P28 + 1),
+                            fill = spermatid_specific)) + 
+  scale_fill_jama()+ ylim(c(0,5))
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/K27_spermatids_P28_X_promoters.pdf", 
+       spermatid.spec.K27.spermatids.P28, width = 4, height = 4)
+
 
 # Wilcoxon test
-wilcox.test(for.plot$Spermatocytes.K9[for.plot$spermatid_specific == TRUE],
-            for.plot$Spermatocytes.K9[for.plot$spermatid_specific == FALSE])
+wilcox.test(for.plot$Spermatocytes.K9.P24[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatocytes.K9.P24[for.plot$spermatid_specific == FALSE])
 
-wilcox.test(for.plot$Spermatids.K9[for.plot$spermatid_specific == TRUE],
-            for.plot$Spermatids.K9[for.plot$spermatid_specific == FALSE])
+wilcox.test(for.plot$Spermatids.K9.P24[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatids.K9.P24[for.plot$spermatid_specific == FALSE])
 
-wilcox.test(for.plot$Spermatocytes.K4[for.plot$spermatid_specific == TRUE],
-            for.plot$Spermatocytes.K4[for.plot$spermatid_specific == FALSE])
+wilcox.test(for.plot$Spermatocytes.K9.P28[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatocytes.K9.P28[for.plot$spermatid_specific == FALSE])
 
-wilcox.test(for.plot$Spermatids.K4[for.plot$spermatid_specific == TRUE],
-            for.plot$Spermatids.K4[for.plot$spermatid_specific == FALSE])
+wilcox.test(for.plot$Spermatids.K9.P28[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatids.K9.P28[for.plot$spermatid_specific == FALSE])
+
+wilcox.test(for.plot$Spermatocytes.K4.P24[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatocytes.K4.P24[for.plot$spermatid_specific == FALSE])
+
+wilcox.test(for.plot$Spermatids.K4.P24[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatids.K4.P24[for.plot$spermatid_specific == FALSE])
+
+wilcox.test(for.plot$Spermatocytes.K4.P28[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatocytes.K4.P28[for.plot$spermatid_specific == FALSE])
+
+wilcox.test(for.plot$Spermatids.K4.P28[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatids.K4.P28[for.plot$spermatid_specific == FALSE])
+
+wilcox.test(for.plot$Spermatocytes.K27.P26[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatocytes.K27.P26[for.plot$spermatid_specific == FALSE])
+
+wilcox.test(for.plot$Spermatids.K27.P26[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatids.K27.P26[for.plot$spermatid_specific == FALSE])
+
+wilcox.test(for.plot$Spermatocytes.K27.P28[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatocytes.K27.P28[for.plot$spermatid_specific == FALSE])
+
+wilcox.test(for.plot$Spermatids.K27.P28[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatids.K27.P28[for.plot$spermatid_specific == FALSE])
 ```
