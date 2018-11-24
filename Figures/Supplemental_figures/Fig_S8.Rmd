@@ -1,5 +1,5 @@
 ---
-title: "Figure S6"
+title: "Figure S8"
 author: "Nils Eling"
 date: "`r Sys.Date()`"
 output: 
@@ -7,7 +7,7 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S6/Fig_S6.html') })
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S8.html') })
 ---
 
 ```{r setup, include=FALSE}
@@ -27,18 +27,83 @@ library(ggsci)
 library(cowplot)
 library(openxlsx)
 library(VennDiagram)
-source("../Functions/auxiliary.R")
+source("../../Functions/auxiliary.R")
 
 # Read in sce data
-sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce <- sce[,grepl("B6", colData(sce)$Sample) & 
-             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
+             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:20]]
 sce <- normalize(sce)
 
 # Read in gene annotations
-genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+genenames <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 rownames(genenames) <- genenames$Gene.stable.ID
+```
 
+# Order cells over the differentiation time course
+
+```{r ordering}
+# Select Spermatids
+sce.spermatids <- sce[, colData(sce)$AnnotatedClusters %in% 
+                           paste("S", 1:11, sep = "")]
+sce.spermatids <- normalize(sce.spermatids)
+
+# Compute HVG
+HVgenes <- HVG(sce.spermatids)
+
+# Compute PCA
+pca <- prcomp(t(logcounts(sce.spermatids)[HVgenes,]))
+
+# Pseudo rank
+prank <- PT(rd = pca$x[,1:3], 
+            clusters = colData(sce.spermatids)$AnnotatedClusters,
+            col_vector = metadata(sce.spermatids)$color_vector)
+```
+
+# Histone variants over spermiogenesis
+
+Here, we visualize the histone variants taken from Kennani et al. Epigenetics & Chromatin, 2017.
+
+```{r hist-var}
+# Read in histone variants
+Hist.all <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Mouse_histones_annotated.xlsx")
+rownames(Hist.all) <- Hist.all$Ensembl.Gene.ID
+
+# Collect data for heatmap plotting
+for.heatmap <- logcounts(sce.spermatids)[rownames(Hist.all),
+                  order(prank[,"rank"], decreasing = TRUE)]
+colnames(for.heatmap) <- paste(colData(sce.spermatids)$Barcode[order(prank[,"rank"],
+                                                               decreasing = TRUE)],
+                               colData(sce.spermatids)$Library[order(prank[,"rank"],
+                                                               decreasing = TRUE)],
+                               sep = "_")
+
+# Plot these genes over pseudotime
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Fig_5_HistoneVariants.pdf", onefile = FALSE)
+pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
+         cluster_rows = FALSE, cluster_cols = FALSE, 
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_col = data.frame(row.names = colnames(for.heatmap),
+                  cell_type = colData(sce.spermatids)$AnnotatedClusters[order(prank[,"rank"],
+                      decreasing = TRUE)]),
+         annotation_colors = list(cell_type = metadata(sce.spermatids)$color_vector,
+                                  label = c("NA" = "white",
+                                            "label" = "black"),
+                                  Histone = c("H2A_variant" = "springgreen",
+                                              "H2B_variant" = "springgreen3",
+                                              "H3_variant" = "seagreen",
+                                              "H1_variant" = "lightseagreen",
+                                              "Canonical" = "indianred3",
+                                              "Transition_protein" = "darkorange4",
+                                              "Protamine" = "burlywood4"),
+                                  Testis_specific = c("Testis-specific" = "sienna1",
+                                                      "NA" = "white")), 
+         scale = "row",
+         annotation_row = data.frame(row.names = rownames(for.heatmap),
+                                     Testis_specific = Hist.all$`Testis-specific`,
+                                     Histone = Hist.all$Label,
+                                     label = Hist.all$Gene_name))
+dev.off()
 ```
 
 # Visualize histone variants
