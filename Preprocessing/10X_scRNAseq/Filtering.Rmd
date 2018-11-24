@@ -273,9 +273,9 @@ saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/A
 # Visualize batch corrected data
 
 ```{r visualizataion}
-set.seed(777)
+set.seed(8765)
 pca <- prcomp_irlba(t(metadata(sce.all)$corrected), n = 50)
-tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 200)
+tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 350)
 reducedDims(sce.all)$TSNE <- tsne$Y
 
 # Batches
