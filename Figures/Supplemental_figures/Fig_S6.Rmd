@@ -7,105 +7,299 @@ output:
     toc: true
     toc_depth: 2
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
-        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S6/Fig_S6.html') })
+        encoding = encoding, output_file = '../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S6.html') })
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Load data and libraries
+# Read in the data
 
 ```{r data, message=FALSE}
 library(scater)
-library(plyr)
+library(ggplot2)
 library(reshape2)
-library(pheatmap)
-library(viridis)
-library(plot3D)
-library(ggsci)
-library(cowplot)
+library(plyr)
 library(openxlsx)
-library(VennDiagram)
+library(cowplot)
+library(viridis)
+library(pheatmap)
 source("../Functions/auxiliary.R")
-
-# Read in sce data
-sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
-sce <- sce[,grepl("B6", colData(sce)$Sample) & 
-             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
-sce <- normalize(sce)
-
-# Read in gene annotations
-genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
-rownames(genenames) <- genenames$Gene.stable.ID
-
 ```
 
-# Visualize histone variants
+# Heatmap of genes during spermatogonial differentiation
 
-```{r}
-p.clusters <- ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
-                      tSNE2 = reducedDims(sce)$TSNE[,2],
-                      cluster = colData(sce)$AnnotatedClusters)) +
-      geom_point(aes(tSNE1, tSNE2, colour = cluster)) + 
-      scale_color_manual(values = metadata(sce)$color_vector) + 
+```{r spermatogonia}
+# Single cell data
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+
+# To avoid batch effects between the samples, we assume that there are 
+# shared cell types between the samples
+sce.spermatogonia <- sce[,grepl("P5|P10|P15", colData(sce)$Sample) &
+                                       colData(sce)$AnnotatedClusters == "Spermatogonia"]
+sce.spermatogonia <- normalize(sce.spermatogonia)
+rm(sce)
+
+sce.single <- split.sce(sce = sce.spermatogonia, 
+                        groups = unique(colData(sce.spermatogonia)$Library), 
+                        colData.name = "Library")
+
+# Use P10 as first sample
+corrected <- batch.correction(sce.single[c("do17821", "do18195", "do26386", "do26387")])
+
+sce.spermatogonia <- do.call(cbind, sce.single[c("do17821", "do18195", "do26386", "do26387")])
+
+# Compute pca 
+pca <- prcomp(t(corrected))
+
+set.seed(123)
+g <- buildSNNGraph(corrected, k = 11, pc.approx = TRUE)
+clusters <- igraph::cluster_louvain(g)$membership
+
+# Change cluster labels
+clusters[clusters == 1] <- "Diff_In_B"
+clusters[clusters == 2] <- "Diff_A1_2"
+clusters[clusters == 3] <- "pL"
+clusters[clusters == 4] <- "Undiff_progenitor"
+clusters[clusters == 5] <- "Undiff_transitional"
+clusters[clusters == 6] <- "Undiff_stem"
+clusters[clusters == 7] <- "Diff_A3_4"
+clusters[clusters == 8] <- "Gonocytes"
+
+col_vector <- c("Gonocytes" = "#7A9606",
+                "Undiff_stem" = "#0D3D21",
+                "Undiff_transitional" = "#87998E",
+                "Undiff_progenitor" = "#076E38",
+                "Diff_A1_2" = "#5FA37D",
+                "Diff_A3_4" = "#87D6B2",
+                "Diff_In_B"="#B9EAD6",
+                "pL"="#E5DFEA")
+
+spermatogonia.markers <- marker.detection(sce.spermatogonia, 
+                                          clusters)
+
+# First we order the cells based on their differerentiation trajectory
+prank <- PT(rd = pca$x[,1:3], clusters = clusters, col_vector = col_vector)
+
+# Find marker genes to visualize
+spermatogonia.markers <- spermatogonia.markers[c("Undiff_progenitor",
+                                                 "Undiff_transitional",
+                                                 "Undiff_stem",
+                                                 "Gonocytes",
+                                                 "Diff_A1_2",
+                                                 "Diff_A3_4",
+                                                 "Diff_In_B",
+                                                 "pL")]
+markers <- data.frame(symbol = unlist(lapply(spermatogonia.markers, 
+                                             function(n){n[1:5,"GeneName"]})),
+                      ID = unlist(lapply(spermatogonia.markers, 
+                                             function(n){rownames(n)[1:5]})),
+                      group = rep(names(spermatogonia.markers), each = 5))
+
+# Collect count for heatmap
+for.heatmap <- logcounts(sce.spermatogonia)[match(markers$symbol, 
+                                                         rowData(sce.spermatogonia)$Symbol),
+                                      order(prank[,"rank"], decreasing = TRUE)]
+colnames(for.heatmap) <- paste(colData(sce.spermatogonia)$Library[
+  order(prank[,"rank"], decreasing = TRUE)],
+  colData(sce.spermatogonia)$Barcode[
+  order(prank[,"rank"], decreasing = TRUE)], sep = "_")
+rownames(for.heatmap) <- markers$symbol
+
+# Visualize top genes in form of heatmap
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Spermatogonia_heatmap_P5_P10_P15.pdf", onefile = FALSE, width = 10, height = 15)
+pheatmap(for.heatmap, 
+         cluster_rows = FALSE, cluster_cols = FALSE,
+         scale = "row", 
+         show_colnames = FALSE, gaps_row = seq(5,35, 5),
+         cellheight = 8, fontsize = 7,
+         color = colorRampPalette(c("#053061", "#4393c3", 
+                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_col = data.frame(row.names = colnames(for.heatmap),
+                                     cell_type = clusters[order(prank[,"rank"], 
+                                                                decreasing = TRUE)]),
+         annotation_row = data.frame(row.names = rownames(for.heatmap),
+                                     gene_list = markers$group),
+         annotation_colors = list(cell_type = col_vector,
+                                  gene_list = col_vector))
+dev.off()
+```
+
+# Visualize emptyDrops
+
+```{r emptyDrops}
+# Single cell data
+sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+no.genes <- nexprs(sce, detection_limit = 0)
+
+# Collect marker genes expression in correct order
+df1 <- data.frame(tsne1 =reducedDims(sce)$TSNE[
+                      colData(sce)$AnnotatedClusters != "NewCell",1],
+                  tsne2 = reducedDims(sce)$TSNE[
+                    colData(sce)$AnnotatedClusters != "NewCell",2],
+                  batch = colData(sce)$AnnotatedClusters[
+                    colData(sce)$AnnotatedClusters != "NewCell"
+                  ],
+                  sample = colData(sce)$Sample[
+                    colData(sce)$AnnotatedClusters != "NewCell"
+                  ],
+                  P15 = colData(sce)$P15Clusters[
+                    colData(sce)$AnnotatedClusters != "NewCell"
+                  ],
+                  Sycp1 = logcounts(sce)[rowData(sce)$Symbol == "Sycp1",
+                  colData(sce)$AnnotatedClusters != "NewCell"],
+                  H2afx  = logcounts(sce)[rowData(sce)$Symbol == "H2afx",
+                  colData(sce)$AnnotatedClusters != "NewCell"],
+                  Hormad1 =  logcounts(sce)[rowData(sce)$Symbol == "Hormad1",
+                  colData(sce)$AnnotatedClusters != "NewCell"],
+                  Scml2 =  logcounts(sce)[rowData(sce)$Symbol == "Scml2",
+                  colData(sce)$AnnotatedClusters != "NewCell"],
+                  Piwil1 =  logcounts(sce)[rowData(sce)$Symbol == "Piwil1",
+                  colData(sce)$AnnotatedClusters != "NewCell"],
+                  no.genes = no.genes[
+                  colData(sce)$AnnotatedClusters != "NewCell"])
+df2 <- data.frame(tsne1 =reducedDims(sce)$TSNE[
+                      colData(sce)$AnnotatedClusters == "NewCell",1],
+                  tsne2 = reducedDims(sce)$TSNE[
+                    colData(sce)$AnnotatedClusters == "NewCell",2],
+                  batch = colData(sce)$AnnotatedClusters[
+                    colData(sce)$AnnotatedClusters == "NewCell"
+                  ],
+                  sample = colData(sce)$Sample[
+                    colData(sce)$AnnotatedClusters == "NewCell"
+                  ],
+                  P15 = colData(sce)$P15Clusters[
+                    colData(sce)$AnnotatedClusters == "NewCell"
+                  ],
+                  Sycp1 = logcounts(sce)[rowData(sce)$Symbol == "Sycp1",
+                  colData(sce)$AnnotatedClusters == "NewCell"],
+                  H2afx  = logcounts(sce)[rowData(sce)$Symbol == "H2afx",
+                  colData(sce)$AnnotatedClusters == "NewCell"],
+                  Hormad1 =  logcounts(sce)[rowData(sce)$Symbol == "Hormad1",
+                  colData(sce)$AnnotatedClusters == "NewCell"],
+                  Scml2 =  logcounts(sce)[rowData(sce)$Symbol == "Scml2",
+                  colData(sce)$AnnotatedClusters == "NewCell"],
+                  Piwil1 =  logcounts(sce)[rowData(sce)$Symbol == "Piwil1",
+                  colData(sce)$AnnotatedClusters == "NewCell"],
+                  no.genes = no.genes[
+                  colData(sce)$AnnotatedClusters == "NewCell"])
+  
+# All samples
+emptyDrops <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = batch), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = batch), size = 0.5) +
+  scale_color_manual(values = metadata(sce)$color_vector) +
   guides(colour = FALSE)
 
-# H3f3a
-H3f3a.tsne <- ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
-                      tSNE2 = reducedDims(sce)$TSNE[,2],
-                      Gene = logcounts(sce)[rowData(sce)$Symbol == "H3f3a",])) +
-      geom_point(aes(tSNE1, tSNE2, colour = Gene)) + 
-      scale_color_viridis() 
+# Only P15
+emptyDrops.P15 <- ggplot() +
+  geom_point(data = df2[grepl("P15", df2$sample),], 
+             aes(tsne1, tsne2, colour = P15), size = 0.5) +
+  geom_point(data = df1[grepl("P15", df1$sample),], 
+             aes(tsne1, tsne2, colour = P15), size = 0.5) +
+  scale_color_manual(values = metadata(sce)$colour_vector.P15) +
+  guides(colour = FALSE)
 
-H3f3a.box <-  ggplot(data.frame(value = logcounts(sce)[rowData(sce)$Symbol == "H3f3a",],
-                      cluster = colData(sce)$AnnotatedClusters)) +
-      geom_boxplot(aes(x = cluster, y = value, fill = cluster)) + 
-      scale_fill_manual(values = metadata(sce)$color_vector) + ylab("log2(Expr)") +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1),
-            panel.background = element_blank(), 
-            axis.title.x = element_blank()) + guides(fill = FALSE) +
-  ylim(c(0,9))
+emptyDrops.Sycp1 <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = Sycp1), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = Sycp1), size = 0.5) +
+  scale_color_viridis()
 
-# H3f3b
-H3f3b.tsne <- ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
-                      tSNE2 = reducedDims(sce)$TSNE[,2],
-                      Gene = logcounts(sce)[rowData(sce)$Symbol == "H3f3b",])) +
-      geom_point(aes(tSNE1, tSNE2, colour = Gene)) + 
-      scale_color_viridis() 
+emptyDrops.H2afx <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = H2afx), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = H2afx), size = 0.5) +
+  scale_color_viridis()
 
-H3f3b.box <-  ggplot(data.frame(value = logcounts(sce)[rowData(sce)$Symbol == "H3f3b",],
-                      cluster = colData(sce)$AnnotatedClusters)) +
-      geom_boxplot(aes(x = cluster, y = value, fill = cluster)) + 
-      scale_fill_manual(values = metadata(sce)$color_vector) + ylab("log2(Expr)") +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1),
-            panel.background = element_blank(), 
-            axis.title.x = element_blank()) + guides(fill = FALSE) +
-  ylim(c(0,9))
+emptyDrops.Hormad1 <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = Hormad1), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = Hormad1), size = 0.5) +
+  scale_color_viridis()
 
-# Hist1h4a 
-Hist1h4a.tsne <- ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
-                      tSNE2 = reducedDims(sce)$TSNE[,2],
-                      Gene = logcounts(sce)[rowData(sce)$Symbol == "Hist1h4a",])) +
-      geom_point(aes(tSNE1, tSNE2, colour = Gene)) + 
-      scale_color_viridis() 
+emptyDrops.Scml2 <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = Scml2), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = Scml2), size = 0.5) +
+  scale_color_viridis()
 
-Hist1h4a.box <-  ggplot(data.frame(value = logcounts(sce)[rowData(sce)$Symbol == "Hist1h4a",],
-                      cluster = colData(sce)$AnnotatedClusters)) +
-      geom_boxplot(aes(x = cluster, y = value, fill = cluster)) + 
-      scale_fill_manual(values = metadata(sce)$color_vector) + ylab("log2(Expr)") +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1),
-            panel.background = element_blank(), 
-            axis.title.x = element_blank()) + guides(fill = FALSE) +
-  ylim(c(0,5))
+emptyDrops.Piwil1 <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = Piwil1), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = Piwil1), size = 0.5) +
+  scale_color_viridis()
+
+# Number of genes expressed
+emptyDrops.no.genes <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = no.genes), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = no.genes), size = 0.5) +
+  scale_color_gradientn(colours = inferno(100))
 ```
 
-# Save figure
+# Marker genes and PCA at P15
 
 ```{r}
-final <- plot_grid(p.clusters, H3f3a.tsne, H3f3b.tsne, 
-          NULL, H3f3a.box, H3f3b.box,
-          Hist1h4a.tsne, Hist1h4a.box, NULL, ncol = 3,
-          nrow = 3)
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S6/Fig_S6.pdf", final, width = 12, height = 12)
+sce.P15 <- sce[,colData(sce)$Sample == "P15"]
+sce.P15 <- normalize(sce.P15)
+
+Lep.Zygot.markers <- marker.detection(sce.P15, 
+                                  as.character(colData(sce.P15)$P15Clusters))
+
+write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S5.xlsx")
+
+# PCA of P15 germ cells
+cur_sce <- sce.P15[,grepl("Leptotene|Zygotene|Sperm|Pachytene", colData(sce.P15)$P15Clusters)]
+cur_sce <- normalize(cur_sce)
+
+HVgenes <- HVG(cur_sce)
+
+pca  <- prcomp(t(logcounts(cur_sce)[HVgenes,]))
+
+p.clusters <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  clusters = colData(cur_sce)$P15Clusters)) +
+  geom_point(aes(PC1, PC2, colour = clusters)) + 
+  scale_colour_manual(values = metadata(cur_sce)$colour_vector.P15) +
+  guides(colour = FALSE)
+
+p.nogenes <- ggplot(data.frame(PC1 = pca$x[,1],
+                  PC2 = pca$x[,2],
+                  no.genes = nexprs(cur_sce, detection_limit = 0))) +
+  geom_point(aes(PC1, PC2, colour = no.genes)) + 
+  scale_color_gradientn(colours = inferno(100))
+```
+
+# Save final figure
+
+```{r save}
+A <- plot_grid(emptyDrops, emptyDrops.P15, p.clusters, p.nogenes,
+               ncol = 4, nrow = 1, 
+               labels = c("A", "B", "C"))
+B <- plot_grid(emptyDrops.Sycp1, emptyDrops.H2afx, emptyDrops.Hormad1, emptyDrops.no.genes,
+               ncol = 4, nrow = 1, 
+               labels = c("D", NULL, NULL))
+final <- plot_grid(A, B, C,
+                   ncol = 1, nrow = 2)
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Fig_S4.pdf", final,
+       width = 20, height = 12)
+```
+
+# Save versions of the plots that have figure legends
+
+```{r}
+emptyDrops <- ggplot() +
+  geom_point(data = df2, aes(tsne1, tsne2, colour = batch), size = 0.5) +
+  geom_point(data = df1, aes(tsne1, tsne2, colour = batch), size = 0.5) +
+  scale_color_manual(values = metadata(sce)$color_vector)
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/emptyDrops_labels.pdf", emptyDrops,
+       width = 7, height = 7)
+
+emptyDrops.P15 <- ggplot() +
+  geom_point(data = df2[grepl("P15", df2$sample),], 
+             aes(tsne1, tsne2, colour = P15), size = 0.5) +
+  geom_point(data = df1[grepl("P15", df1$sample),], 
+             aes(tsne1, tsne2, colour = P15), size = 0.5) +
+  scale_color_manual(values = metadata(sce)$colour_vector.P15) 
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/emptyDrops.P15_labels.pdf", emptyDrops.P15,
+       width = 7, height = 7)
 ```
