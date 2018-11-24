@@ -571,12 +571,11 @@ colData(sce.all)$AnnotatedClusters <- factor(AnnotatedClusters,
                  "Spermatocytes_2","Spermatocytes_3","Spermatocytes_4",
                  "Spermatocytes_5","Spermatocytes_6","Spermatocytes_7", "Spermatocytes_8", 
                  "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9",
-                 "S10", "S11", "Fetal_sertoli", "Sertoli", "Leydig_1", "Leydig_2", 
+                 "S10", "S11", "Fetal_sertoli", "Adult_sertoli", "Leydig_1", "Leydig_2", 
                  "Fetal_Leydig_1", "Fetal_Leydig_2", "PTM", "Endothelial_cells", 
                  "Interstitial_tMg", "Outliers"))
 
-colour_vector <- c("Spermatogonia_1" = "#046735", 
-                   "Spermatogonia_2" = "#04331A",
+colour_vector <- c("Spermatogonia" = "#046735",
                    "Spermatocytes_1" = "#FBDCEA", 
                    "Spermatocytes_2" = "#F2B2D1",
                    "Spermatocytes_3" = "#E86FAA", 
@@ -584,6 +583,7 @@ colour_vector <- c("Spermatogonia_1" = "#046735",
                    "Spermatocytes_5" = "#9A1C59",
                    "Spermatocytes_6" = "#7E2678",
                    "Spermatocytes_7" = "#502269",
+                   "Spermatocytes_8" = "#240f2f",
                    "S1" = "#B3A9D3",
                    "S2" = "#D8DAEC",
                    "S3" = "#9595C9",
@@ -595,14 +595,12 @@ colour_vector <- c("Spermatogonia_1" = "#046735",
                    "S9" = "#444A5E",
                    "S10" = "#606B89",
                    "S11" = "#737884",
-                   "S12" = "#9FA1A4",
-                   "S13" = "#BCBCC2",
-                   "S14" = "#E5E5E3",
-                   "Sertoli" = "#643F18",
-                   "Leydig" = "#985D25",
-                   "Fetal_Leydig_1" = "#A58D81",
-                   "Fetal_Leydig_2" = "#ceb0a1",
-                   "Fetal_Leydig_3" = "#7a685f",
+                   "Fetal_sertoli" = "#a26627",
+                   "Adult_sertoli" = "#643F18",
+                   "Leydig_1" = "#985D25",
+                   "Leydig_2" = "#A58D81",
+                   "Fetal_Leydig_1" = "#ceb0a1",
+                   "Fetal_Leydig_2" = "#7a685f",
                    "PTM" = "#C48C58", 
                    "Endothelial_cells" = "#FFDFB2",
                    "Interstitial_tMg" = "#F36E20",
@@ -617,18 +615,16 @@ ggplot(data.frame(tsne1 = reducedDims(sce.all)$TSNE[,1],
 metadata(sce.all)$color_vector <- colour_vector
 
 # Add number of properly annotated cells to dataframe
-cur_stats <- melt(table(colData(sce.all)$Sample[!(colData(sce.all)$AnnotatedClusters %in% 
-                                  c(paste("NA", 1:5, sep = ""), "Outliers"))], 
-                        colData(sce.all)$Library[!(colData(sce.all)$AnnotatedClusters %in% 
-                                  c(paste("NA", 1:5, sep = ""), "Outliers"))]))
+cur_stats <- melt(table(colData(sce.all)$Sample[colData(sce.all)$AnnotatedClusters != "Outliers"], 
+                        colData(sce.all)$Library[colData(sce.all)$AnnotatedClusters != "Outliers"]))
 cur_stats <- cur_stats[cur_stats$value > 0,]
 cur_stats <- cur_stats[order(cur_stats$Var1),]
-stats.df <- read.table("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/CellRangerFiltering_stats.txt", 
-            sep = "\t")
+#stats.df <- read.table("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/CellRangerFiltering_stats.txt", 
+#            sep = "\t")
 stats.df$ProperlyAnnotated <- cur_stats$value
 
 # Save dataframe
-write.table(stats.df, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/CellRangerFiltering_stats.txt", 
+write.table(stats.df, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/CellRangerFiltering_stats.txt", 
             sep = "\t", row.names = TRUE, col.names = TRUE, quote = FALSE)
 
 ```
