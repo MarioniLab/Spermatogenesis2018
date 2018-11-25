@@ -207,13 +207,24 @@ for(i in unique(genes$group)){
   write.fasta(sequences = as.list(res.5utr$`5utr`), names = res.5utr$ensembl_gene_id, 
               file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_5UTR.fa", sep = ""))
   }
-  else{
-    res.5utr_1 <- res.5utr[1:4000,]
-    res.5utr_2 <- res.5utr[4001:nrow(res.5utr),]
+  else if(nrow(res.5utr) < 10000){
+    res.5utr_1 <- res.5utr[1:4999,]
+    res.5utr_2 <- res.5utr[5000:nrow(res.5utr),]
     write.fasta(sequences = as.list(res.5utr_1$`5utr`), names = res.5utr_1$ensembl_gene_id, 
               file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_5UTR_1.fa", sep = ""))
     write.fasta(sequences = as.list(res.5utr_2$`5utr`), names = res.5utr_2$ensembl_gene_id, 
               file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_5UTR_2.fa", sep = ""))
+  }
+  else{
+    res.5utr_1 <- res.5utr[1:4999,]
+    res.5utr_2 <- res.5utr[5000:9999,]
+    res.5utr_3 <- res.5utr[10000:nrow(res.5utr),]
+    write.fasta(sequences = as.list(res.5utr_1$`5utr`), names = res.5utr_1$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_5UTR_1.fa", sep = ""))
+    write.fasta(sequences = as.list(res.5utr_2$`5utr`), names = res.5utr_2$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_5UTR_2.fa", sep = ""))
+        write.fasta(sequences = as.list(res.5utr_3$`5utr`), names = res.5utr_3$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_5UTR_3.fa", sep = ""))
   }
   
   # 3UTR  
@@ -221,13 +232,24 @@ for(i in unique(genes$group)){
   write.fasta(sequences = as.list(res.3utr$`3utr`), names = res.3utr$ensembl_gene_id, 
               file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_3UTR.fa", sep = ""))
   }
-  else{
-    res.3utr_1 <- res.3utr[1:4000,]
-    res.3utr_2 <- res.3utr[4001:nrow(res.3utr),]
+  else if(nrow(res.5utr) < 10000){
+    res.3utr_1 <- res.3utr[1:4999,]
+    res.3utr_2 <- res.3utr[5000:nrow(res.3utr),]
     write.fasta(sequences = as.list(res.3utr_1$`3utr`), names = res.3utr_1$ensembl_gene_id, 
               file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_3UTR_1.fa", sep = ""))
     write.fasta(sequences = as.list(res.3utr_2$`3utr`), names = res.3utr_2$ensembl_gene_id, 
               file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_3UTR_2.fa", sep = ""))
+  }
+    else{
+    res.3utr_1 <- res.3utr[1:4999,]
+    res.3utr_2 <- res.3utr[5000:9999,]
+    res.3utr_3 <- res.3utr[10000:nrow(res.3utr),]
+    write.fasta(sequences = as.list(res.3utr_1$`3utr`), names = res.3utr_1$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_3UTR_1.fa", sep = ""))
+    write.fasta(sequences = as.list(res.3utr_2$`3utr`), names = res.3utr_2$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_3UTR_2.fa", sep = ""))
+        write.fasta(sequences = as.list(res.3utr_3$`3utr`), names = res.3utr_3$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_3UTR_3.fa", sep = ""))
   }
   
   # Coding
@@ -235,13 +257,24 @@ for(i in unique(genes$group)){
   write.fasta(sequences = as.list(res.coding$coding), names = res.coding$ensembl_gene_id, 
               file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_coding.fa", sep = ""))
   }
-  else{
-    res.coding_1 <- res.coding[1:4000,]
-    res.coding_2 <- res.coding[4001:nrow(res.coding),]
+  else if(nrow(res.5utr) < 10000){
+    res.coding_1 <- res.coding[1:4999,]
+    res.coding_2 <- res.coding[5000:nrow(res.coding),]
     write.fasta(sequences = as.list(res.coding_1$coding), names = res.coding_1$ensembl_gene_id, 
               file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_coding_1.fa", sep = ""))
     write.fasta(sequences = as.list(res.coding_2$coding), names = res.coding_2$ensembl_gene_id, 
               file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_coding_2.fa", sep = ""))
+  }
+      else{
+    res.coding_1 <- res.coding[1:4999,]
+    res.coding_2 <- res.coding[5000:9999,]
+    res.coding_3 <- res.coding[10000:nrow(res.coding),]
+    write.fasta(sequences = as.list(res.coding_1$`coding`), names = res.coding_1$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_coding_1.fa", sep = ""))
+    write.fasta(sequences = as.list(res.coding_2$`coding`), names = res.coding_2$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_coding_2.fa", sep = ""))
+        write.fasta(sequences = as.list(res.coding_3$`coding`), names = res.coding_3$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_coding_3.fa", sep = ""))
   }
 }
 
