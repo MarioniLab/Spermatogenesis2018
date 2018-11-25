@@ -1,0 +1,179 @@
+---
+title: "Hirota data"
+author: "Nils Eling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, 
+        encoding = encoding, output_file = '/Users/nils/Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Hirota.html') })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script analyses K9 signal in promoters of genes that are differentially regulated after Setdb1 KO.
+It also aims at finding motivs for Setdb1 binding.
+
+# Load data and libraries
+
+```{r data, message=FALSE}
+library(rtracklayer)
+library(EnrichedHeatmap)
+library(GenomicFeatures)
+library(EnsDb.Mmusculus.v79)
+library(TxDb.Mmusculus.UCSC.mm10.ensGene)
+library(plyr)
+library(reshape2)
+library(pheatmap)
+library(viridis)
+library(plot3D)
+library(ggsci)
+library(cowplot)
+library(openxlsx)
+library(csaw)
+library(edgeR)
+library(Rsamtools)
+library(Gviz)
+source("../../Functions/auxiliary.R")
+
+# Read in gene annotations
+genenames <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+rownames(genenames) <- genenames$Gene.stable.ID
+
+# Generate feature annotation
+prom <- promoters(genes(EnsDb.Mmusculus.v79))
+gene.body <- genes(EnsDb.Mmusculus.v79)
+prom <- prom[seqnames(prom) %in% c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(prom) <- c(as.character(1:19), "X", "Y", "MT")
+gene.body <- gene.body[seqnames(gene.body) %in% c(as.character(1:19), "X", "Y", "MT"),]
+seqlevels(gene.body) <- c(as.character(1:19), "X", "Y", "MT")
+
+# K9 files P26
+bam.files.K9.P26 <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K9me3/", full.names = TRUE,
+                        pattern = paste(".+JP26.+bam$", sep = ""))
+
+# Blacklisted regions
+black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
+seqlevels(black) <- sub("chr", "", seqlevels(black))
+seqnames(black) <- sub("chr", "", seqnames(black))
+
+# Parameters for reading bam files
+param <- readParam(dedup=TRUE, minq=10, discard=black, pe="both", max.frag=1000)
+
+# Bin the genome in 1000Kb windows
+bins.K9.P26 <- windowCounts(bam.files.K9.P26, bin = TRUE, width = 1000, param=param)
+
+# Read in genes that are differnetially expressed between WT and Setdb1 KO
+Up.genes <- read.xlsx(xlsxFile = "https://ars.els-cdn.com/content/image/1-s2.0-S1534580718308256-mmc2.xlsx",
+                      sheet = 1)
+colnames(Up.genes) <- Up.genes[2,]
+Up.genes <- Up.genes[-c(1,2),]
+
+Down.genes <- read.xlsx(xlsxFile = "https://ars.els-cdn.com/content/image/1-s2.0-S1534580718308256-mmc2.xlsx",
+                      sheet = 2)
+colnames(Down.genes) <- Down.genes[2,]
+Down.genes <- Down.genes[-c(1,2),]
+```
+
+# Count reads in promoter and gene body regions
+
+```{r}
+prom.K9 <- regionCounts(bam.files.K9.P26, regions = prom, param=param)
+gene.K9 <- regionCounts(bam.files.K9.P26, regions = gene.body, param=param)
+
+# Generate RPM per promoter - each promoter is 2200bp wide
+cur_counts.prom.K9 <- assays(prom.K9)$counts
+cur_rpm.prom.K9 <- t(t(cur_counts.prom.K9)/(colSums(assays(bins.K9.P26)$counts)/1000000))
+
+# FPKM normalized counts per gene
+cur_counts.gene.K9 <- assays(gene.K9)$counts
+cur_rpm.gene.K9 <- t(t(cur_counts.gene.K9)/(colSums(assays(bins.K9.P26)$counts)/1000000))
+cur_rpkm.gene.K9 <- cur_rpm.gene.K9/(gene.body@ranges@width/1000)
+
+# Compute average between spermatocytes and spermatids
+df <- data.frame(Spermatocytes.prom.K9 = rowMeans(cur_rpm.prom.K9[,c(1,3)]),
+                 Spermatids.prom.K9 = rowMeans(cur_rpm.prom.K9[,c(2,4)]),
+                 Spermatocytes.gene.K9 = rowMeans(cur_rpkm.gene.K9[,c(1,3)]),
+                 Spermatids.gene.K9 = rowMeans(cur_rpkm.gene.K9[,c(2,4)]))
+df$Symbol <- genenames[rownames(df),2]
+df$Up_genes <- df$Symbol %in% Up.genes$`gene name`
+df$Down_genes <- df$Symbol %in% Down.genes$`gene name`
+df$chr <- as.character(seqnames(prom))
+```
+
+Visualize H3K9me3 signal of genes that are up-regulated after Setdb1 KO in spermatids and spermatocytes
+
+```{r}
+# Spermatocytes
+# Across all promoters
+ggplot(df) + geom_boxplot(aes(Up_genes, log(Spermatocytes.prom.K9 + 1), fill = Up_genes))
+
+# Across all gene bodies
+ggplot(df) + geom_boxplot(aes(Up_genes, log(Spermatocytes.gene.K9 + 1), fill = Up_genes))
+
+# Promoters on X chromosome
+ggplot(df[df$chr == "X",]) + geom_boxplot(aes(Up_genes, log(Spermatocytes.prom.K9 + 1), 
+                                              fill = Up_genes))
+
+# Genes on X chromosome
+ggplot(df[df$chr == "X",]) + geom_boxplot(aes(Up_genes, log(Spermatocytes.gene.K9 + 1), 
+                                              fill = Up_genes))
+
+# Spermatids
+# Across all promoters
+ggplot(df) + geom_boxplot(aes(Up_genes, log(Spermatids.prom.K9 + 1), fill = Up_genes))
+
+# Across all gene bodies
+ggplot(df) + geom_boxplot(aes(Up_genes, log(Spermatids.gene.K9 + 1), fill = Up_genes))
+
+# Promoters on X chromosome
+ggplot(df[df$chr == "X",]) + geom_boxplot(aes(Up_genes, log(Spermatids.prom.K9 + 1), 
+                                              fill = Up_genes))
+
+# Genes on X chromosome
+ggplot(df[df$chr == "X",]) + geom_boxplot(aes(Up_genes, log(Spermatids.gene.K9 + 1), 
+                                              fill = Up_genes))
+```
+
+Visualize H3K9me3 signal of genes that are down-regulated after Setdb1 KO in spermatids and spermatocytes
+
+```{r}
+# Spermatocytes
+# Across all promoters
+ggplot(df) + geom_boxplot(aes(Down_genes, log(Spermatocytes.prom.K9 + 1), fill = Down_genes))
+
+# Across all gene bodies
+ggplot(df) + geom_boxplot(aes(Down_genes, log(Spermatocytes.gene.K9 + 1), fill = Down_genes))
+
+# Promoters on X chromosome
+ggplot(df[df$chr == "X",]) + geom_boxplot(aes(Down_genes, log(Spermatocytes.prom.K9 + 1), 
+                                              fill = Down_genes))
+
+# Genes on X chromosome
+ggplot(df[df$chr == "X",]) + geom_boxplot(aes(Down_genes, log(Spermatocytes.gene.K9 + 1), 
+                                              fill = Down_genes))
+
+# Spermatids
+# Across all promoters
+ggplot(df) + geom_boxplot(aes(Down_genes, log(Spermatids.prom.K9 + 1), fill = Down_genes))
+
+# Across all gene bodies
+ggplot(df) + geom_boxplot(aes(Down_genes, log(Spermatids.gene.K9 + 1), fill = Down_genes))
+
+# Promoters on X chromosome
+ggplot(df[df$chr == "X",]) + geom_boxplot(aes(Down_genes, log(Spermatids.prom.K9 + 1), 
+                                              fill = Down_genes))
+
+# Genes on X chromosome
+ggplot(df[df$chr == "X",]) + geom_boxplot(aes(Down_genes, log(Spermatids.gene.K9 + 1), 
+                                              fill = Down_genes))
+```
+
+Find genes that have high signal for K9 in spermatocytes and are up-regulated after Setdb1 KO.
+
+```{r}
+
+```
