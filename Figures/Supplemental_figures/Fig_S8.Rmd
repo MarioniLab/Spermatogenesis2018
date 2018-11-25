@@ -277,6 +277,117 @@ for(i in unique(genes$group)){
               file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_coding_3.fa", sep = ""))
   }
 }
+```
 
+# Read in the result files
 
+The above files were submitted to RBPmap selecting mouse/human motives and high stringency.
+Here we read in the results and perform data analysis.
+When multiple fasta files per geneset were submitted, we merged the result files before analysis.
+
+```{r}
+files <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/RBPmap_results", full.names = TRUE)
+file.names <- list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/RBPmap_results", full.names = FALSE)
+
+# Calculate the proportions of transcripts bound by the different RBPs
+res.all <- lapply(files, function(n){
+  cur_lines <- readLines(n)
+  cur_genes <- cur_lines[grepl("ENSM", cur_lines)]
+  cur_RBP <- sub("Protein: ", "", sub("\\(Hs/Mm\\)", "", cur_lines[grepl("Protein", cur_lines)]))
+  table(cur_RBP)/length(cur_genes)
+})
+names(res.all) <- file.names
+
+res.5utr <- res.all[grepl("5UTR", names(res.all))]
+res.3utr <- res.all[grepl("3UTR", names(res.all))]
+res.coding <- res.all[grepl("coding", names(res.all))]
+
+# Assemble output matrices
+mat.5utr <- matrix(NA, ncol = length(res.5utr), 
+                   nrow = length(unique(unlist(lapply(res.5utr, names)))))
+rownames(mat.5utr) <- unique(unlist(lapply(res.5utr, names)))
+colnames(mat.5utr) <- names(res.5utr)
+for(i in names(res.5utr)){
+  cur_RBP <- res.5utr[[i]]
+  mat.5utr[names(cur_RBP),i] <- as.numeric(cur_RBP)
+}
+
+mat.3utr <- matrix(NA, ncol = length(res.3utr), 
+                   nrow = length(unique(unlist(lapply(res.3utr, names)))))
+rownames(mat.3utr) <- unique(unlist(lapply(res.3utr, names)))
+colnames(mat.3utr) <- names(res.3utr)
+for(i in names(res.3utr)){
+  cur_RBP <- res.3utr[[i]]
+  mat.3utr[names(cur_RBP),i] <- as.numeric(cur_RBP)
+}
+
+mat.coding <- matrix(NA, ncol = length(res.coding), 
+                   nrow = length(unique(unlist(lapply(res.coding, names)))))
+rownames(mat.coding) <- unique(unlist(lapply(res.coding, names)))
+colnames(mat.coding) <- names(res.coding)
+for(i in names(res.coding)){
+  cur_RBP <- res.coding[[i]]
+  mat.coding[names(cur_RBP),i] <- as.numeric(cur_RBP)
+}
+
+# Find RBPs that correlate in binding percentage with genesets
+cors.5utr <- t(apply(mat.5utr, 1, function(n){
+  cur_test <- cor.test(n, as.numeric(sub("GeneSet", "", sub("_5UTR", "", colnames(mat.5utr)))))
+  c(cur_test$estimate, cur_test$p.value)
+  }))
+cors.5utr <- cbind(cors.5utr, p.adjust(cors.5utr[,2], method = "BH"))
+cors.5utr <- cors.5utr[cors.5utr[,3] < 0.1,]
+cors.5utr <- cors.5utr[order(cors.5utr[,1], decreasing = TRUE),]
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/5UTR_correlated.pdf")
+pheatmap(mat.5utr[rownames(cors.5utr),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, color = viridis(100))
+dev.off()
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/5UTR_correlated_scaled.pdf")
+pheatmap(mat.5utr[rownames(cors.5utr),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, 
+         color = colorRampPalette(c("dark blue", "white", "dark red"))(100), 
+         scale = "row")
+dev.off()
+
+cors.3utr <- t(apply(mat.3utr, 1, function(n){
+  cur_test <- cor.test(n, as.numeric(sub("GeneSet", "", sub("_3UTR", "", colnames(mat.3utr)))))
+  c(cur_test$estimate, cur_test$p.value)
+  }))
+cors.3utr <- cbind(cors.3utr, p.adjust(cors.3utr[,2], method = "BH"))
+cors.3utr <- cors.3utr[cors.3utr[,3] < 0.1,]
+cors.3utr <- cors.3utr[order(cors.3utr[,1], decreasing = TRUE),]
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/3UTR_correlated.pdf")
+pheatmap(mat.3utr[rownames(cors.3utr),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, color = viridis(100))
+dev.off()
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/3UTR_correlated_scaled.pdf")
+pheatmap(mat.3utr[rownames(cors.3utr),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, 
+         color = colorRampPalette(c("dark blue", "white", "dark red"))(100), 
+         scale = "row")
+dev.off()
+
+cors.coding <- t(apply(mat.coding, 1, function(n){
+  cur_test <- cor.test(n, as.numeric(sub("GeneSet", "", sub("_coding", "", colnames(mat.coding)))))
+  c(cur_test$estimate, cur_test$p.value)
+  }))
+cors.coding <- cbind(cors.coding, p.adjust(cors.coding[,2], method = "BH"))
+cors.coding <- cors.coding[cors.coding[,3] < 0.1,]
+cors.coding <- cors.coding[order(cors.coding[,1], decreasing = TRUE),]
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/Coding_correlated.pdf")
+pheatmap(mat.coding[rownames(cors.coding),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, color = viridis(100))
+dev.off()
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/Coding_correlated_scaled.pdf")
+pheatmap(mat.coding[rownames(cors.coding),], cluster_rows = FALSE, 
+         cluster_cols = FALSE, 
+         color = colorRampPalette(c("dark blue", "white", "dark red"))(100), 
+         scale = "row")
+dev.off()
 ```
