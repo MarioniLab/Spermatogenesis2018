@@ -227,7 +227,10 @@ Dmrtb1 <- ggplot() +
 
 legend_RA <- plot_grid(get_legend(cluster_RA + theme(legend.position = "right")))
 
-A <- plot_grid(sample + theme(legend.position=c(.8,.3)), cluster + theme(legend.position=c(.8,.2)), cluster_RA + theme(legend.position= "NULL"), legend_RA,  Gfra1 + theme(legend.position=c(.8,.3)), Zbtb16 + theme(legend.position=c(.8,.3)), Stra8 + theme(legend.position=c(.8,.3)), Dmrtb1 + theme(legend.position=c(.8,.3)), ncol = 4, nrow = 2)
+final <- plot_grid(sample + theme(legend.position=c(.8,.3)), cluster + theme(legend.position=c(.8,.2)), cluster_RA + theme(legend.position= "NULL"), legend_RA,  Gfra1 + theme(legend.position=c(.8,.3)), Zbtb16 + theme(legend.position=c(.8,.3)), Stra8 + theme(legend.position=c(.8,.3)), Dmrtb1 + theme(legend.position=c(.8,.3)), ncol = 4, nrow = 2)
+
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3/Fig_3.pdf",
+       final, width = 15, height = 7.5)
 ```
 
 # Find marker genes for these groups
