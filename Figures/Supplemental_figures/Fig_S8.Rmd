@@ -27,6 +27,8 @@ library(ggsci)
 library(cowplot)
 library(openxlsx)
 library(VennDiagram)
+library(biomaRt)
+library(seqinr)
 source("../../Functions/auxiliary.R")
 
 # Read in sce data
@@ -173,4 +175,75 @@ final <- plot_grid(p.clusters, H3f3a.tsne, H3f3b.tsne,
           Hist1h4a.tsne, Hist1h4a.box, NULL, ncol = 3,
           nrow = 3)
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/Fig_S8.pdf", final, width = 12, height = 12)
+```
+
+# RNA binding protein analysis
+
+## Prepare files to use with RBPmap (http://rbpmap.technion.ac.il/)
+
+Here, we select the fasta coding sequences and 3' and 5' UTR sequences of the genes in each category of genes that correlate or anticorrelate with the number of genes expressed over spermiogenesis (see Figure 6).
+
+```{r}
+# Read in the genes
+genes <- read.xlsx("../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S7.xlsx")
+
+# Initialize biomaRt
+ensembl <- useMart("ensembl")
+ensembl <- useDataset("mmusculus_gene_ensembl", mart=ensembl)
+
+# Loop over genelists and write out files
+for(i in unique(genes$group)){
+  cur_genes <- genes$gene2[genes$group == i]
+  res.5utr = biomaRt::getSequence(id = cur_genes, type = "ensembl_gene_id", mart=ensembl, 
+                seqType = "5utr")
+  res.3utr = biomaRt::getSequence(id = cur_genes, type = "ensembl_gene_id", mart=ensembl, 
+                seqType = "3utr")
+  res.coding = biomaRt::getSequence(id = cur_genes, type = "ensembl_gene_id", mart=ensembl, 
+                seqType = "coding")
+  
+  # Write as fasta files 
+  # 5UTR
+  if(nrow(res.5utr) < 5000){
+  write.fasta(sequences = as.list(res.5utr$`5utr`), names = res.5utr$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_5UTR.fa", sep = ""))
+  }
+  else{
+    res.5utr_1 <- res.5utr[1:4000,]
+    res.5utr_2 <- res.5utr[4001:nrow(res.5utr),]
+    write.fasta(sequences = as.list(res.5utr_1$`5utr`), names = res.5utr_1$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_5UTR_1.fa", sep = ""))
+    write.fasta(sequences = as.list(res.5utr_2$`5utr`), names = res.5utr_2$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_5UTR_2.fa", sep = ""))
+  }
+  
+  # 3UTR  
+  if(nrow(res.3utr) < 5000){
+  write.fasta(sequences = as.list(res.3utr$`3utr`), names = res.3utr$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_3UTR.fa", sep = ""))
+  }
+  else{
+    res.3utr_1 <- res.3utr[1:4000,]
+    res.3utr_2 <- res.3utr[4001:nrow(res.3utr),]
+    write.fasta(sequences = as.list(res.3utr_1$`3utr`), names = res.3utr_1$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_3UTR_1.fa", sep = ""))
+    write.fasta(sequences = as.list(res.3utr_2$`3utr`), names = res.3utr_2$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_3UTR_2.fa", sep = ""))
+  }
+  
+  # Coding
+  if(nrow(res.coding) < 5000){
+  write.fasta(sequences = as.list(res.coding$coding), names = res.coding$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_coding.fa", sep = ""))
+  }
+  else{
+    res.coding_1 <- res.coding[1:4000,]
+    res.coding_2 <- res.coding[4001:nrow(res.coding),]
+    write.fasta(sequences = as.list(res.coding_1$coding), names = res.coding_1$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_coding_1.fa", sep = ""))
+    write.fasta(sequences = as.list(res.coding_2$coding), names = res.coding_2$ensembl_gene_id, 
+              file.out = paste("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S8/RBPanalysis/Sequences/", sub(" ", "", i), "_coding_2.fa", sep = ""))
+  }
+}
+
+
 ```

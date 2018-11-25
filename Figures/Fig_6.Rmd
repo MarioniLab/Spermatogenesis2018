@@ -38,9 +38,6 @@ sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analys
 # Select spermatogonia and spermatocytes
 sce <- sce[,grepl("B6", colData(sce)$Sample)]
 sce <- normalize(sce)
-
-# Read in length of genes
-genelength <- read.table("../Data/Genelength.txt", header = TRUE, sep = "\t")
 ```
 
 # Order cells over the differentiation time course
@@ -83,7 +80,7 @@ p.number.genes <- ggplot(
         panel.grid.minor = element_blank(), axis.title.y = element_text(size = 15), 
         axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/NoGenes.pdf", 
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_6/NoGenes.pdf", 
        p.number.genes, width = 12, height = 4)
 ```
 
@@ -117,7 +114,7 @@ colnames(mat) <- paste(colData(sce.spermatids)$Barcode,
                        colData(sce.spermatids)$Library)
 rownames(mat) <- paste("GeneSet", 1:nrow(mat))
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_5/Fig_5_TranscriptionalShotdown.pdf", onefile = FALSE)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_6/TranscriptionalShotdown.pdf", onefile = FALSE)
 pheatmap(mat[,order(PT, decreasing = TRUE)], breaks = seq(-2, 2, length.out = 100),
          cluster_rows = FALSE, cluster_cols = FALSE, 
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
@@ -134,5 +131,5 @@ for(i in 1:(splits - 1)){
 
 cors$group <- groups
 cors <- cors[order(cors$rho, decreasing = TRUE),]
-write.xlsx(cors, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S7.xlsx")
+write.xlsx(cors, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S7.xlsx")
 ```
