@@ -37,6 +37,8 @@ library(csaw)
 library(edgeR)
 library(Rsamtools)
 library(Gviz)
+library(biomaRt)
+library(seqinr)
 source("../../Functions/auxiliary.R")
 
 # Read in gene annotations
@@ -175,5 +177,58 @@ ggplot(df[df$chr == "X",]) + geom_boxplot(aes(Down_genes, log(Spermatids.gene.K9
 Find genes that have high signal for K9 in spermatocytes and are up-regulated after Setdb1 KO.
 
 ```{r}
+df.auto.target <- df[!grepl("MT|X|Y", df$chr) & df$Up_genes,]
+df.auto.target <- df.auto.target[order(df.auto.target$Spermatocytes.prom.K9, 
+                                       decreasing = TRUE),]
 
+# Select genes with > 1 RPM in promoter region
+cur_genes <- df.auto.target[df.auto.target$Spermatocytes.prom.K9 > 1,]
+cur_prom <- prom[rownames(cur_genes),]
+
+# Write out fasta files
+# Initialize biomaRt
+ensembl <- useMart("ensembl")
+ensembl <- useDataset("mmusculus_gene_ensembl", mart=ensembl)
+
+cur_res.prom <- biomaRt::getSequence(chromosome = as.character(seqnames(cur_prom))[1], 
+                                     start = start(ranges(cur_prom))[1],
+                                     end = end(ranges(cur_prom))[1], mart=ensembl,
+                                     seqType = "cdna", type = "ensembl_gene_id")
+cur_res.prom <- cur_res.prom[which.max(sapply(cur_res.prom$cdna, nchar)),]
+
+for(i in 2:length(cur_prom)){
+  cur <- biomaRt::getSequence(chromosome = as.character(seqnames(cur_prom))[i], 
+                                     start = start(ranges(cur_prom))[i],
+                                     end = end(ranges(cur_prom))[i], mart=ensembl,
+                                     seqType = "cdna", type = "ensembl_gene_id")
+  cur <- cur[which.max(sapply(cur$cdna, nchar)),]
+  cur_res.prom <- rbind(cur_res.prom, cur)
+}
+
+# Write these sequences in fasta format
+write.fasta(sequences = as.list(cur_res.prom$cdna), names = cur_res.prom$ensembl_gene_id, 
+              file.out = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/High_K9_autosomal_prom.fa")
+
+# Gene with high K9 signal in gene bodies
+cur_genes <- df.auto.target[df.auto.target$Spermatocytes.gene.K9 > 0.5,]
+cur_gene_body <- gene.body[rownames(cur_genes),]
+
+cur_res.body <- biomaRt::getSequence(chromosome = as.character(seqnames(cur_gene_body))[1], 
+                                     start = start(ranges(cur_gene_body))[1], 
+                                     end = end(ranges(cur_gene_body))[1], mart=ensembl,
+                                     seqType = "cdna", type = "ensembl_gene_id")
+cur_res.body <- cur_res.body[which.max(sapply(cur_res.body$cdna, nchar)),]
+
+for(i in 2:length(cur_gene_body)){
+  cur <- biomaRt::getSequence(chromosome = as.character(seqnames(cur_gene_body))[i], 
+                                     start = start(ranges(cur_gene_body))[i],
+                                     end = end(ranges(cur_gene_body))[i], mart=ensembl,
+                                     seqType = "cdna", type = "ensembl_gene_id")
+  cur <- cur[which.max(sapply(cur$cdna, nchar)),]
+  cur_res.body <- rbind(cur_res.body, cur)
+}
+
+# Write these sequences in fasta format
+write.fasta(sequences = as.list(cur_res.body$cdna), names = cur_res.body$ensembl_gene_id, 
+              file.out = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/High_K9_autosomal_genebody.fa")
 ```
