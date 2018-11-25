@@ -31,7 +31,7 @@ source("../Functions/auxiliary.R")
 # Read in sce data
 sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce <- sce[,grepl("B6", colData(sce)$Sample) & 
-             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
+             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:20]]
 sce <- normalize(sce)
 
 # Read in gene annotations
@@ -58,10 +58,10 @@ genes <- rowData(sce)$ID[
               function(n){length(which(n > 0))}) >
     0.3*sum(colData(sce)$AnnotatedClusters == "Spermatogonia") |
     apply(logcounts(sce)[,colData(sce)$AnnotatedClusters %in% 
-          paste("S", 1:14, sep = "")], 1,
+          paste("S", 1:11, sep = "")], 1,
               function(n){length(which(n > 0))}) >
     0.3*sum(colData(sce)$AnnotatedClusters %in% 
-              paste("S", 1:14, sep = ""))]
+              paste("S", 1:11, sep = ""))]
 
 
 # Collect genes for some chromosomes
@@ -100,7 +100,7 @@ x.inactivation <- ggplot(df) + geom_boxplot(aes(groups, ratios, fill = chr)) +
     theme(panel.background = element_blank(), axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, size = 12, hjust = 1),
         axis.text.y = element_text(size = 12))
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/Xdynamics.pdf", 
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_7/Xdynamics.pdf", 
        x.inactivation, width = 12, height = 7)
 ```
 
@@ -242,9 +242,9 @@ mat.for.heatmap <- mat.for.heatmap[,-1]
 mat.for.heatmap <- mat.for.heatmap[order(apply(mat.for.heatmap, 1, which.max),
                                          decreasing = FALSE),]
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_6/SC_heatmap_spermatid_specific.pdf",   width = 7, height = 15)
+pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_7/SC_heatmap_spermatid_specific.pdf",   width = 7, height = 15)
 pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE, 
-         cluster_rows = FALSE, show_rownames = FALSE,
+         cluster_rows = FALSE, 
          color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
          annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
                   cell_type = colnames(mat.for.heatmap)),
@@ -253,11 +253,43 @@ pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE,
          annotation_colors = list(cell_type = metadata(sce)$color_vector,
                                   label = c("TRUE" = "black",
                             "FALSE" = "white")), 
-         scale = "row", border_color = NA, cellheight = 4, fontsize = 7)
+         scale = "row", border_color = NA, cellheight = 4, fontsize = 3)
 dev.off()
 
 data.frame(names = rownames(mat.for.heatmap),
            label = as.factor(cur_df[rownames(mat.for.heatmap),"label"]))
+```
+
+# Visualize Klf5 expression
+
+```{r}
+p.clusters <- ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
+                      tSNE2 = reducedDims(sce)$TSNE[,2],
+                      cluster = colData(sce)$AnnotatedClusters)) +
+      geom_point(aes(tSNE1, tSNE2, colour = cluster)) + 
+      scale_color_manual(values = metadata(sce)$color_vector) + 
+  guides(colour = FALSE)
+
+# Klf5
+Klf5.tsne <- ggplot(data.frame(tSNE1 = reducedDims(sce)$TSNE[,1],
+                      tSNE2 = reducedDims(sce)$TSNE[,2],
+                      Gene = logcounts(sce)[rowData(sce)$Symbol == "Klf5",])) +
+      geom_point(aes(tSNE1, tSNE2, colour = Gene)) + 
+      scale_color_viridis() 
+
+Klf5.box <-  ggplot(data.frame(value = logcounts(sce)[rowData(sce)$Symbol == "Klf5",],
+                      cluster = colData(sce)$AnnotatedClusters)) +
+      geom_boxplot(aes(x = cluster, y = value, fill = cluster)) + 
+      scale_fill_manual(values = metadata(sce)$color_vector) + ylab("log2(Expr)") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            panel.background = element_blank(), 
+            axis.title.x = element_blank()) + guides(fill = FALSE) +
+  ylim(c(0,5))
+
+# Save figure
+final <- plot_grid(p.clusters, Klf5.tsne, Klf5.box,
+                   ncol = 3, nrow = 1)
+ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_7/Klf5.pdf", final, width = 15, height = 5)
 ```
 
 
