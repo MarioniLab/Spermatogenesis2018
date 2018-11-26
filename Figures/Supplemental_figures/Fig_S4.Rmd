@@ -14,8 +14,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This script recapitulates the visualization of all juvenile samples and 
-plots marker genes for the P10 sample.
+This script recapitulates the visualization of somatic cells.
 
 # Load data and libraries
 
@@ -30,10 +29,10 @@ library(cowplot)
 library(RColorBrewer)
 library(pheatmap)
 library(viridis)
-source("../Functions/auxiliary.R")
+source("../../Functions/auxiliary.R")
 
 # Single cell data
-sce.all <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 
 sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0")) & 
                      colData(sce.all)$AnnotatedClusters != "Outliers"]
@@ -85,21 +84,21 @@ ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
 # Visualize gene expression
 ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
                   tsne2 = reducedDims(tsne.somatic)$TSNE[,2],
-                  gene = logcounts(sce.somatic)[rowData(sce.somatic)$Symbol == "Dlk1",]))               + geom_point(aes(tsne1, tsne2, colour = gene), size = 0.5) +
+                  gene = logcounts(sce.somatic)[rowData(sce.somatic)$Symbol == "Sh3bgr",]))               + geom_point(aes(tsne1, tsne2, colour = gene), size = 0.5) +
     scale_color_viridis()
 
 # Differential expression between somatic cells types from P5 and P10
-genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+genenames <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 rownames(genenames) <- genenames$Gene.stable.ID
 
 results.DE <- list()
-cur_groups <- c("Sertoli", "Leydig", 
-                "Immature_Leydig_1", "Immature_Leydig_2", 
-                "Immature_Leydig_3", "PTM", "Endothelial_cells", 
+cur_groups <- c("Sertoli", "Leydig_1", "Leydig_2", 
+                "Fetal_Leydig_1", "Fetal_Leydig_2", 
+                "PTM", "Endothelial_cells", 
                 "Interstitial_tMg")
 for(i in cur_groups){
   sce.test <- sce.somatic[,colData(sce.somatic)$AnnotatedClusters == i]
-  sce.test <- sce.test[Matrix::rowMeans(logcounts(sce.test)) > 0.1,]
+  sce.test <- sce.test[Matrix::rowMeans(logcounts(sce.test)) > 0,]
   sce.test <- normalize(sce.test)
   
   # Sum counts with each batch and group
@@ -120,7 +119,7 @@ for(i in cur_groups){
                             function(n){unlist(strsplit(n, "_"))[1]}))
   y <- calcNormFactors(y)
   design <- model.matrix(~0+sapply(colnames(mat), function(n){unlist(strsplit(n, "_"))[1]}))
-  colnames(design) <- c("P5", "P10")
+  colnames(design) <- c("P10", "P5")
   y <- estimateDisp(y,design)
   
   fit <- glmQLFit(y,design, robust = TRUE)
@@ -128,23 +127,21 @@ for(i in cur_groups){
                   contrast = makeContrasts(P5 - P10, levels = design))
   cur_markers <- topTags(qlf, n = nrow(qlf$table))$table
   
-  markers.P5 <- cur_markers[cur_markers$FDR < 0.1 & cur_markers$logFC < 0,]
+  markers.P5 <- cur_markers[cur_markers$FDR < 0.1 & cur_markers$logFC > 0,]
   markers.P5$Genename <- rowData(sce.test)$Symbol[match(rownames(markers.P5),
                                                                  rowData(sce.test)$ID)]
-  markers.P10 <- cur_markers[cur_markers$FDR < 0.1 & cur_markers$logFC > 0,]
+  markers.P10 <- cur_markers[cur_markers$FDR < 0.1 & cur_markers$logFC < 0,]
   markers.P10$Genename <- rowData(sce.test)$Symbol[match(rownames(markers.P10),
                                                                  rowData(sce.test)$ID)]
   results.DE[[paste("Group_", i, "_P5", sep = "")]] <- markers.P5
   results.DE[[paste("Group_", i, "_P10", sep = "")]] <- markers.P10
 }
 
-write.xlsx(results.DE, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Analysis/Somatic_cells_P5_P10.xlsx")
-
-
+write.xlsx(results.DE, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/DE_Somatic_cells_P5_P10.xlsx")
 ```
 
-
 # Visualize batch corrected data
+
 ```{r}
 # Plot sample distribution across somatic cells
 sample_col_vector <- c("P5"= "#e31a1c", "P10"="#1f78b4")
