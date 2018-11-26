@@ -72,7 +72,7 @@ genes.A <- genes[genes %in% genenames[genenames[,3] != "X" &
                                         genenames[,3] != "Y" &
                                         genenames[,3] != "MT",1]]
 
-# Calculate X:A ratio and 16:X ratio
+# Calculate X:A ratio and 9:X ratio
 ratio.X.A <- colMeans(as.matrix(logcounts(sce)[genes.X,]))/
   colMeans(as.matrix(logcounts(sce)[genes.A,]))
 ratio.X.A[is.nan(ratio.X.A)] <- 0

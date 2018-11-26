@@ -14,7 +14,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Load data and libraries
+# Load libraries
 
 ```{r data, message=FALSE}
 library(scater)
@@ -27,21 +27,101 @@ library(ggsci)
 library(cowplot)
 library(openxlsx)
 library(VennDiagram)
-source("../Functions/auxiliary.R")
+source("../../Functions/auxiliary.R")
 
-# Read in sce data
-sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce <- sce[,grepl("B6", colData(sce)$Sample) & 
-             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
+             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:20]]
 sce <- normalize(sce)
 
 # Read in gene annotations
-genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+genenames <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 rownames(genenames) <- genenames$Gene.stable.ID
-
-# Read in gene annotations
-spermatid.spec <- read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
 ```
+
+# X chromosomal expression in P15 sample of emptyDrops
+
+```{r}
+# Single cell data
+sce.emptyDrops <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
+
+sce.emptyDrops <- sce.emptyDrops[,colData(sce.emptyDrops)$Sample == "P15"]
+sce.emptyDrops <- sce.emptyDrops[,
+                grepl("Pachytene|Differentiating|Zygotene|Leptotene|Undifferentiated", 
+                          colData(sce.emptyDrops)$P15Clusters) &
+                 colData(sce.emptyDrops)$AnnotatedClusters != "Outliers" &
+             colData(sce.emptyDrops)$AnnotatedClusters != "Sertoli"]
+
+# Select same genes as in Figure 7
+genes <- rowData(sce)$ID[
+  apply(logcounts(sce)[,colData(sce)$AnnotatedClusters == "Spermatogonia"], 1,
+              function(n){length(which(n > 0))}) >
+    0.3*sum(colData(sce)$AnnotatedClusters == "Spermatogonia") |
+    apply(logcounts(sce)[,colData(sce)$AnnotatedClusters %in% 
+          paste("S", 1:11, sep = "")], 1,
+              function(n){length(which(n > 0))}) >
+    0.3*sum(colData(sce)$AnnotatedClusters %in% 
+              paste("S", 1:11, sep = ""))]
+
+# Collect genes for some chromosomes
+genes.X <- genes[genes %in% genenames[genenames[,3] == "X",1]]
+genes.Y <- genes[genes %in% genenames[genenames[,3] == "Y",1]]
+genes.9 <- genes[genes %in% genenames[genenames[,3] == "9",1]]
+genes.A <- genes[genes %in% genenames[genenames[,3] != "X" & 
+                                        genenames[,3] != "Y" &
+                                        genenames[,3] != "MT",1]]
+
+# Calculate X:A ratio and 9:X ratio
+ratio.X.A <- colMeans(as.matrix(logcounts(sce.emptyDrops)[genes.X,]))/
+  colMeans(as.matrix(logcounts(sce.emptyDrops)[genes.A,]))
+ratio.X.A[is.nan(ratio.X.A)] <- 0
+
+ratio.Y.A <- colMeans(as.matrix(logcounts(sce.emptyDrops)[genes.Y,]))/
+  colMeans(as.matrix(logcounts(sce.emptyDrops)[genes.A,]))
+ratio.Y.A[is.nan(ratio.Y.A)] <- 0
+
+ratio.9.A <- colMeans(as.matrix(logcounts(sce.emptyDrops)[genes.9,]))/
+  colMeans(as.matrix(logcounts(sce.emptyDrops)[genes.A,]))
+ratio.9.A[is.nan(ratio.9.A)] <- 0
+
+# Order cells in pseutotime
+HVgenes <- HVG(sce.emptyDrops)
+pca <- prcomp(t(logcounts(sce.emptyDrops)[HVgenes,]))
+prank <- PT(rd = pca$x[,1:10], clusters = colData(sce.emptyDrops)$P15Clusters, 
+            col_vector = metadata(sce.emptyDrops)$colour_vector.P15, )
+
+# Build mean ratio matrix
+df <- data.frame(ratios = c(ratio.X.A, ratio.Y.A, ratio.9.A),
+                 groups = factor(c(as.character(colData(sce.emptyDrops)$P15Clusters), 
+                            as.character(colData(sce.emptyDrops)$P15Clusters),
+                            as.character(colData(sce.emptyDrops)$P15Clusters)), 
+                            levels = levels(colData(sce.emptyDrops)$P15Clusters)),
+                 chr = c(rep("X", length(ratio.X.A)), rep("Y", length(ratio.Y.A)),
+                         rep("9", length(ratio.9.A))),
+                 PT = c(prank[,"rank"], prank[,"rank"], prank[,"rank"]))
+
+# Plot three different plots
+X.chr <- ggplot(df[df$chr == "X",]) + geom_point(aes(PT, ratios, color = groups)) + 
+  scale_colour_manual(values = metadata(sce.emptyDrops)$colour_vector.P15) +
+  geom_smooth(aes(PT, ratios), colour = "blue") + scale_x_reverse() +
+  ylim(c(0,1.5))
+
+Y.chr <- ggplot(df[df$chr == "Y",]) + geom_point(aes(PT, ratios, color = groups)) + 
+  scale_colour_manual(values = metadata(sce.emptyDrops)$colour_vector.P15) +
+  geom_smooth(aes(PT, ratios), colour = "red") + scale_x_reverse()
+
+chr.9 <- ggplot(df[df$chr == "9",]) + geom_point(aes(PT, ratios, color = groups)) + 
+  scale_colour_manual(values = metadata(sce.emptyDrops)$colour_vector.P15) +
+  geom_smooth(aes(PT, ratios), colour = "green") + scale_x_reverse() +
+  ylim(c(0,1.5))
+
+all <- plot_grid(X.chr + theme(legend.position = "none"),
+                 Y.chr + theme(legend.position = "none"),
+                 chr.9 + theme(legend.position = "none"), ncol = 3)
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S9/Sex_chromosome_dynamics.pdf",all, width = 20, height = 5)
+```
+
+# Multicopy gene analysis
 
 # Read in the BLAST hits for the different multicopy genes
 
