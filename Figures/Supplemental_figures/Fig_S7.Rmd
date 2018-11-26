@@ -14,7 +14,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Load data and libraries
+# Load libraries
 
 ```{r data, message=FALSE}
 library(scater)
@@ -26,8 +26,11 @@ library(viridis)
 library(ggsci)
 library(cowplot)
 library(openxlsx)
-source("../Functions/auxiliary.R")
+source("../../Functions/auxiliary.R")
+```
 
+
+```{r}
 # Read in sce data
 sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce <- sce[,grepl("Tc0|Tc1", colData(sce)$Sample) & 
