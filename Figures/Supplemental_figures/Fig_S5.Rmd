@@ -14,6 +14,26 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Read in the data
+
+```{r data, message=FALSE}
+library(scater)
+library(ggplot2)
+library(reshape2)
+library(plyr)
+library(openxlsx)
+library(cowplot)
+library(viridis)
+library(pheatmap)
+library(Rtsne)
+library(irlba)
+library(RColorBrewer)
+source("../../Functions/auxiliary.R")
+
+# Single cell data
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+```
+
 # Visualize spermatogonia from P5
 
 ```{r}
@@ -37,13 +57,11 @@ g <- buildSNNGraph(logcounts(spermatogonia.P5)[HVgenes,], k = 15,
                    pc.approx = TRUE)
 clusters <- igraph::cluster_louvain(g)$membership
 
-
 # Change cluster labels
-clusters[clusters == 1] <- "Prospermatogonia"
+clusters[clusters == 1] <- "Diff"
 clusters[clusters == 2] <- "Undiff_2"
-clusters[clusters == 3] <- "Undiff_1"
-clusters[clusters == 4] <- "Diff"
-
+clusters[clusters == 3] <- "Prospermatogonia"
+clusters[clusters == 4] <- "Undiff_1"
 
 col_vector <- c("Prospermatogonia" = "#7A9606",
                 "Undiff_1" = "#0D3D21",
@@ -103,14 +121,13 @@ Eif2s2.p5 <- ggplot() +
 
 spermatogonia.markers.P5 <- marker.detection(spermatogonia.P5, 
                                           clusters)
-write.xlsx(spermatogonia.markers.P5, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S4_P5.xlsx")
+write.xlsx(spermatogonia.markers.P5, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S4_P5.xlsx")
 
 
-legend_B <- plot_grid(get_legend(p5.cluster), get_legend(Gfra1.p5) , get_legend(Stra8.p5), get_legend(Eif2s2.p5), ncol = 4 , nrow = 1)
-B_plot <- plot_grid(p5.cluster + theme(legend.position= "NONE"), Gfra1.p5 + theme(legend.position= "NONE"), Stra8.p5 + theme(legend.position= "NONE"), Eif2s2.p5 + theme(legend.position= "NONE"), ncol = 4, nrow = 1)
-B <- plot_grid(B_plot, legend_B, ncol = 1, nrow = 2, rel_heights = c(2,1))
-final <- plot_grid(A, B, ncol = 1, nrow = 2, rel_heights = c(2,1))
+final_legend <- plot_grid(get_legend(p5.cluster), get_legend(Gfra1.p5) , get_legend(Stra8.p5), get_legend(Eif2s2.p5), ncol = 4 , nrow = 1)
+final_plot <- plot_grid(p5.cluster + theme(legend.position= "NONE"), Gfra1.p5 + theme(legend.position= "NONE"), Stra8.p5 + theme(legend.position= "NONE"), Eif2s2.p5 + theme(legend.position= "NONE"), ncol = 4, nrow = 1)
+final <- plot_grid(B_plot, legend_B, ncol = 1, nrow = 2, rel_heights = c(2,1))
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3/Fig_3.pdf",
-       final, width = 15, height = 12.5)
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Fig_S5.pdf",
+       final, width = 15, height = 5)
 ```
