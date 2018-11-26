@@ -86,7 +86,7 @@ corrected <- mnnCorrect(as.matrix(logcounts(sce.P15)[genes,]),
                         as.matrix(logcounts(sce_early_RA)[genes,]), 
                         cos.norm.in=TRUE, cos.norm.out=TRUE, sigma=0.1)
 # Visualization
-set.seed(222)
+set.seed(3456)
 pca <- prcomp_irlba(t(do.call("cbind", corrected$corrected)), n = 50)
 tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
 
@@ -257,12 +257,13 @@ dev.off()
 # Save final figure
 
 ```{r save}
-B_legend1 <- get_legend(empty_drops_clustered + theme(legend.position="right"))
+B_legend <- get_legend(number_genes + theme(legend.position="right"))
+B_legend1 <- get_legend(empty_drops_clustered + theme(legend.position="bottom"))
 final <- plot_grid(emptyDrops,
-               number_genes + theme(legend.position = "right"),
+               number_genes + theme(legend.position = "none"),
                empty_drops_clustered + theme(legend.position = "none"),
-               B_legend1,  ncol = 2, nrow = 2)
+               NULL, B_legend, B_legend1,  ncol = 3, nrow = 2, rel_heights = c(4,1))
 
 ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_4/Fig_4.pdf",
-       final, width = 15, height = 15)
+       final, width = 15, height = 7.5)
 ```
