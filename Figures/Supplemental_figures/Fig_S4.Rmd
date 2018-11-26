@@ -29,6 +29,7 @@ library(cowplot)
 library(RColorBrewer)
 library(pheatmap)
 library(viridis)
+library(Rtsne)
 source("../../Functions/auxiliary.R")
 
 # Single cell data
@@ -64,22 +65,23 @@ ggplot(data.frame(PC1 = reducedDims(pca.somatic)$PCA[,1],
 set.seed(123)
 tsne.somatic <- runTSNE(sce.somatic)
 # Visualize samples
-ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
+tsne.sample.before <- ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
                   tsne2 = reducedDims(tsne.somatic)$TSNE[,2],
                   samples = colData(tsne.somatic)$Sample)) +
-  geom_point(aes(tsne1, tsne2, colour = samples)) + 
-  scale_color_manual(values = c("#1f78b4", "#e31a1c"))
+  geom_point(aes(tsne1, tsne2, colour = samples), size = 0.5) + 
+  scale_color_manual(values = c("P5"= "#e31a1c", "P10"="#1f78b4"))
+
 # Visualize individual libraries
 ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
                   tsne2 = reducedDims(tsne.somatic)$TSNE[,2],
                   library = colData(tsne.somatic)$Library)) +
-    geom_point(aes(tsne1, tsne2, colour = library)) + 
+    geom_point(aes(tsne1, tsne2, colour = library), size = 0.5) + 
     scale_color_manual(values = c("#1f78b4", "#FF9100", "#e31a1c"))
 # Visualize cell types
-ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
+tsne.clusters.before <-ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
                   tsne2 = reducedDims(tsne.somatic)$TSNE[,2],
                   cell_type = colData(sce.somatic)$AnnotatedClusters)) +
-    geom_point(aes(tsne1, tsne2, colour = cell_type)) + 
+    geom_point(aes(tsne1, tsne2, colour = cell_type), size = 0.5) + 
     scale_color_manual(values = metadata(sce.somatic)$color_vector)
 # Visualize gene expression
 ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
@@ -143,37 +145,43 @@ write.xlsx(results.DE, "../../../../Dropbox (Cambridge University)/SST_spermatoc
 # Visualize batch corrected data
 
 ```{r}
+# Batch correct the data
+sce.single <- split.sce(sce = sce.somatic, 
+                        groups = unique(colData(sce.somatic)$Library), 
+                        colData.name = "Library")
+
+# Use P10 as first sample
+corrected <- batch.correction(sce.single[c("do17821", "do26386", "do26387")])
+
+# Reassemble the sce object
+sce.somatic <- do.call("cbind", sce.single[c("do17821", "do26386", "do26387")])
+rm(sce.single)
+
+# Recompute the tSNE of batch corrected data
+set.seed(12345)
+tSNE.somatic.after <- Rtsne(t(corrected))
+
 # Plot sample distribution across somatic cells
 sample_col_vector <- c("P5"= "#e31a1c", "P10"="#1f78b4")
-somatic_samples <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.somatic)$TSNE[,1],
-                             tSNE2 = reducedDims(sce.somatic)$TSNE[,2],
+tsne.sample.after <- ggplot(data = data.frame(tSNE1 = tSNE.somatic.after$Y[,1],
+                             tSNE2 = tSNE.somatic.after$Y[,2],
                              sample = colData(sce.somatic)$Sample)) +     
                             geom_point(aes(tSNE1, tSNE2, colour = sample), size = 0.5) + 
                           scale_color_manual(values = sample_col_vector)
 
 # Plot different somatic cell types
-somatic_tsne <- ggplot(data = data.frame(tSNE1 = reducedDims(sce.somatic)$TSNE[,1],
-                             tSNE2 = reducedDims(sce.somatic)$TSNE[,2],
-                             cell_type = colData(sce.somatic)$AnnotatedClusters)) +     geom_point(aes(tSNE1, tSNE2, colour = cell_type), size = 0.5) + scale_color_manual(values = metadata(sce.somatic)$color_vector)
-
-# Plot marker gene expression
-
-ggplot(data = data.frame(tSNE1 = reducedDims(sce.somatic)$TSNE[,1],
-                             tSNE2 = reducedDims(sce.somatic)$TSNE[,2],
-                             gene = logcounts(sce.somatic)[rowData(sce.somatic)$Symbol == "Slk1",]))               + geom_point(aes(tSNE1, tSNE2, colour = gene), size = 0.5) +
-              scale_color_viridis()
-
-ggplot(data = data.frame(tSNE1 = reducedDims(sce.somatic)$TSNE[,1],
-                             tSNE2 = reducedDims(sce.somatic)$TSNE[,2],
-                             cell_type = colData(sce.somatic)$AnnotatedClusters)) +     geom_point(aes(tSNE1, tSNE2, colour = cell_type), size = 0.5) + scale_color_manual(values = metadata(sce.somatic)$color_vector)
+tsne.clusters.after <- ggplot(data = data.frame(tSNE1 = tSNE.somatic.after$Y[,1],
+                             tSNE2 = tSNE.somatic.after$Y[,2],
+                             cell_type = colData(sce.somatic)$AnnotatedClusters)) +     
+  geom_point(aes(tSNE1, tSNE2, colour = cell_type), size = 0.5) + 
+  scale_color_manual(values = metadata(sce.somatic)$color_vector)
 
 # Combine plots
-cluster_legend <- get_legend(P5.P10.tsne + theme(legend.position="bottom"))
-A <- plot_grid(P5.P10.sample + theme(legend.position = c(.05, .8)), P5.P10.tsne + theme(legend.position = "none"), ncol = 2)
-final <- plot_grid(A, cluster_legend, nrow = 2, rel_heights = c(4,1))
+final <- plot_grid(tsne.sample.before, tsne.clusters.before + theme(legend.position = c(0.5, 0.9)),
+                   tsne.sample.after, tsne.clusters.after, ncol = 2)
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S3/Fig_S3.pdf",
-       final, width = 15, height = 7.5)
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Fig_S4.pdf",
+       final, width = 10, height = 10)
 
 ```
 
