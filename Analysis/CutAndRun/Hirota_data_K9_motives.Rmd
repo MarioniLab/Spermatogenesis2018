@@ -185,50 +185,21 @@ df.auto.target <- df.auto.target[order(df.auto.target$Spermatocytes.prom.K9,
 cur_genes <- df.auto.target[df.auto.target$Spermatocytes.prom.K9 > 1,]
 cur_prom <- prom[rownames(cur_genes),]
 
-# Write out fasta files
-# Initialize biomaRt
-ensembl <- useMart("ensembl")
-ensembl <- useDataset("mmusculus_gene_ensembl", mart=ensembl)
+# Find sequences of promoters and gene bodies
+library(BSgenome.Mmusculus.UCSC.mm10)
+seqlevels(cur_prom) <- paste0("chr", seqlevels(cur_prom))
+genome(cur_prom) <- "mm10"
+cur_res.prom <- getSeq(BSgenome.Mmusculus.UCSC.mm10, cur_prom)
 
-cur_res.prom <- biomaRt::getSequence(chromosome = as.character(seqnames(cur_prom))[1], 
-                                     start = start(ranges(cur_prom))[1],
-                                     end = end(ranges(cur_prom))[1], mart=ensembl,
-                                     seqType = "cdna", type = "ensembl_gene_id")
-cur_res.prom <- cur_res.prom[which.max(sapply(cur_res.prom$cdna, nchar)),]
-
-for(i in 2:length(cur_prom)){
-  cur <- biomaRt::getSequence(chromosome = as.character(seqnames(cur_prom))[i], 
-                                     start = start(ranges(cur_prom))[i],
-                                     end = end(ranges(cur_prom))[i], mart=ensembl,
-                                     seqType = "cdna", type = "ensembl_gene_id")
-  cur <- cur[which.max(sapply(cur$cdna, nchar)),]
-  cur_res.prom <- rbind(cur_res.prom, cur)
-}
-
-# Write these sequences in fasta format
-write.fasta(sequences = as.list(cur_res.prom$cdna), names = cur_res.prom$ensembl_gene_id, 
-              file.out = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/High_K9_autosomal_prom.fa")
+writeXStringSet(cur_res.prom, file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/High_K9_autosomal_prom.fa")
 
 # Gene with high K9 signal in gene bodies
 cur_genes <- df.auto.target[df.auto.target$Spermatocytes.gene.K9 > 0.5,]
 cur_gene_body <- gene.body[rownames(cur_genes),]
 
-cur_res.body <- biomaRt::getSequence(chromosome = as.character(seqnames(cur_gene_body))[1], 
-                                     start = start(ranges(cur_gene_body))[1], 
-                                     end = end(ranges(cur_gene_body))[1], mart=ensembl,
-                                     seqType = "cdna", type = "ensembl_gene_id")
-cur_res.body <- cur_res.body[which.max(sapply(cur_res.body$cdna, nchar)),]
+seqlevels(cur_gene_body) <- paste0("chr", seqlevels(cur_gene_body))
+genome(cur_gene_body) <- "mm10"
+cur_res.gene <- getSeq(BSgenome.Mmusculus.UCSC.mm10, cur_gene_body)
 
-for(i in 2:length(cur_gene_body)){
-  cur <- biomaRt::getSequence(chromosome = as.character(seqnames(cur_gene_body))[i], 
-                                     start = start(ranges(cur_gene_body))[i],
-                                     end = end(ranges(cur_gene_body))[i], mart=ensembl,
-                                     seqType = "cdna", type = "ensembl_gene_id")
-  cur <- cur[which.max(sapply(cur$cdna, nchar)),]
-  cur_res.body <- rbind(cur_res.body, cur)
-}
-
-# Write these sequences in fasta format
-write.fasta(sequences = as.list(cur_res.body$cdna), names = cur_res.body$ensembl_gene_id, 
-              file.out = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/High_K9_autosomal_genebody.fa")
+writeXStringSet(cur_res.gene, file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/High_K9_autosomal_genebody.fa")
 ```
