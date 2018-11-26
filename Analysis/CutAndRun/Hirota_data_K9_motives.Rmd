@@ -202,4 +202,39 @@ genome(cur_gene_body) <- "mm10"
 cur_res.gene <- getSeq(BSgenome.Mmusculus.UCSC.mm10, cur_gene_body)
 
 writeXStringSet(cur_res.gene, file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/High_K9_autosomal_genebody.fa")
+
+# Write out promoter and gene body sequence as bed files
+export.bed(cur_prom, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/High_K9_autosomal_prom.bed")
+
+export.bed(cur_gene_body, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/High_K9_autosomal_genebody.bed")
 ```
+
+Now we perform the same analysis of up regulated genes on the X chromosome.
+
+```{r}
+# Promoters of up regulated genes
+cur_genes <- intersect(Up.genes[Up.genes$chromosome == "X","gene_id"],
+                       names(prom))
+cur_prom <- prom[cur_genes]
+
+seqlevels(cur_prom) <- paste0("chr", seqlevels(cur_prom))
+genome(cur_prom) <- "mm10"
+cur_res.prom <- getSeq(BSgenome.Mmusculus.UCSC.mm10, cur_prom)
+
+writeXStringSet(cur_res.prom, file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Xchr_prom.fa")
+
+# Gene bodies of up regulated genes
+cur_gene_body <- gene.body[cur_genes,]
+
+seqlevels(cur_gene_body) <- paste0("chr", seqlevels(cur_gene_body))
+genome(cur_gene_body) <- "mm10"
+cur_res.gene <- getSeq(BSgenome.Mmusculus.UCSC.mm10, cur_gene_body)
+
+writeXStringSet(cur_res.gene, file="../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Xchr_genebody.fa")
+
+# Write out bed files
+export.bed(cur_prom, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Xchr_prom.bed")
+
+export.bed(cur_gene_body, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Xchr_genebody.bed")
+```
+
