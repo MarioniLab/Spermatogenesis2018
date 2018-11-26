@@ -86,7 +86,7 @@ corrected <- mnnCorrect(as.matrix(logcounts(sce.P15)[genes,]),
                         as.matrix(logcounts(sce_early_RA)[genes,]), 
                         cos.norm.in=TRUE, cos.norm.out=TRUE, sigma=0.1)
 # Visualization
-set.seed(222)
+set.seed(3456)
 pca <- prcomp_irlba(t(do.call("cbind", corrected$corrected)), n = 50)
 tsne <- Rtsne(pca$x, pca = FALSE, perplexity = 50)
 
