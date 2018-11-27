@@ -258,7 +258,7 @@ cumsum.all <- ggplot() +
   geom_line(data = df.K9.9.melt, aes(Var1, value, colour = Var2), lty = 3) +
   geom_line(data = df.K9.X.melt, aes(Var1, value, colour = Var2)) + 
   scale_color_manual(values = c("red", "dark red", "blue", "dark blue"))
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S8/Cumsum_all.pdf", 
+ggsave(filename = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Cumsum_all.pdf", 
        cumsum.all, width = 7, height = 4)
 ```
 
@@ -280,7 +280,7 @@ cur_high.merge
 # The second hit is right next to Akap4. Number 8 is close to Tsga8 and on Dmd.
 
 # Save as bedgraph
-export(cur_high.merge, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S8/Spermatocytes_1_highK9regions.bed")
+export(cur_high.merge, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Spermatocytes_1_highK9regions.bed")
 
 # Spermatids
 cur_high <- rowRanges(bins.K9.X)[order(assays(bins.K9.X)$counts[,2], decreasing = TRUE)]
@@ -296,5 +296,5 @@ cur_high.merge <- cur_high.merge$region[order(cur_high.merge$region@ranges@width
 cur_high.merge
 
 # Save as bedgraph
-export(cur_high.merge, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S8/Spermatids_1_highK9regions.bed")
+export(cur_high.merge, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Spermatids_1_highK9regions.bed")
 ```
