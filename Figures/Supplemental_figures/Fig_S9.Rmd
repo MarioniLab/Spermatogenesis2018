@@ -126,8 +126,8 @@ ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/R
 # Read in the BLAST hits for the different multicopy genes
 
 ```{r}
-files <- as.list(list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Multicopy/Mapping", full.names = TRUE))
-names(files) <- sapply(list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Multicopy/Mapping"), function(n){unlist(strsplit(n, "\\."))[1]})
+files <- as.list(list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Multicopy/Mapping", full.names = TRUE))
+names(files) <- sapply(list.files("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Multicopy/Mapping"), function(n){unlist(strsplit(n, "\\."))[1]})
 
 # Filter genes that lay on chromosome X
 mc_gene_table <- lapply(files, function(n){
@@ -184,7 +184,7 @@ mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = su
 rownames(mat.for.heatmap) <- mat.for.heatmap$variable
 mat.for.heatmap <- mat.for.heatmap[,-1]
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S7/MultiCopy_meta.pdf",   width = 7, height = 5)
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S9/MultiCopy_meta.pdf",   width = 7, height = 5)
 pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE, 
          cluster_rows = FALSE,
          color = viridis(100),
@@ -194,7 +194,29 @@ pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE,
          #scale = "row", 
          border_color = NA, cellheight = 8, fontsize = 7)
 dev.off()
+```
 
+# Visualize expression of Ssxb family member
+
+```{r}
+cur_genes <- df.multi[df.multi$gene_group == "Ssxb1",]
+cur_genes$ID <- rowData(sce)$ID[match(cur_genes$genes, rowData(sce)$Symbol)]
+
+for.heatmap <- sce[cur_genes$ID,]
+
+# Reorder object
+for.heatmap <- for.heatmap[,order(sce$AnnotatedClusters)]
+cur_counts <- logcounts(for.heatmap)
+colnames(cur_counts) <- paste(for.heatmap$Library, for.heatmap$Barcode, sep = "_")
+rownames(cur_counts) <- cur_genes$genes
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S9/Ssxb1_family.pdf",   width = 15, height = 3)
+pheatmap(cur_counts, cluster_cols = FALSE, color = viridis(100),
+         show_colnames = FALSE, 
+         annotation_col = data.frame(row.names = colnames(cur_counts),
+                                     cell_type = for.heatmap$AnnotatedClusters),
+         annotation_colors = list(cell_type = metadata(for.heatmap)$color_vector))
+dev.off()
 ```
 
 
