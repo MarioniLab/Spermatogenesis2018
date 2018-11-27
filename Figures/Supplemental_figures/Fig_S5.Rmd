@@ -134,7 +134,60 @@ comp.monocle.PC <- ggplot(data.frame(PC.rank = prank[,"rank"],
                   cluster = clusters)) +
   geom_point(aes(PC.rank, monocle.rank, colour = cluster)) +
   scale_color_manual(values = col_vector)
-ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Comp_Diffusionmap_PC.pdf", comp.DPT.PC)
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Comp_Diffusionmap_PC.pdf", comp.monocle.PC)
+```
+
+# Visualize hand picked marker genes in heatmap of P10 and P15 samples
+
+```{r}
+cur_genes <- c("Id4", "Gfra1", "Lhx1", "Egr2", "Etv5", "Nanos2", "Ret", "Eomes",
+               "Neurog3", "Rarg", "Nanos3", "Lin28a", "Upp1")
+
+for_heatmap <- logcounts(sce.spermatogonia)[match(cur_genes, rowData(sce.spermatogonia)$Symbol),
+                                            order(prank[,"rank"], decreasing = TRUE)]
+colnames(c) <- paste(colData(sce.spermatogonia)$Library[
+  order(prank[,"rank"], decreasing = TRUE)],
+  colData(sce.spermatogonia)$Barcode[
+  order(prank[,"rank"], decreasing = TRUE)], sep = "_")
+rownames(for_heatmap) <- cur_genes
+
+pheatmap(for_heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
+         annotation_col = data.frame(row.names = colnames(for_heatmap),
+                                     cluster = clusters[order(prank[,"rank"], 
+                                                                decreasing = TRUE)]), 
+         show_colnames = FALSE,
+         color = viridis(100), annotation_colors = list(cluster = col_vector))
+
+# Alternatively order cells based on their cluster ID
+for_heatmap <- logcounts(sce.spermatogonia)[match(cur_genes, rowData(sce.spermatogonia)$Symbol),]
+rownames(for_heatmap) <- cur_genes
+colnames(for_heatmap) <- sce.spermatogonia$Barcode
+for_heatmap <- for_heatmap[,c(which(clusters == "Undiff_1"),
+                              which(clusters == "Undiff_2"),
+                              which(clusters == "Undiff_to_Diff"),
+                              which(clusters == "Diff_A"),
+                              which(clusters == "Diff_In_B"),
+                              which(clusters == "pL"))]
+cur_cluster <- clusters[c(which(clusters == "Undiff_1"),
+                              which(clusters == "Undiff_2"),
+                              which(clusters == "Undiff_to_Diff"),
+                              which(clusters == "Diff_A"),
+                              which(clusters == "Diff_In_B"),
+                              which(clusters == "pL"))]
+cur_library <- sce.spermatogonia$Library[c(which(clusters == "Undiff_1"),
+                              which(clusters == "Undiff_2"),
+                              which(clusters == "Undiff_to_Diff"),
+                              which(clusters == "Diff_A"),
+                              which(clusters == "Diff_In_B"),
+                              which(clusters == "pL"))]
+
+pdf(file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Marker_heatmap.pdf", width = 12, height = 5)
+pheatmap(for_heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
+         annotation_col = data.frame(row.names = colnames(for_heatmap),
+                                     cluster = cur_cluster), 
+         show_colnames = FALSE,
+         color = viridis(100), annotation_colors = list(cluster = col_vector))
+dev.off()
 ```
 
 # Visualize spermatogonia from P5
@@ -233,42 +286,4 @@ final <- plot_grid(B_plot, legend_B, ncol = 1, nrow = 2, rel_heights = c(2,1))
 
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Fig_S5.pdf",
        final, width = 15, height = 5)
-```
-
-# Visualize hand picked marker genes in heatmap
-
-```{r}
-cur_genes <- c("Id4", "Gfra1", "Lhx1", "Egr2", "Etv5", "Nanos2", "Ret", "Eomes",
-               "Neurog3", "Rarg", "Nanos3", "Lin28a", "Upp1")
-
-for_heatmap <- logcounts(spermatogonia.P5)[match(cur_genes, rowData(spermatogonia.P5)$Symbol),]
-colnames(for_heatmap) <- spermatogonia.P5$Barcode
-rownames(for_heatmap) <- cur_genes
-cluster_dist <- as.dist(sqrt(1 - cor(as.matrix(logcounts(spermatogonia.P5)[HVgenes,]))))
-
-pheatmap(for_heatmap, cluster_rows = FALSE, clustering_distance_cols = cluster_dist,
-         annotation_col = data.frame(row.names = colnames(for_heatmap),
-                                     cluster = clusters))
-
-# Alternatively order cells based on their cluster ID
-for_heatmap <- for_heatmap[,c(which(clusters == "Prospermatogonia"),
-                              which(clusters == "Undiff_1"),
-                              which(clusters == "Undiff_2"),
-                              which(clusters == "Diff"))]
-cur_cluster <- clusters[c(which(clusters == "Prospermatogonia"),
-                              which(clusters == "Undiff_1"),
-                              which(clusters == "Undiff_2"),
-                              which(clusters == "Diff"))]
-cur_library <- spermatogonia.P5$Library[c(which(clusters == "Prospermatogonia"),
-                              which(clusters == "Undiff_1"),
-                              which(clusters == "Undiff_2"),
-                              which(clusters == "Diff"))]
-
-pdf(file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Marker_heatmap.pdf", width = 12, height = 5)
-pheatmap(for_heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
-         annotation_col = data.frame(row.names = colnames(for_heatmap),
-                                     cluster = cur_cluster), 
-         show_colnames = FALSE,
-         color = viridis(100), annotation_colors = list(cluster = col_vector))
-dev.off()
 ```
