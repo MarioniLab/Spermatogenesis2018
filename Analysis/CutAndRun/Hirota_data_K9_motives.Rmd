@@ -238,3 +238,36 @@ export.bed(cur_prom, "../../../../Dropbox (Cambridge University)/SST_spermatocyt
 export.bed(cur_gene_body, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Xchr_genebody.bed")
 ```
 
+# Visualize repeat position across chromosomes
+
+```{r}
+# Read in repeat
+Rtlr14 <- read.table(("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Analysis/Repeats/mm10_RLTR14-int.bed"), sep = "\t")
+Rtlr14 <- GRanges(seqnames = sub("chr", "", Rtlr14[,1]),
+                  ranges = IRanges(start = Rtlr14[,2], end = Rtlr14[,3], 
+                                   names = Rtlr14[,1]))
+
+# Select chromosomal bins
+bins.K9 <- windowCounts(bam.files.K9.P26, bin = TRUE, width = 20000,
+    param=readParam(dedup=TRUE, minq=10, 
+                    discard=black, pe="both", max.frag=1000))
+bins.K9 <- bins.K9[as.character(seqnames(bins.K9@rowRanges)) %in%
+                             c(as.character(1:19), "X", "Y")]
+
+# Count repeat occurences in bins
+Rtlr14.counts <- countOverlaps(query = bins.K9, subject = Rtlr14)
+
+cur_df <- data.frame(score = assays(bins.K9)$counts[,1]/(colSums(assays(bins.K9)$counts)[1]/1000000),
+                     chr = factor(as.character(seqnames(bins.K9@rowRanges)),
+                                  levels = c(as.character(1:19), "X", "Y")),
+                     cat = rep(1, nrow(bins.K9)),
+                     Rtlr14.counts = Rtlr14.counts)
+
+p.K9 <- ggplot(cur_df) + geom_bar(stat = "identity", aes(chr, cat, fill = log(score + 1))) +
+  scale_fill_gradientn(colours = colorRampPalette(c(c("white", "dark blue", "black")))(100))
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Analysis/Repeats/K9_signal.pdf", p.K9)
+p.Rtlr14 <- ggplot(cur_df) + geom_bar(stat = "identity", aes(chr, cat, fill = Rtlr14.counts)) +
+  scale_fill_gradientn(colours = colorRampPalette(c(c("white", "purple", "black")))(100))
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Analysis/Repeats/Rtlr14_signal.pdf", p.Rtlr14)
+```
+
