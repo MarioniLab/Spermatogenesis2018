@@ -22,11 +22,17 @@ library(plyr)
 library(reshape2)
 library(pheatmap)
 library(viridis)
-
 library(ggsci)
 library(cowplot)
 library(openxlsx)
 source("../../Functions/auxiliary.R")
+```
+
+# Visualize quantification of Pou5f2 RNAScope
+
+```{r}
+cur_quant <- read.xlsx("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/RNAScope/RNAscope_quantification.xlsx",
+                       sheet = 4)
 ```
 
 
