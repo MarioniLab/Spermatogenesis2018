@@ -86,7 +86,7 @@ tsne.clusters.before <-ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[
 # Visualize gene expression
 ggplot(data.frame(tsne1 = reducedDims(tsne.somatic)$TSNE[,1],
                   tsne2 = reducedDims(tsne.somatic)$TSNE[,2],
-                  gene = logcounts(sce.somatic)[rowData(sce.somatic)$Symbol == "Sh3bgr",]))               + geom_point(aes(tsne1, tsne2, colour = gene), size = 0.5) +
+                  gene = logcounts(sce.somatic)[rowData(sce.somatic)$Symbol == "Igfbp4",]))               + geom_point(aes(tsne1, tsne2, colour = gene), size = 0.5) +
     scale_color_viridis()
 
 # Differential expression between somatic cells types from P5 and P10
@@ -176,103 +176,101 @@ tsne.clusters.after <- ggplot(data = data.frame(tSNE1 = tSNE.somatic.after$Y[,1]
   geom_point(aes(tSNE1, tSNE2, colour = cell_type), size = 0.5) + 
   scale_color_manual(values = metadata(sce.somatic)$color_vector)
 
+# Visualize gene expression
+ggplot(data.frame(tsne1 = tSNE.somatic.after$Y[,1],
+                  tsne2 = tSNE.somatic.after$Y[,2],
+                  gene = logcounts(sce.somatic)[rowData(sce.somatic)$Symbol == "Igfbp4",]))               + geom_point(aes(tsne1, tsne2, colour = gene), size = 0.5) +
+    scale_color_viridis()
+
 # Combine plots
 final <- plot_grid(tsne.sample.before, tsne.clusters.before + theme(legend.position = c(0.5, 0.9)),
                    tsne.sample.after, tsne.clusters.after, ncol = 2)
 
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Fig_S4.pdf",
        final, width = 10, height = 10)
-
 ```
 
-# Collect marker genes for somatic cells in P10 
+# Collect marker genes for somatic cells in P10 and P5 
 
 ```{r}
-sce.single <- split.sce(sce = sce.somatic, 
-                        groups = unique(colData(sce.somatic)$Library), 
-                        colData.name = "Library")
-
-# Use P10 as first sample
-corrected <- batch.correction(sce.single[c("do17821", "do26386", "do26387")])
-
-sce.somatic <- do.call(cbind, sce.single[c("do17821", "do26386", "do26387")])
-
-
 # Find marker genes
 somatic.markers <- marker.detection(sce.somatic,
-                                    as.character(colData(sce.somatic)$AnnotatedClusters))
+                                    as.character(colData(sce.somatic)$AnnotatedClusters), 
+                                    blocking = sce.somatic$Sample)
 
 # Save this list as Table S1
-write.xlsx(somatic.markers, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S3.xlsx")
-
+write.xlsx(somatic.markers, "../../../../Dropbox/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S3.xlsx")
 ```
 
-# Visualize marker genes for P10
+# Visualize marker genes
 
 ```{r}
+cur_dist <- as.dist(sqrt(1 - cor(corrected, method = "spearman")))
+
 # Calculate distance on logcounts
-HVgenes <- HVG(cur_sce)
-
-# Create distance metric
-cur_dist <- as.dist(sqrt((1 - cor(as.matrix(logcounts(cur_sce)[HVgenes,]), 
-                                  method = "spearman"))/2))
-
 top.markers <- as.character(unlist(lapply(somatic.markers,
                                           function(n){n$GeneName[1:5]})))
 
 # Genes to visualize
-genes <- c(#Spermatocytes
-          "Sycp1", top.markers[42:45],
-          #Spermatogonia
-           "Dmrt1", top.markers[46:49],
-          #Leydig
-           "Insl3", top.markers[c(26, 28:30)],
+genes <- c(#Leydig_1
+           "Insl3", top.markers[c(21, 23:25)],
+           #Leydig_2
+           "Igfbp4", top.markers[c(26, 28:30)],
+          #Immature_Leydig1
+          "Inhba", top.markers[6:9],
+          #Immature_Leydig2
+          "Stmn1", top.markers[c(11, 13:15)],
           #Sertoli
-           "Gstm6", top.markers[c(36:38, 40)],
+           "Gstm6", top.markers[c(36:39)],
           #Macrophages
-           "Fcer1g", top.markers[c(21:22, 24:25)],
+           "Fcer1g", top.markers[c(16:18, 20)],
           #PTM
            "Acta2", top.markers[c(32:35)],
-          #Immature_Leydig3
-           "Dlk1", top.markers[c(16, 18:20)],
            #Endothelial cells
-           "Col4a1", top.markers[c(1, 3:5)],
-          #Immature_Leydig1
-          "Inhba", top.markers[7:10],
-          #Immature_Leydig2
-          "Dcn", top.markers[12:15])
+           "Col4a1", top.markers[c(1:3, 5)])
 
-genes <- c("Cst12", top.markers[26:29],  
-           "Sycp1", top.markers[32:35],
-           "Dmrt1", top.markers[c(36,38:40)],
-           "Dlk1", top.markers[6:9],
-           "Col4a3", top.markers[21:24],
-           "Tm4sf1", top.markers[1:4],
-           "Insl3", top.markers[c(16:17, 19,20)],
-           "Cd14", top.markers[11:14])
+#genes <- c("Cst12", top.markers[26:29],  
+#           "Sycp1", top.markers[32:35],
+#           "Dmrt1", top.markers[c(36,38:40)],
+#           "Dlk1", top.markers[6:9],
+#           "Col4a3", top.markers[21:24],
+#           "Tm4sf1", top.markers[1:4],
+#           "Insl3", top.markers[c(16:17, 19,20)],
+#           "Cd14", top.markers[11:14])
 
 # Heatmap
 # Visualize in heatmap
-for.heatmap <- logcounts(cur_sce)[match(genes, rowData(cur_sce)$Symbol),]
+for.heatmap <- logcounts(sce.somatic)[match(genes, rowData(sce.somatic)$Symbol),]
 rownames(for.heatmap) <- genes
-colnames(for.heatmap) <- paste(colData(cur_sce)$Barcode, 
-                               colData(cur_sce)$Library, sep = "")
+colnames(for.heatmap) <- paste(colData(sce.somatic)$Barcode, 
+                               colData(sce.somatic)$Library,
+                               colData(sce.somatic)$Sample,
+                               colData(sce.somatic)$AnnotatedClusters, sep = "__")
 
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S3/Somatic_markers_heatmap.pdf", 
+# Order cells
+for.heatmap <- for.heatmap[,c(which(sce.somatic$AnnotatedClusters == "Leydig_1"),
+                              which(sce.somatic$AnnotatedClusters == "Leydig_2"),
+                              which(grepl("Fetal_Leydig_1", sce.somatic$AnnotatedClusters)),
+                              which(grepl("Fetal_Leydig_2", sce.somatic$AnnotatedClusters)),
+                              which(grepl("Sertoli", sce.somatic$AnnotatedClusters)),
+                              which(grepl("Interstitial_tMg", sce.somatic$AnnotatedClusters)),
+                              which(grepl("PTM", sce.somatic$AnnotatedClusters)),
+                              which(grepl("Endothelial_cells", sce.somatic$AnnotatedClusters)))]
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Somatic_markers_heatmap.pdf", 
     onefile = FALSE, width = 7, height = 10)
-pheatmap(for.heatmap, cluster_rows = FALSE,
-         clustering_distance_cols = cur_dist,
+pheatmap(for.heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
          scale = "row", 
          annotation_col = 
            data.frame(row.names = colnames(for.heatmap),
-                        cell_type = colData(cur_sce)$AnnotatedClusters,
-                      sample = colData(cur_sce)$Sample),
+                      cell_type = sapply(colnames(for.heatmap), function(n){unlist(strsplit(n, "__"))[4]}),
+                      sample = sapply(colnames(for.heatmap), function(n){unlist(strsplit(n, "__"))[3]})),
          color = colorRampPalette(c("#053061", "#4393c3", 
                                     "#f7f7f7", "#d6604d", "#67001f"))(100),
          show_colnames = FALSE, 
          annotation_colors = list(cell_type = 
-      metadata(cur_sce)$color_vector[names(metadata(cur_sce)$color_vector) %in%
-                                       unique(colData(cur_sce)$AnnotatedClusters)]),
+      metadata(sce.somatic)$color_vector[names(metadata(sce.somatic)$color_vector) %in%
+                                       unique(colData(sce.somatic)$AnnotatedClusters)]),
       clustering_method = "ward.D2",
       cellheight = 8, fontsize = 7)
 dev.off()
