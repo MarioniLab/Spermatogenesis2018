@@ -14,7 +14,7 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Load data and libraries
+# Load libraries
 
 ```{r data, message=FALSE}
 library(scater)
@@ -22,20 +22,29 @@ library(plyr)
 library(reshape2)
 library(pheatmap)
 library(viridis)
-
 library(ggsci)
 library(cowplot)
 library(openxlsx)
-source("../Functions/auxiliary.R")
+source("../../Functions/auxiliary.R")
+```
 
+# Visualize quantification of Pou5f2 RNAScope
+
+```{r}
+cur_quant <- read.xlsx("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/RNAScope/RNAscope_quantification.xlsx",
+                       sheet = 4)
+```
+
+
+```{r}
 # Read in sce data
-sce <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce <- sce[,grepl("Tc0|Tc1", colData(sce)$Sample) & 
-             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:23]]
+             colData(sce)$AnnotatedClusters %in% levels(colData(sce)$AnnotatedClusters)[1:20]]
 sce <- normalize(sce)
 
 # Read in gene annotations
-genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+genenames <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 rownames(genenames) <- genenames$Gene.stable.ID
 ```
 
@@ -49,9 +58,9 @@ results.DE <- list()
 p.list <- list()
 cur_groups <- c("Spermatocytes_1", "Spermatocytes_2", 
                 "Spermatocytes_3", "Spermatocytes_4", 
-                "Spermatocytes_5", "Spermatocytes_6", "Spermatocytes_7", 
-                "Meiosis", "S1", "S2", "S3", "S4", "S5", "S6", "S7",
-                "S8", "S9", "S10", "S11", "S12", "S13", "S14")
+                "Spermatocytes_5", "Spermatocytes_6", "Spermatocytes_7",
+                "Spermatocytes_8", "S1", "S2", "S3", "S4", "S5", "S6", "S7",
+                "S8", "S9", "S10", "S11")
 
 for(i in cur_groups){
   sce.test <- sce[,colData(sce)$AnnotatedClusters == i]
@@ -108,9 +117,8 @@ final <- plot_grid(p.list[[1]], p.list[[2]], p.list[[3]], p.list[[4]],
                    p.list[[5]], p.list[[6]], p.list[[7]], p.list[[8]],
                    p.list[[9]], p.list[[10]], p.list[[11]], p.list[[12]],
                    p.list[[13]], p.list[[14]], p.list[[15]], p.list[[16]],
-                   p.list[[17]], p.list[[18]], p.list[[19]], p.list[[20]],
-                   p.list[[21]], p.list[[22]], ncol = 4, nrow = 6)
+                   p.list[[17]], p.list[[18]], p.list[[19]], ncol = 4, nrow = 5)
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S5/Fig_S5.pdf", final,
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S7/Fig_S7.pdf", final,
        height = 18, width = 15)
 ```

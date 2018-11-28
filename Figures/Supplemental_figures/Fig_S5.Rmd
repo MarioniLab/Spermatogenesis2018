@@ -14,6 +14,182 @@ knit: (function(inputFile, encoding) { rmarkdown::render(inputFile,
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Read in the data
+
+```{r data, message=FALSE}
+library(scater)
+library(ggplot2)
+library(reshape2)
+library(plyr)
+library(openxlsx)
+library(cowplot)
+library(viridis)
+library(pheatmap)
+library(Rtsne)
+library(irlba)
+library(RColorBrewer)
+library(monocle)
+source("../../Functions/auxiliary.R")
+
+# Single cell data
+sce <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
+```
+
+# Comparison of principal curve and monocle
+
+```{r}
+# Read in only spermatogonia from P10 and P15
+sce.spermatogonia <- sce[,grepl("P10|P15", colData(sce)$Sample) &
+                                       colData(sce)$AnnotatedClusters == "Spermatogonia"]
+sce.spermatogonia <- normalize(sce.spermatogonia)
+
+sce_RA <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_RA.rds")
+
+# Batch correction
+sce.spermatogonia <- sce.spermatogonia[match(intersect(rownames(sce_RA), 
+                          rowData(sce.spermatogonia)$Symbol), rowData(sce.spermatogonia)$Symbol),]
+sce_RA <- sce_RA[match(intersect(rownames(sce_RA), rowData(sce.spermatogonia)$Symbol), 
+                       rownames(sce_RA)),]
+
+rownames(sce_RA) <- rownames(sce.spermatogonia)
+rowData(sce_RA)$Symbol <- rowData(sce.spermatogonia)$Symbol
+rowData(sce_RA)$ID <- rowData(sce.spermatogonia)$ID
+
+# Select specific cell types 
+sce_early_RA <- sce_RA[,grepl("A1|ln|TypeBS|G1|TypeBG2M|ePL|mPL|lPL", colData(sce_RA)$cell_type)]
+sce_early_RA <- normalize(sce_early_RA)
+
+sce.single <- split.sce(sce = sce.spermatogonia, groups = unique(colData(sce.spermatogonia)$Library), 
+                        colData.name = "Library")
+sce.single$RA <- sce_early_RA
+
+corrected <- batch.correction(sce.single)
+
+# Visualize PCA 
+pca <- prcomp(t(corrected))
+
+# Plot sample distribution
+sample <- ggplot() +
+  geom_point(data = data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1],
+                  PC2 = pca$x[1:ncol(sce.spermatogonia),2],
+                  sample = sce.spermatogonia$Sample),
+             aes(PC1, PC2, colour = sample)) +
+            scale_colour_manual(values = c("dark blue", "coral"))
+
+#Cluster spermatogonia
+set.seed(1234)
+g <- buildSNNGraph(corrected[,1:ncol(sce.spermatogonia)], k = 15, pc.approx = TRUE)
+clusters <- igraph::cluster_louvain(g)$membership
+
+clusters[clusters == 1] <- "Diff_In_B"
+clusters[clusters == 2] <- "Undiff_2"
+clusters[clusters == 3] <- "Diff_A"
+clusters[clusters == 4] <- "Undiff_1"
+clusters[clusters == 5] <- "Undiff_to_Diff"
+clusters[clusters == 6] <- "pL"
+clusters <- factor(clusters,
+                   levels = c("Undiff_1", "Undiff_2", "Undiff_to_Diff",
+                              "Diff_A", "Diff_In_B", "pL"))
+
+col_vector <- c("Undiff_1" = "#0D3D21",
+                "Undiff_2" = "#14713E",
+                "Undiff_to_Diff" = "#41AE76",
+                "Diff_A" = "#52E8A4",
+                "Diff_In_B" = "#A3EFCE",
+                "pL" = "#E5DFEA")
+
+colour_vector_RA <- c("A1" = "#67001f",
+                      "TypeBS" = "#49006a",
+                      "ePL" = "#800026", 
+                      "G1" = "#ae017e",        
+                      "mPL" = "#fc4e2a",
+                      "TypeBG2M" = "#e7298a",
+                      "lPL" = "#fed976",
+                      "ln" = "#fde0dd")
+
+col_vector <- c(col_vector, colour_vector_RA)
+
+# Calculate principal curve
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Principal_curve.pdf")
+prank <- PT(rd = pca$x[1:ncol(sce.spermatogonia),1:3], 
+            clusters = clusters, col_vector = col_vector)
+dev.off()
+
+# Calculate monocle
+pd <- new("AnnotatedDataFrame", data = data.frame(clusters = clusters))
+fd <- new("AnnotatedDataFrame", data = data.frame(gene_short_name = rownames(corrected),
+                                                  row.names = rownames(corrected)))
+cds <- newCellDataSet(corrected[,1:ncol(sce.spermatogonia)], 
+                      phenoData = pd, featureData = fd)
+cds$Size_Factor <- rep(1, ncol(sce.spermatogonia))
+cds <- reduceDimension(cds)
+cds <- orderCells(cds)
+
+# Rank cells based on PT
+monocle.rank <- rank(cds$Pseudotime)
+
+# Compare to principal curve
+comp.monocle.PC <- ggplot(data.frame(PC.rank = prank[,"rank"],
+                  monocle.rank = monocle.rank,
+                  cluster = clusters)) +
+  geom_point(aes(PC.rank, monocle.rank, colour = cluster)) +
+  scale_color_manual(values = col_vector)
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Comp_Diffusionmap_PC.pdf", comp.monocle.PC)
+```
+
+# Visualize hand picked marker genes in heatmap of P10 and P15 samples
+
+```{r}
+cur_genes <- c("Id4", "Gfra1", "Lhx1", "Egr2", "Etv5", "Nanos2", "Ret", "Eomes",
+               "Neurog3", "Rarg", "Nanos3", "Lin28a", "Upp1")
+
+for_heatmap <- logcounts(sce.spermatogonia)[match(cur_genes, rowData(sce.spermatogonia)$Symbol),
+                                            order(prank[,"rank"], decreasing = TRUE)]
+colnames(c) <- paste(colData(sce.spermatogonia)$Library[
+  order(prank[,"rank"], decreasing = TRUE)],
+  colData(sce.spermatogonia)$Barcode[
+  order(prank[,"rank"], decreasing = TRUE)], sep = "_")
+rownames(for_heatmap) <- cur_genes
+
+pheatmap(for_heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
+         annotation_col = data.frame(row.names = colnames(for_heatmap),
+                                     cluster = clusters[order(prank[,"rank"], 
+                                                                decreasing = TRUE)]), 
+         show_colnames = FALSE,
+         color = viridis(100), annotation_colors = list(cluster = col_vector))
+
+# Alternatively order cells based on their cluster ID
+for_heatmap <- logcounts(sce.spermatogonia)[match(cur_genes, rowData(sce.spermatogonia)$Symbol),]
+rownames(for_heatmap) <- cur_genes
+colnames(for_heatmap) <- sce.spermatogonia$Barcode
+for_heatmap <- for_heatmap[,c(which(clusters == "Undiff_1"),
+                              which(clusters == "Undiff_2"),
+                              which(clusters == "Undiff_to_Diff"),
+                              which(clusters == "Diff_A"),
+                              which(clusters == "Diff_In_B"),
+                              which(clusters == "pL"))]
+cur_cluster <- clusters[c(which(clusters == "Undiff_1"),
+                              which(clusters == "Undiff_2"),
+                              which(clusters == "Undiff_to_Diff"),
+                              which(clusters == "Diff_A"),
+                              which(clusters == "Diff_In_B"),
+                              which(clusters == "pL"))]
+cur_library <- sce.spermatogonia$Library[c(which(clusters == "Undiff_1"),
+                              which(clusters == "Undiff_2"),
+                              which(clusters == "Undiff_to_Diff"),
+                              which(clusters == "Diff_A"),
+                              which(clusters == "Diff_In_B"),
+                              which(clusters == "pL"))]
+
+pdf(file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Marker_heatmap.pdf", width = 12, height = 5)
+pheatmap(for_heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
+         annotation_col = data.frame(row.names = colnames(for_heatmap),
+                                     cluster = cur_cluster), 
+         show_colnames = FALSE,
+         color = viridis(100), annotation_colors = list(cluster = col_vector))
+dev.off()
+```
+
 # Visualize spermatogonia from P5
 
 ```{r}
@@ -37,13 +213,11 @@ g <- buildSNNGraph(logcounts(spermatogonia.P5)[HVgenes,], k = 15,
                    pc.approx = TRUE)
 clusters <- igraph::cluster_louvain(g)$membership
 
-
 # Change cluster labels
-clusters[clusters == 1] <- "Prospermatogonia"
+clusters[clusters == 1] <- "Diff"
 clusters[clusters == 2] <- "Undiff_2"
-clusters[clusters == 3] <- "Undiff_1"
-clusters[clusters == 4] <- "Diff"
-
+clusters[clusters == 3] <- "Prospermatogonia"
+clusters[clusters == 4] <- "Undiff_1"
 
 col_vector <- c("Prospermatogonia" = "#7A9606",
                 "Undiff_1" = "#0D3D21",
@@ -103,14 +277,13 @@ Eif2s2.p5 <- ggplot() +
 
 spermatogonia.markers.P5 <- marker.detection(spermatogonia.P5, 
                                           clusters)
-write.xlsx(spermatogonia.markers.P5, "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S4_P5.xlsx")
+write.xlsx(spermatogonia.markers.P5, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S4_P5.xlsx")
 
 
-legend_B <- plot_grid(get_legend(p5.cluster), get_legend(Gfra1.p5) , get_legend(Stra8.p5), get_legend(Eif2s2.p5), ncol = 4 , nrow = 1)
-B_plot <- plot_grid(p5.cluster + theme(legend.position= "NONE"), Gfra1.p5 + theme(legend.position= "NONE"), Stra8.p5 + theme(legend.position= "NONE"), Eif2s2.p5 + theme(legend.position= "NONE"), ncol = 4, nrow = 1)
-B <- plot_grid(B_plot, legend_B, ncol = 1, nrow = 2, rel_heights = c(2,1))
-final <- plot_grid(A, B, ncol = 1, nrow = 2, rel_heights = c(2,1))
+final_legend <- plot_grid(get_legend(p5.cluster), get_legend(Gfra1.p5) , get_legend(Stra8.p5), get_legend(Eif2s2.p5), ncol = 4 , nrow = 1)
+final_plot <- plot_grid(p5.cluster + theme(legend.position= "NONE"), Gfra1.p5 + theme(legend.position= "NONE"), Stra8.p5 + theme(legend.position= "NONE"), Eif2s2.p5 + theme(legend.position= "NONE"), ncol = 4, nrow = 1)
+final <- plot_grid(B_plot, legend_B, ncol = 1, nrow = 2, rel_heights = c(2,1))
 
-ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_3/Fig_3.pdf",
-       final, width = 15, height = 12.5)
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Fig_S5.pdf",
+       final, width = 15, height = 5)
 ```
