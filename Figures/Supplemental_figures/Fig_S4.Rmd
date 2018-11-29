@@ -205,8 +205,6 @@ write.xlsx(somatic.markers, "../../../../Dropbox/Tc1_meiotic_silencing/Revisions
 # Visualize marker genes
 
 ```{r}
-cur_dist <- as.dist(sqrt(1 - cor(corrected, method = "spearman")))
-
 # Calculate distance on logcounts
 top.markers <- as.character(unlist(lapply(somatic.markers,
                                           function(n){n$GeneName[1:5]})))
@@ -271,61 +269,59 @@ pheatmap(for.heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
          annotation_colors = list(cell_type = 
       metadata(sce.somatic)$color_vector[names(metadata(sce.somatic)$color_vector) %in%
                                        unique(colData(sce.somatic)$AnnotatedClusters)]),
-      clustering_method = "ward.D2",
-      cellheight = 8, fontsize = 7)
+      cellheight = 8, fontsize = 7, gaps_row = seq(5, 35, 5))
 dev.off()
 ```
 
-# PCA of spermatogonia with early spermatocytes
-
-First we batch correct the counts.
+# Heatmap of genes differentially expressed between P5 and P10
 
 ```{r}
-sce.spg.sc1 <- sce.all[,grepl("P1", colData(sce.all)$Sample) &
-                            grepl("Spermatogonia|Spermatocytes_1",
-                                  colData(sce.all)$AnnotatedClusters)]
-sce.spg.sc1 <- normalize(sce.spg.sc1)
-rm(sce.all)
+cur_genes <- c(rownames(results.DE$Group_Leydig_1_P10)[1:5], 
+               rownames(results.DE$Group_Leydig_1_P5)[1:5],
+               rownames(results.DE$Group_Leydig_2_P10)[1:5],
+               rownames(results.DE$Group_Leydig_2_P5)[1:5],
+               rownames(results.DE$Group_Fetal_Leydig_1_P10)[1:5],
+               rownames(results.DE$Group_Fetal_Leydig_1_P5)[1:5],
+               rownames(results.DE$Group_Sertoli_P10)[1:5], 
+               rownames(results.DE$Group_Sertoli_P5)[1:5],
+               rownames(results.DE$Group_Interstitial_tMg_P10)[1:5],
+               rownames(results.DE$Group_Interstitial_tMg_P5)[1:5],
+               rownames(results.DE$Group_PTM_P10)[1:5],
+               rownames(results.DE$Group_PTM_P5)[1:5],
+               rownames(results.DE$Group_Endothelial_cells_P10)[1:5],
+               rownames(results.DE$Group_Endothelial_cells_P5)[1:5])
 
-sce.single <- split.sce(sce = sce.spg.sc1, 
-                        groups = unique(colData(sce.spg.sc1)$Library), 
-                        colData.name = "Library")
+for.heatmap <- logcounts(sce.somatic)[cur_genes,]
+rownames(for.heatmap) <- rowData(sce.somatic)$Symbol[match(cur_genes, rowData(sce.somatic)$ID)]
+colnames(for.heatmap) <- paste(colData(sce.somatic)$Barcode, 
+                               colData(sce.somatic)$Library,
+                               colData(sce.somatic)$Sample,
+                               colData(sce.somatic)$AnnotatedClusters, sep = "__")
 
-corrected <- batch.correction(sce.single)
-```
+# Order cells
+for.heatmap <- for.heatmap[,c(which(sce.somatic$AnnotatedClusters == "Leydig_1"),
+                              which(sce.somatic$AnnotatedClusters == "Leydig_2"),
+                              which(grepl("Fetal_Leydig_1", sce.somatic$AnnotatedClusters)),
+                              which(grepl("Fetal_Leydig_2", sce.somatic$AnnotatedClusters)),
+                              which(grepl("Sertoli", sce.somatic$AnnotatedClusters)),
+                              which(grepl("Interstitial_tMg", sce.somatic$AnnotatedClusters)),
+                              which(grepl("PTM", sce.somatic$AnnotatedClusters)),
+                              which(grepl("Endothelial_cells", sce.somatic$AnnotatedClusters)))]
 
-```{r}
-# PCA on spermatogonia and earliest spermatocytes from P10 and P15
-pca.spg.sc1  <- prcomp(t(corrected))
-
-# Visalize PCA with marker genes
-
-Stra8.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
-                  PC2 = pca.spg.sc1$x[,2],
-                  Stra8 = logcounts(sce.spg.sc1)[
-                    rowData(sce.spg.sc1)$Symbol == "Stra8",])) +
-  geom_point(aes(PC1, PC2, colour = Stra8)) + scale_colour_viridis()
-
-H2afx.spg.sc1 <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
-                  PC2 = pca.spg.sc1$x[,2],
-                  H2afx = logcounts(sce.spermatogonia.p10.15)[
-                    rowData(sce.spermatogonia.p10.15)$Symbol == "H2afx",])) +
-  geom_point(aes(PC1, PC2, colour = H2afx)) + scale_colour_viridis()
-
-p.clusters <- ggplot(data.frame(PC1 = pca.spg.sc1$x[,1],
-                  PC2 = pca.spg.sc1$x[,2],
-                  clusters = colData(sce.spg.sc1)$AnnotatedClusters)) +
-  geom_point(aes(PC1, PC2, colour = clusters)) + 
-  scale_colour_manual(values = metadata(sce.spg.sc1)$color_vector)
-
-```
-
-# Save final figure
-
-```{r final}
-
-final <- plot_grid(P10.tsne, NULL,
-                   p.clusters, ncol = 2, nrow = 2)
-ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_S3/Fig_S3.pdf", 
-       final, width = 15, height = 10)
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Somatic_DE_heatmap.pdf", 
+    onefile = FALSE, width = 7, height = 10)
+pheatmap(for.heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
+         scale = "row", 
+         annotation_col = 
+           data.frame(row.names = colnames(for.heatmap),
+                      cell_type = sapply(colnames(for.heatmap), function(n){unlist(strsplit(n, "__"))[4]}),
+                      sample = sapply(colnames(for.heatmap), function(n){unlist(strsplit(n, "__"))[3]})),
+         color = colorRampPalette(c("#053061", "#4393c3", 
+                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
+         show_colnames = FALSE, 
+         annotation_colors = list(cell_type = 
+      metadata(sce.somatic)$color_vector[names(metadata(sce.somatic)$color_vector) %in%
+                                       unique(colData(sce.somatic)$AnnotatedClusters)]),
+      cellheight = 8, fontsize = 7, gaps_row = seq(10, 70, 10))
+dev.off()
 ```
