@@ -318,7 +318,8 @@ for(i in 1:nrow(mat)){
   if(length(cur_out) > 0){
     for(j in 1:length(cur_repeats)){
       cur_out[j] <- sum(suppressWarnings(countOverlaps(query = cur_high.merge.spermatocytes, 
-                                subject = cur_repeats[j], minoverlap = width(cur_repeats)[j])))
+                                subject = cur_repeats[j], minoverlap = round(width(cur_repeats)[j]/2, 
+                                                                             digits = 1))))
     }
   }
   mat[i,1] <- 0
