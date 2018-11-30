@@ -78,6 +78,11 @@ Down.genes <- read.xlsx(xlsxFile = "https://ars.els-cdn.com/content/image/1-s2.0
                       sheet = 2)
 colnames(Down.genes) <- Down.genes[2,]
 Down.genes <- Down.genes[-c(1,2),]
+
+gax <- GenomeAxisTrack(col="black", fontsize=15, size=2)
+gr <- getGeneRegionTrackForGviz(EnsDb.Mmusculus.v79)
+options(ucscChromosomeNames = FALSE)
+
 ```
 
 # Count reads in promoter and gene body regions
@@ -253,11 +258,12 @@ bins.K9 <- windowCounts(bam.files.K9.P26, bin = TRUE, width = 20000,
                     discard=black, pe="both", max.frag=1000))
 bins.K9 <- bins.K9[as.character(seqnames(bins.K9@rowRanges)) %in%
                              c(as.character(1:19), "X", "Y")]
+bins.K9.X <- bins.K9[seqnames(bins.K9@rowRanges) == "X"]
 
 # Count repeat occurences in bins
 Rtlr14.counts <- countOverlaps(query = bins.K9, subject = Rtlr14)
 
-cur_df <- data.frame(score = assays(bins.K9)$counts[,1]/(colSums(assays(bins.K9)$counts)[1]/1000000),
+cur_df <- data.frame(score = assays(bins.K9)$counts[,2]/(colSums(assays(bins.K9)$counts)[2]/1000000),
                      chr = factor(as.character(seqnames(bins.K9@rowRanges)),
                                   levels = c(as.character(1:19), "X", "Y")),
                      cat = rep(1, nrow(bins.K9)),
@@ -269,5 +275,29 @@ ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/A
 p.Rtlr14 <- ggplot(cur_df) + geom_bar(stat = "identity", aes(chr, cat, fill = Rtlr14.counts)) +
   scale_fill_gradientn(colours = colorRampPalette(c(c("white", "purple", "black")))(100))
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Analysis/Repeats/Rtlr14_signal.pdf", p.Rtlr14)
+
+# Visualize genomic area with repeats on X chr
+cur_region <- IRanges(start=23458346, end=32379798,
+                      names="X")
+cur_region <- GRanges(seqnames = Rle(values = "X", lengths = 1),
+                      ranges = cur_region)
+
+collected.K9 <- list()
+lib.sizes <- colSums(assays(bins.K9)$counts)/1e6
+for (i in 1:length(bam.files.K9.P26)) {
+    reads <- extractReads(bam.file=bam.files.K9.P26[i], cur_region, param=param)
+    cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+    collected.K9[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,5),
+         name=bam.files.K9.P26[i],  col.axis="black", col.title="black",
+         fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+collected.K9 <- collected.K9[c(1,3,2,4)]
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Analysis/Repeats/X_chr_rtlr14_region.pdf", width = 20, height = 7)
+plotTracks(c(gax, c(collected.K9[1:4]),
+                                    GeneRegionTrack(gr)),
+             chromosome=as.character(seqnames(cur_region)),
+     from=start(cur_region), to=end(cur_region), showId=TRUE)
+dev.off()
 ```
 
