@@ -273,14 +273,14 @@ length(cur_high.merge$region)
 sum(width(cur_high.merge$region) > 1000)
 
 # Order by size
-cur_high.merge <- cur_high.merge$region[order(cur_high.merge$region@ranges@width, 
+cur_high.merge.spermatocytes <- cur_high.merge$region[order(cur_high.merge$region@ranges@width, 
                                               decreasing = TRUE)]
-cur_high.merge
+cur_high.merge.spermatocytes
 
 # The second hit is right next to Akap4. Number 8 is close to Tsga8 and on Dmd.
 
 # Save as bedgraph
-export(cur_high.merge, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Spermatocytes_1_highK9regions.bed")
+export(cur_high.merge.spermatocytes, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Spermatocytes_1_highK9regions.bed")
 
 # Spermatids
 cur_high <- rowRanges(bins.K9.X)[order(assays(bins.K9.X)$counts[,2], decreasing = TRUE)]
@@ -291,10 +291,38 @@ length(cur_high.merge$region)
 sum(width(cur_high.merge$region) > 1000)
 
 # Order by size
-cur_high.merge <- cur_high.merge$region[order(cur_high.merge$region@ranges@width, 
+cur_high.merge.spermatids <- cur_high.merge$region[order(cur_high.merge$region@ranges@width, 
                                               decreasing = TRUE)]
-cur_high.merge
+cur_high.merge.spermatids
 
 # Save as bedgraph
-export(cur_high.merge, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Spermatids_1_highK9regions.bed")
+export(cur_high.merge.spermatids, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Spermatids_1_highK9regions.bed")
+```
+
+# Search for enriched repeats in regions
+
+```{r}
+repeats <- read.table("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/RepeatMasker_mm10/mm10_repeats.bed", sep = "\t")
+repeats <- GRanges(seqnames = sub("chr", "", repeats[,1]),
+                  ranges = IRanges(start = repeats[,2], end = repeats[,3], 
+                                   names = repeats[,4]))
+repeats.X <- repeats[seqnames(repeats) == "X"]
+
+mat <- matrix(NA, nrow = length(unique(names(repeats))), ncol = 2)
+rownames(mat) <- unique(names(repeats))
+colnames(mat) <- c("In_bins", "Outside_bins")
+
+for(i in 1:nrow(mat)){
+  cur_repeats <- repeats.X[names(repeats.X) == rownames(mat)[i],]
+  cur_out <- vector(length = length(cur_repeats))
+  if(length(cur_out) > 0){
+    for(j in 1:length(cur_repeats)){
+      cur_out[j] <- sum(suppressWarnings(countOverlaps(query = cur_high.merge.spermatocytes, 
+                                subject = cur_repeats[j], minoverlap = round(width(cur_repeats)[j]/2, 
+                                                                             digits = 1))))
+    }
+  }
+  mat[i,1] <- 0
+  mat[i,2] <- length(cur_repeats) - 0
+}
 ```
