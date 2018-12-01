@@ -257,11 +257,26 @@ bins.K9 <- bins.K9[as.character(seqnames(bins.K9@rowRanges)) %in%
 # Count repeat occurences in bins
 Rtlr14.counts <- countOverlaps(query = bins.K9, subject = Rtlr14)
 
+# Count genes in 
+# High K9 on autosomal genes
+auto.K9 <- read.table(("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/High_K9_autosomal_prom.bed"), sep = "\t")
+auto.K9 <- GRanges(seqnames = sub("chr", "", auto.K9[,1]),
+                  ranges = IRanges(start = auto.K9[,2], end = auto.K9[,3], 
+                                   names = auto.K9[,4]))
+X.Up <- read.table(("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/Chip-Seq/Xchr_prom.bed"), sep = "\t")
+X.Up <- GRanges(seqnames = sub("chr", "", X.Up[,1]),
+                  ranges = IRanges(start = X.Up[,2], end = X.Up[,3], 
+                                   names = X.Up[,4]))
+genes <- suppressWarnings(c(auto.K9, X.Up))
+
+genes.counts <- countOverlaps(query = bins.K9, subject = genes)
+
 cur_df <- data.frame(score = assays(bins.K9)$counts[,1]/(colSums(assays(bins.K9)$counts)[1]/1000000),
                      chr = factor(as.character(seqnames(bins.K9@rowRanges)),
                                   levels = c(as.character(1:19), "X", "Y")),
                      cat = rep(1, nrow(bins.K9)),
-                     Rtlr14.counts = Rtlr14.counts)
+                     Rtlr14.counts = Rtlr14.counts,
+                     genes.counts = genes.counts)
 
 p.K9 <- ggplot(cur_df) + geom_bar(stat = "identity", aes(chr, cat, fill = log(score + 1))) +
   scale_fill_gradientn(colours = colorRampPalette(c(c("white", "dark blue", "black")))(100))
@@ -269,5 +284,10 @@ ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/A
 p.Rtlr14 <- ggplot(cur_df) + geom_bar(stat = "identity", aes(chr, cat, fill = Rtlr14.counts)) +
   scale_fill_gradientn(colours = colorRampPalette(c(c("white", "purple", "black")))(100))
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Analysis/Repeats/Rtlr14_signal.pdf", p.Rtlr14)
+p.genes <- ggplot(cur_df) + geom_bar(stat = "identity", aes(chr, cat, colour = genes.counts)) +
+  scale_colour_gradientn(colours = colorRampPalette(c(c("white", "green", "black")))(100))
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Analysis/Repeats/Gene_position_signal.pdf", p.genes)
+
+
 ```
 
