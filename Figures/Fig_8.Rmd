@@ -75,12 +75,12 @@ retro <- retro[grepl("ENS", retro$Parental.Gene),]
 K27writers.Rnf8 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 1)
 K27writers.Scml2 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/Adams_et_al_down_in_RS_after_KO.xlsx", sheet = 2)
 
-spermatid.specific <- read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S8_bulkDetection.xlsx")
-rownames(spermatid.specific) <- genenames[match(spermatid.specific$Genename, genenames[,2]),1]
-
 # Read in gene annotations
 genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 rownames(genenames) <- genenames$Gene.stable.ID
+
+spermatid.specific <- read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S8_bulkDetection.xlsx")
+rownames(spermatid.specific) <- genenames[match(spermatid.specific$Genename, genenames[,2]),1]
 
 # Create objects for visualziation
 gax <- GenomeAxisTrack(col="black", fontsize=15, size=2)
