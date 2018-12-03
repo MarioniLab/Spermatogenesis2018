@@ -139,7 +139,7 @@ for(i in cur_groups){
   results.DE[[paste("Group_", i, "_P10", sep = "")]] <- markers.P10
 }
 
-write.xlsx(results.DE, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/DE_Somatic_cells_P5_P10.xlsx")
+write.xlsx(results.DE, "../../../../Dropbox/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S4.xlsx")
 ```
 
 # Visualize batch corrected data
@@ -211,7 +211,7 @@ top.markers <- as.character(unlist(lapply(somatic.markers,
 
 # Genes to visualize
 genes <- c(#Leydig_1
-           "Insl3", top.markers[c(21, 23:25)],
+           "Insl3", top.markers[c(21:23, 25)],
            #Leydig_2
            "Igfbp4", top.markers[c(26, 28:30)],
           #Immature_Leydig1
@@ -257,14 +257,16 @@ for.heatmap <- for.heatmap[,c(which(sce.somatic$AnnotatedClusters == "Leydig_1")
 
 pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Somatic_markers_heatmap.pdf", 
     onefile = FALSE, width = 7, height = 10)
-pheatmap(for.heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
-         scale = "row", 
+pheatmap(for.heatmap, cluster_rows = FALSE, cluster_cols = FALSE, 
          annotation_col = 
            data.frame(row.names = colnames(for.heatmap),
                       cell_type = sapply(colnames(for.heatmap), function(n){unlist(strsplit(n, "__"))[4]}),
                       sample = sapply(colnames(for.heatmap), function(n){unlist(strsplit(n, "__"))[3]})),
-         color = colorRampPalette(c("#053061", "#4393c3", 
-                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_row = 
+           data.frame(row.names = rownames(for.heatmap),
+                      cell_type = rep(c("Leydig_1", "Leydig_2", "Fetal_Leydig_1", "Fetal_Leydig_2",
+                                        "Sertoli", "Interstitial_tMg", "PTM", "Endothelial_cells"), each = 5)),
+         color = viridis(100),
          show_colnames = FALSE, 
          annotation_colors = list(cell_type = 
       metadata(sce.somatic)$color_vector[names(metadata(sce.somatic)$color_vector) %in%
@@ -276,23 +278,23 @@ dev.off()
 # Heatmap of genes differentially expressed between P5 and P10
 
 ```{r}
-cur_genes <- c(rownames(results.DE$Group_Leydig_1_P10)[1:5], 
-               rownames(results.DE$Group_Leydig_1_P5)[1:5],
-               rownames(results.DE$Group_Leydig_2_P10)[1:5],
+cur_genes <- c(rownames(results.DE$Group_Leydig_1_P5)[1:5], 
+               rownames(results.DE$Group_Leydig_1_P10)[1:5],
                rownames(results.DE$Group_Leydig_2_P5)[1:5],
-               rownames(results.DE$Group_Fetal_Leydig_1_P10)[1:5],
+               rownames(results.DE$Group_Leydig_2_P10)[1:5],
                rownames(results.DE$Group_Fetal_Leydig_1_P5)[1:5],
-               rownames(results.DE$Group_Sertoli_P10)[1:5], 
-               rownames(results.DE$Group_Sertoli_P5)[1:5],
-               rownames(results.DE$Group_Interstitial_tMg_P10)[1:5],
+               rownames(results.DE$Group_Fetal_Leydig_1_P10)[1:5],
+               rownames(results.DE$Group_Sertoli_P5)[1:5], 
+               rownames(results.DE$Group_Sertoli_P10)[1:5],
                rownames(results.DE$Group_Interstitial_tMg_P5)[1:5],
-               rownames(results.DE$Group_PTM_P10)[1:5],
+               rownames(results.DE$Group_Interstitial_tMg_P10)[1:5],
                rownames(results.DE$Group_PTM_P5)[1:5],
-               rownames(results.DE$Group_Endothelial_cells_P10)[1:5],
-               rownames(results.DE$Group_Endothelial_cells_P5)[1:5])
+               rownames(results.DE$Group_PTM_P10)[1:5],
+               rownames(results.DE$Group_Endothelial_cells_P5)[1:5],
+               rownames(results.DE$Group_Endothelial_cells_P10)[1:5])
 
 for.heatmap <- logcounts(sce.somatic)[cur_genes,]
-rownames(for.heatmap) <- rowData(sce.somatic)$Symbol[match(cur_genes, rowData(sce.somatic)$ID)]
+rownames(for.heatmap) <- seq(1, nrow(for.heatmap))
 colnames(for.heatmap) <- paste(colData(sce.somatic)$Barcode, 
                                colData(sce.somatic)$Library,
                                colData(sce.somatic)$Sample,
@@ -310,14 +312,18 @@ for.heatmap <- for.heatmap[,c(which(sce.somatic$AnnotatedClusters == "Leydig_1")
 
 pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S4/Somatic_DE_heatmap.pdf", 
     onefile = FALSE, width = 7, height = 10)
-pheatmap(for.heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
-         scale = "row", 
+pheatmap(for.heatmap, cluster_rows = FALSE, cluster_cols = FALSE, 
+         labels_row = rowData(sce.somatic)$Symbol[match(cur_genes, rowData(sce.somatic)$ID)],
          annotation_col = 
            data.frame(row.names = colnames(for.heatmap),
                       cell_type = sapply(colnames(for.heatmap), function(n){unlist(strsplit(n, "__"))[4]}),
                       sample = sapply(colnames(for.heatmap), function(n){unlist(strsplit(n, "__"))[3]})),
-         color = colorRampPalette(c("#053061", "#4393c3", 
-                                    "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_row = 
+           data.frame(row.names = rownames(for.heatmap),
+                      cell_type = rep(c("Leydig_1", "Leydig_2", "Fetal_Leydig_1",
+                                        "Sertoli", "Interstitial_tMg", "PTM", "Endothelial_cells"), each = 10),
+                      sample = rep(rep(c("P5", "P10"), each = 5), 7)),
+         color = viridis(100),
          show_colnames = FALSE, 
          annotation_colors = list(cell_type = 
       metadata(sce.somatic)$color_vector[names(metadata(sce.somatic)$color_vector) %in%
