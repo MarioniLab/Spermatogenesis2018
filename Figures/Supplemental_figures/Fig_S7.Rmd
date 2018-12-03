@@ -106,8 +106,11 @@ for(i in cur_groups){
                                    "Mouse" = "steelblue")) +
     guides(colour = FALSE) + ggtitle(i)
   p.list[[i]] <- cur_p
-  
+  results.DE[[i]] <- cur_markers[cur_markers$FDR < 0.1,]
 }
+
+# Save Table
+write.xlsx(results.DE, "../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S9.xlsx")
 ```
 
 # Save final figure
