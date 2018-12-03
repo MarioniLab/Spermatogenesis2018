@@ -147,7 +147,7 @@ out.df$Genename <- genenames[rownames(out.df),2]
 out.df$Spermatid_specific <- ifelse(out.df$logFC > 5 & out.df$FDR < 0.1, TRUE, FALSE)
 out.df <- out.df[order(out.df$logFC, decreasing = TRUE),]
 
-write.xlsx(out.df, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S8_bulkDetection.xlsx")
+write.xlsx(out.df, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S11_bulkDetection.xlsx")
 ```
 
 Visualize the heatmap

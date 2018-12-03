@@ -246,7 +246,7 @@ spermatogonia.markers <- marker.detection(sce.spermatogonia,
                                           as.character(clusters),
                                           blocking = sce.spermatogonia$Sample)
 
-write.xlsx(spermatogonia.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S4.xlsx")
+write.xlsx(spermatogonia.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S6.xlsx")
 ```
 
 # Heatmap of genes during spermatogonial differentiation
