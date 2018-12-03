@@ -143,72 +143,59 @@ ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/R
 cur_genes <- c("Id4", "Gfra1", "Lhx1", "Egr2", "Etv5", "Nanos2", "Ret", "Eomes",
                "Neurog3", "Rarg", "Nanos3", "Lin28a", "Upp1")
 
-for_heatmap <- logcounts(sce.spermatogonia)[match(cur_genes, rowData(sce.spermatogonia)$Symbol),
-                                            order(prank[,"rank"], decreasing = TRUE)]
-colnames(for_heatmap) <- paste(colData(sce.spermatogonia)$Library[
-  order(prank[,"rank"], decreasing = TRUE)],
-  colData(sce.spermatogonia)$Barcode[
-  order(prank[,"rank"], decreasing = TRUE)], sep = "_")
+for_heatmap <- logcounts(sce.spermatogonia)[match(cur_genes, rowData(sce.spermatogonia)$Symbol),]
+colnames(for_heatmap) <- paste(colData(sce.spermatogonia)$Library,
+  colData(sce.spermatogonia)$Barcode, sep = "_")
 rownames(for_heatmap) <- cur_genes
 
-pheatmap(for_heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
+# Calculate the ratio of SSC marker and differetiation markers for each cell
+dat <- expand.grid(blue=seq(0, 100, by=1), red=seq(0, 100, by=1))
+dat <- within(dat, mix <- rgb(green=rev(blue), 
+                              red=rev(red), blue=rev(blue), maxColorValue=100))
+      
+scaling <- function(x){(x-min(x))/(max(x)-min(x))}
+      
+SCC.vec <- apply(logcounts(sce.spermatogonia)[rowData(sce.spermatogonia)$Symbol %in% cur_genes[1:8],], 2, function(n){sum(n > 0)})
+SCC.vec <- scaling(SCC.vec)
+      
+Diff.vec <- apply(logcounts(sce.spermatogonia)[rowData(sce.spermatogonia)$Symbol %in% cur_genes[9:13],], 2, function(n){sum(n > 0)})
+Diff.vec <- scaling(Diff.vec)
+        
+col = vector(length = length(SCC.vec))
+for(i in 1:length(SCC.vec)){
+  col[i] <- dat$mix[dat$blue == round(SCC.vec[i]*100, digits = 0) & 
+                      dat$red == round(Diff.vec[i]*100, digits = 0)]  
+}
+
+# Visualize the cell state on PCA
+cur_pca <- pca$x[1:ncol(sce.spermatogonia),]
+cur_plot <- ggplot() + 
+  geom_point(data = data.frame(PC1 = cur_pca[,1], 
+                               PC2 = cur_pca[,2]),
+             aes(PC1, PC2), colour = "black", size = 2.5) +
+  geom_point(data = data.frame(PC1 = cur_pca[SCC.vec - Diff.vec <= 0,1], 
+                               PC2 = cur_pca[SCC.vec - Diff.vec <= 0,2]),
+             aes(PC1, PC2), colour = col[SCC.vec - Diff.vec <= 0]) +
+  geom_point(data = data.frame(PC1 = cur_pca[SCC.vec - Diff.vec > 0,1], 
+                               PC2 = cur_pca[SCC.vec - Diff.vec > 0,2]),
+             aes(PC1, PC2), colour = col[SCC.vec - Diff.vec > 0])
+
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Stem_cells.pdf",cur_plot)
+
+# Save the colour scale
+colour_scale <- ggplot(dat, aes(x=red, y=blue)) + 
+      geom_tile(aes(fill=mix), color="white") + 
+      scale_fill_identity() + xlab("Progenitor markers") + ylab("Stem markers")
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Colour_scale.pdf", colour_scale)
+
+# Visualize a clustering on these marker genes
+pdf(file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Marker_heatmap.pdf", width = 12, height = 5)
+pheatmap(for_heatmap, cluster_rows = FALSE,
          annotation_col = data.frame(row.names = colnames(for_heatmap),
-                                     cluster = clusters[order(prank[,"rank"], 
-                                                                decreasing = TRUE)]), 
+                                     cluster = cur_cluster), 
          show_colnames = FALSE,
          color = viridis(100), annotation_colors = list(cluster = col_vector))
-
-cur_col <- apply(for_heatmap[1:8,], 2, function(n){sum(n > 0)})
-
-pdf(file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Marker_heatmap.pdf", width = 12, height = 5)
-pheatmap(for_heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
-         annotation_col = data.frame(row.names = colnames(for_heatmap),
-                                     cluster = clusters[order(prank[,"rank"], 
-                                                                decreasing = TRUE)],
-                                     stem_genes = cur_col), 
-         show_colnames = FALSE,
-         color = viridis(100), annotation_colors = list(cluster = col_vector,
-                                    stem_genes = colorRampPalette(c("grey", "red", "black"))(100)))
 dev.off()
-
-cur_col <- apply(logcounts(sce.spermatogonia)[rowData(sce.spermatogonia)$Symbol %in% cur_genes[1:8],], 2, function(n){sum(n > 0)})
-
-cur_plot <- ggplot(data.frame(PC1 = pca$x[1:ncol(sce.spermatogonia),1], PC2 = pca$x[1:ncol(sce.spermatogonia),2], col = cur_col)) + 
-  geom_point(aes(PC1, PC2, colour = col)) + 
-  scale_colour_gradientn(colours = colorRampPalette(c("grey", "red", "black"))(100))
-
-ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Stem_cells.pdf")
-
-# Alternatively order cells based on their cluster ID
-for_heatmap <- logcounts(sce.spermatogonia)[match(cur_genes, rowData(sce.spermatogonia)$Symbol),]
-rownames(for_heatmap) <- cur_genes
-colnames(for_heatmap) <- sce.spermatogonia$Barcode
-for_heatmap <- for_heatmap[,c(which(clusters == "Undiff_1"),
-                              which(clusters == "Undiff_2"),
-                              which(clusters == "Undiff_to_Diff"),
-                              which(clusters == "Diff_A"),
-                              which(clusters == "Diff_In_B"),
-                              which(clusters == "pL"))]
-cur_cluster <- clusters[c(which(clusters == "Undiff_1"),
-                              which(clusters == "Undiff_2"),
-                              which(clusters == "Undiff_to_Diff"),
-                              which(clusters == "Diff_A"),
-                              which(clusters == "Diff_In_B"),
-                              which(clusters == "pL"))]
-cur_library <- sce.spermatogonia$Library[c(which(clusters == "Undiff_1"),
-                              which(clusters == "Undiff_2"),
-                              which(clusters == "Undiff_to_Diff"),
-                              which(clusters == "Diff_A"),
-                              which(clusters == "Diff_In_B"),
-                              which(clusters == "pL"))]
-
-#pdf(file = "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Marker_heatmap.pdf", width = 12, height = 5)
-#pheatmap(for_heatmap, cluster_rows = FALSE, cluster_cols = FALSE,
-#         annotation_col = data.frame(row.names = colnames(for_heatmap),
-#                                     cluster = cur_cluster), 
-#         show_colnames = FALSE,
-#         color = viridis(100), annotation_colors = list(cluster = col_vector))
-#dev.off()
 ```
 
 # Visualize spermatogonia from P5
@@ -298,12 +285,12 @@ Eif2s2.p5 <- ggplot() +
 
 spermatogonia.markers.P5 <- marker.detection(spermatogonia.P5, 
                                           clusters)
-write.xlsx(spermatogonia.markers.P5, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_tables/Table_S4_P5.xlsx")
+write.xlsx(spermatogonia.markers.P5, "../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S5.xlsx")
 
 
 final_legend <- plot_grid(get_legend(p5.cluster), get_legend(Gfra1.p5) , get_legend(Stra8.p5), get_legend(Eif2s2.p5), ncol = 4 , nrow = 1)
 final_plot <- plot_grid(p5.cluster + theme(legend.position= "NONE"), Gfra1.p5 + theme(legend.position= "NONE"), Stra8.p5 + theme(legend.position= "NONE"), Eif2s2.p5 + theme(legend.position= "NONE"), ncol = 4, nrow = 1)
-final <- plot_grid(B_plot, legend_B, ncol = 1, nrow = 2, rel_heights = c(2,1))
+final <- plot_grid(final_plot, final_legend, ncol = 1, nrow = 2, rel_heights = c(2,1))
 
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S5/Fig_S5.pdf",
        final, width = 15, height = 5)

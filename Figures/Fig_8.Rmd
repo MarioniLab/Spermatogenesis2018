@@ -79,7 +79,7 @@ K27writers.Scml2 <- read.xlsx("../../../Dropbox (Cambridge University)/SST_sperm
 genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 rownames(genenames) <- genenames$Gene.stable.ID
 
-spermatid.specific <- read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S8_bulkDetection.xlsx")
+spermatid.specific <- read.xlsx("../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S11_bulkDetection.xlsx")
 rownames(spermatid.specific) <- genenames[match(spermatid.specific$Genename, genenames[,2]),1]
 
 # Create objects for visualziation
@@ -237,7 +237,7 @@ wilcox.test(for.plot$Spermatids.K4[for.plot$spermatid_specific == TRUE],
 df.out <- df
 df.out <- df.out[order(df.out$spermatid_specific, decreasing = TRUE),]
 
-write.xlsx(df.out, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S8.xlsx")
+write.xlsx(df.out, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S11.xlsx")
 ```
 
 # Visualize genes with high K9

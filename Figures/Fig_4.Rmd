@@ -138,7 +138,7 @@ sce <- sce[rowMeans(counts(sce)) > 0,]
 Lep.Zygot.markers <- marker.detection(sce, 
                                   as.character(colData(sce)$P15Clusters))
 
-write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S5.xlsx")
+write.xlsx(Lep.Zygot.markers, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S7.xlsx")
 ```
 
 # Random forrest mapping of bulk RNA-Seq data
