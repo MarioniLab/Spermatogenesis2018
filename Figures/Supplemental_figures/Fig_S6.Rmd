@@ -28,6 +28,25 @@ library(pheatmap)
 source("../../Functions/auxiliary.R")
 ```
 
+# Visualize the quantification of Prss50
+
+```{r}
+Prss50.quant <- read.xlsx("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/RNAScope/RNAscope_quantification.xlsx", 
+                         sheet = 6)
+Prss50.quant$Sample <- sapply(Prss50.quant$X1, function(n){unlist(strsplit(n, " -"))[1]})
+Prss50.quant$Sample <- factor(Prss50.quant$Sample, levels = unique(Prss50.quant$Sample))
+
+# Save figure
+quant.plot <- ggplot(Prss50.quant) + 
+  geom_bar(aes(Sample, Signal.Count.Per.um2, fill = X1), stat = "identity",
+           width = 0.75, 
+           position = "dodge") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab("Dots per um2") + xlab("Tubule stage") + scale_fill_brewer(palette = "Paired")
+
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S6/Prss50.pdf", quant.plot, width = 5, height = 3)
+```
+
 # Visualize emptyDrops
 
 ```{r emptyDrops}
