@@ -56,9 +56,9 @@ bam.files.K9 <- list.files("../../../Dropbox (Cambridge University)/SST_spermato
 bam.files.K4 <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K4me3/", full.names = TRUE,
                         pattern = paste(".+JP26.+bam$", sep = ""))
 
-# Define conditions
-batch <- gl(2, 2)
-treatment <- rep(c("spermatocytes", "spermatids"), 2)
+# K27 files
+bam.files.K4 <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K27ac/", full.names = TRUE,
+                        pattern = paste(".+JP26.+bam$", sep = ""))
 
 # Blacklisted regions
 black <- import("http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/mm10-mouse/mm10.blacklist.bed.gz")
@@ -90,9 +90,10 @@ options(ucscChromosomeNames = FALSE)
 # Bin the genome in 1000Kb windows
 bins.K9 <- windowCounts(bam.files.K9, bin = TRUE, width = 1000, param=param)
 bins.K4 <- windowCounts(bam.files.K4, bin = TRUE, width = 1000, param=param)
+bins.K27 <- windowCounts(bam.files.K27, bin = TRUE, width = 1000, param=param)
 ```
 
-# Visualize the K9 and K4 signal coming from the different chromosomes
+# Visualize the K9 signal coming from the different chromosomes
 
 ```{r}
 # Count reads per chromosome
@@ -165,6 +166,7 @@ K4.signal <- ggplot(cur_data.melt) + geom_point(aes(Var1, value,
 ```{r}
 prom.X.K9 <- regionCounts(bam.files.K9, regions = prom.X, param=param)
 prom.X.K4 <- regionCounts(bam.files.K4, regions = prom.X, param=param)
+prom.X.K27 <- regionCounts(bam.files.K27, regions = prom.X, param=param)
 
 # Generate RPM per promoter - each promoter is 2200bp wide
 cur_counts.K9 <- assays(prom.X.K9)$counts
@@ -172,6 +174,10 @@ cur_rpm.K9 <- t(t(cur_counts.K9)/(colSums(assays(bins.K9)$counts)/1000000))
 
 cur_counts.K4 <- assays(prom.X.K4)$counts
 cur_rpm.K4 <- t(t(cur_counts.K4)/(colSums(assays(bins.K4)$counts)/1000000))
+
+cur_counts.K27 <- assays(prom.X.K27)$counts
+cur_rpm.K27 <- t(t(cur_counts.K27)/(colSums(assays(bins.K27)$counts)/1000000))
+
 
 # Compute average between spermatocytes and spermatids
 df <- data.frame(Spermatocytes.K9 = rowMeans(cur_rpm.K9[,c(1,3)]),
