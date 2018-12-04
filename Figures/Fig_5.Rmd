@@ -150,13 +150,12 @@ null.dist <- correlateNull(ncells = ncol(sce.spermatocytes), iters = 100000)
 cors <- correlatePairs(cur_mat, null.dist=null.dist, pairings = list(c("number.genes"), rownames(cur_mat)))
 cors$genename <- rowData(sce.spermatocytes)$Symbol[match(cors$gene2, rowData(sce.spermatocytes)$ID)]
 
-
 # Perform DE analysis between spermatocytes and spermatids
 sce.for.testing <- sce[match(rowData(sce.spermatocytes)$ID, 
                              rowData(sce)$ID),
                        !(colData(sce)$AnnotatedClusters %in% 
                             c("Endothelial_cells", "Outliers",
-                              "Leydig", "Sertoli", "Spermatogonia"))]
+                              "Leydig_1", "Sertoli", "Spermatogonia"))]
 sce.for.testing <- normalize(sce.for.testing)
 DE <- findMarkers(sce.for.testing, 
     clusters = ifelse(colData(sce.for.testing)$AnnotatedClusters %in% 
@@ -313,7 +312,7 @@ pheatmap(for.heatmap, show_colnames = FALSE, show_rownames = FALSE,
          gaps_row = seq(15,105, 15), cellheight = 2)
 dev.off()
 
-to.label[!(to.label %in% rownames(for.heatmap))]
+to.label[match(rownames(for.heatmap),to.label)]
 ```
 
 # Tc1 and Tc0 analysis
