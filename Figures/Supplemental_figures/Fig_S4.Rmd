@@ -194,6 +194,7 @@ ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/R
 
 ```{r}
 # Find marker genes
+set.seed(123)
 somatic.markers <- marker.detection(sce.somatic,
                                     as.character(colData(sce.somatic)$AnnotatedClusters), 
                                     blocking = sce.somatic$Sample)
@@ -205,27 +206,25 @@ write.xlsx(somatic.markers, "../../../../Dropbox/Tc1_meiotic_silencing/Revisions
 # Visualize marker genes
 
 ```{r}
-# Calculate distance on logcounts
-top.markers <- as.character(unlist(lapply(somatic.markers,
-                                          function(n){n$GeneName[1:5]})))
-
 # Genes to visualize
+# We select a known marker gene for each cell type from the marker gene list and
+# visualize the remaining top 4 hits
 genes <- c(#Leydig_1
-           "Insl3", top.markers[c(21:23, 25)],
+           "Insl3", somatic.markers$Leydig_1$GeneName[c(1, 3:5)],
            #Leydig_2
-           "Igfbp4", top.markers[c(26, 28:30)],
+           "Igfbp4", somatic.markers$Leydig_2$GeneName[c(1, 3:5)],
           #Immature_Leydig1
-          "Inhba", top.markers[6:9],
+          "Dlk1", somatic.markers$Fetal_Leydig_1$GeneName[c(1:2, 4:5)],
           #Immature_Leydig2
-          "Stmn1", top.markers[c(11, 13:15)],
+          "Stmn1", somatic.markers$Fetal_Leydig_2$GeneName[c(1, 3:5)],
           #Sertoli
-           "Gstm6", top.markers[c(36:39)],
+           "Cst12", somatic.markers$Sertoli$GeneName[c(1, 3:5)],
           #Macrophages
-           "Fcer1g", top.markers[c(16:18, 20)],
+           "Cd14", somatic.markers$Interstitial_tMg$GeneName[1:4],
           #PTM
-           "Acta2", top.markers[c(32:35)],
+           "Acta2", somatic.markers$PTM$GeneName[2:5],
            #Endothelial cells
-           "Col4a1", top.markers[c(1:3, 5)])
+           "Tm4sf1", somatic.markers$Endothelial_cells$GeneName[1:4])
 
 #genes <- c("Cst12", top.markers[26:29],  
 #           "Sycp1", top.markers[32:35],
