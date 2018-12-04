@@ -266,7 +266,7 @@ data.frame(names = rownames(mat.for.heatmap),
 Ssxb1.quant <- read.xlsx("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/RNAScope/RNAscope_quantification.xlsx", 
                          sheet = 4)
 Ssxb1.quant <- Ssxb1.quant[!is.na(Ssxb1.quant$X1),]
-Ssxb1.quant$X1 <- factor(Ssxb1.quant$X1, levels = levels(Ssxb1.quant$X1))
+Ssxb1.quant$X1 <- factor(Ssxb1.quant$X1, levels = Ssxb1.quant$X1)
 
 # Save figure
 quant.plot <- ggplot(Ssxb1.quant) + 

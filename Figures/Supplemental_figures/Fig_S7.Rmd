@@ -31,8 +31,18 @@ source("../../Functions/auxiliary.R")
 # Visualize quantification of Pou5f2 RNAScope
 
 ```{r}
-cur_quant <- read.xlsx("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/RNAScope/RNAscope_quantification.xlsx",
-                       sheet = 4)
+Pou5f2.quant <- read.xlsx("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/RNAScope/RNAscope_quantification.xlsx", 
+                         sheet = 5)
+Pou5f2.quant <- Pou5f2.quant[!is.na(Pou5f2.quant$X1),]
+Pou5f2.quant$X1 <- factor(Pou5f2.quant$X1, levels = Pou5f2.quant$X1)
+
+# Save figure
+quant.plot <- ggplot(Pou5f2.quant) + 
+  geom_col(aes(X1, Signal.Count.Per.um2), fill = "steelblue", col = "black", width = 0.75) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab("Dots per um2") + xlab("Tubule stage")
+
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S7/Pou5f2_quant.pdf", quant.plot, width = 5, height = 3)
 ```
 
 
@@ -106,7 +116,10 @@ for(i in cur_groups){
                                    "Mouse" = "steelblue")) +
     guides(colour = FALSE) + ggtitle(i)
   p.list[[i]] <- cur_p
-  results.DE[[i]] <- cur_markers[cur_markers$FDR < 0.1,]
+  cur_res <- cur_markers[cur_markers$FDR < 0.1,]
+  cur_res$ID <- rownames(cur_res)
+  cur_res$Symbol <- rowData(sce)$Symbol[match(rownames(cur_res), rowData(sce)$ID)]
+  results.DE[[i]] <- cur_res
 }
 
 # Save Table
