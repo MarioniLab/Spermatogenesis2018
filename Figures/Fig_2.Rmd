@@ -37,12 +37,6 @@ source("../Functions/auxiliary.R")
 # Single cell data
 sce.all <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0"))]
-
-# Bulk data
-bulk <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/bulk/norm/1st_wave_bulk_norm_reverse-stranded.rds")
-
-# Meta info for bulk data
-meta <- read.table("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Tables/BulkSamples_stats.txt", sep = "\t")
 ```
 
 # Ratios of cell types in each sample
@@ -85,84 +79,6 @@ proportions.p <- ggplot(cur_df.melt) +
 # Save plot
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_2/Fig_2_proportions.pdf", proportions.p,
        width = 320, units = "mm", height = 130)
-```
-
-
-# Map bulk libraries to stages
-
-We perform a random forrest regression approach between the cluster labels 
-and the top 50 marker genes for each group. The training is performed on adult B6 samples
-
-```{r bulk mapping}
-# Load marker genes
-marker.genes <- readRDS("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/10X/Results/Marker_genes/Marker_genes_B6.rds")
-cur_markers <- as.character(unlist(lapply(marker.genes, function(n){rownames(n)[1:50]})))
-cur_markers <- cur_markers[cur_markers %in% rownames(bulk)]
-
-#mat <- matrix(NA, nrow = ncol(bulk), ncol = length(marker.genes))
-#rownames(mat) <- colnames(bulk)
-#colnames(mat) <- names(marker.genes)
-#for(i in names(marker.genes)){
-#  cur_genes <- rownames(marker.genes[[i]])[1:50]
-#  cur_genes <- cur_genes[cur_genes %in% rownames(bulk)]
-#  mat[,i] <- colSums(log2(bulk[cur_genes,] + 1))
-#}
-
-# Train the classifier on adult B6 - remove outliers, unannotated cells and endothelia cells
-sce.B6 <- sce.all[,grepl("B6", colData(sce.all)$Sample) & 
-                    !(colData(sce.all)$AnnotatedClusters %in% 
-             c("Outliers", "Endothelial_cells"))]
-sce.B6 <- normalize(sce.B6)
-labels <- factor(colData(sce.B6)$AnnotatedClusters,
-                    levels = levels(colData(sce.B6)$AnnotatedClusters)[
-                      levels(colData(sce.B6)$AnnotatedClusters) %in%
-                        unique(colData(sce.B6)$AnnotatedClusters)])
-
-# Create training and testing datasets
-set.seed(1234)
-sam <- sample(1:ncol(sce.B6), 2000)
-#train.data <- data.frame(t(as.matrix(logcounts(sce.B6)[cur_markers,sam])))
-#train.data$labels <- labels[sam] 
-#test.data <- data.frame(t(as.matrix(logcounts(sce.B6)[cur_markers,-sam])))
-#test.data$labels <- labels[-sam] 
-
-train.data <- as.matrix(logcounts(sce.B6)[cur_markers,sam])
-train.labels <- labels[sam] 
-test.data <- as.matrix(logcounts(sce.B6)[cur_markers,-sam])
-test.labels <- labels[-sam] 
-
-# logistic regression
-#model <- multinom(labels ~ ., data = train.data, MaxNWts = 40000, maxit = 1000)
-
-# Scale the counts prior to training
-# Z score
-train.data.Z <- t(apply(train.data, 1, function(n){(n - mean(n))/sd(n)}))
-test.data.Z <- t(apply(test.data, 1, function(n){(n - mean(n))/sd(n)}))
-
-# Random forrest
-Tree <- randomForest(x = t(as.matrix(train.data.Z)), y = train.labels, 
-                     xtest = t(as.matrix(test.data.Z)), 
-                     ytest = test.labels, keep.forest = TRUE)
-
-# Prediction 
-new.data <- log2(bulk[cur_markers,] + 1)
-new.data.Z <- t(apply(new.data, 1, function(n){(n - mean(n))/sd(n)}))
-
-pred.bulk <- predict(object = Tree, newdata = t(new.data.Z), type="prob")
-
-# Collect day info on libraries
-df <- data.frame(library = rownames(pred.bulk),
-                 day = as.numeric(sub(" days", "", meta[rownames(pred.bulk),"Age"])))
-
-pdf("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_2/Fig_2_bulkmapping_heatmap.pdf", 
-    onefile = FALSE)
-pheatmap(pred.bulk[order(df$day),], cluster_cols = FALSE, cluster_rows = FALSE,
-         col = inferno(100),
-         annotation_row = data.frame(row.names = rownames(pred.bulk),
-                    sample = factor(df$day, levels = unique(df$day)[order(unique(df$day))])),
-         labels_row = df$day[order(df$day)])
-dev.off()
-
 ```
 
 # Map RA cells to adult trajectory
