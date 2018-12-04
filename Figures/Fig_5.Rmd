@@ -117,22 +117,6 @@ Hormad1.p <- ggplot(data.frame(x = PT,
         axis.title.y = element_text(size = 15, face = "bold"), axis.ticks.y = element_blank(),
         axis.line.x = element_blank())
 
-# Sycp3
-Sycp3.p <- ggplot(data.frame(x = PT,
-                  y = y,
-                  gene = logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID[match(genes[2],
-                                           rowData(sce.spermatocytes)$Symbol)],])) +
-  geom_point(aes(x, y , fill = gene), shape = 21, size = 3) + 
-  scale_fill_viridis(name = NULL) + ylim(c(-0.033,0.033)) + 
-  ylab(genes[2]) +
-  theme(panel.background = element_blank(), 
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(), axis.text.y = element_blank(), 
-        axis.title.x = element_blank(), axis.text.x = element_blank(), 
-        axis.ticks.x = element_blank(), axis.line.y = element_blank(),
-        axis.title.y = element_text(size = 15, face = "bold"), axis.ticks.y = element_blank(),
-        axis.line.x = element_blank())
-
 # Pou5f2
 Pou5f2.p <- ggplot(data.frame(x = PT,
                   y = y,
@@ -149,23 +133,7 @@ Pou5f2.p <- ggplot(data.frame(x = PT,
         axis.title.y = element_text(size = 15, face = "bold"), axis.ticks.y = element_blank(),
         axis.line.x = element_blank())
 
-# Tcte2
-Tcte2.p <- ggplot(data.frame(x = PT,
-                  y = y,
-                  gene = logcounts(sce.spermatocytes)[rowData(sce.spermatocytes)$ID[match(genes[4],
-                                           rowData(sce.spermatocytes)$Symbol)],])) +
-  geom_point(aes(x, y , fill = gene), shape = 21, size = 3) + 
-  scale_fill_viridis(name = NULL) + ylim(c(-0.033,0.033)) + 
-  ylab(genes[4]) +
-  theme(panel.background = element_blank(), 
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(), axis.text.y = element_blank(), 
-        axis.title.x = element_blank(), axis.text.x = element_blank(), 
-        axis.ticks.x = element_blank(), axis.line.y = element_blank(),
-        axis.title.y = element_text(size = 15, face = "bold"), axis.ticks.y = element_blank(),
-        axis.line.x = element_blank())
-
-spermatocytes.p <- plot_grid(p.number.genes, Hormad1.p, Sycp3.p, Pou5f2.p, Tcte2.p, ncol = 1, nrow = 5)
+spermatocytes.p <- plot_grid(p.number.genes, Hormad1.p, Pou5f2.p, ncol = 1, nrow = 5)
 ggsave("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_5/Fig_5.pdf", 
        spermatocytes.p, width = 6, height = 8)
 ```
@@ -202,7 +170,7 @@ cors$logFC.Spermatids <- DE$Spermatocytes$logFC.Spermatids[match(cors$gene2,
 cors.out <- cors[order(cors$rho, decreasing = TRUE),]
 cors.out <- cors.out[cors$FDR < 0.1 & (cors$rho > 0.3 | cors$rho < -0.3), ]
 
-write.xlsx(cors, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S6.xlsx")
+write.xlsx(cors, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S8.xlsx")
 ```
 
 # Enrichment analysis for fertility genes
