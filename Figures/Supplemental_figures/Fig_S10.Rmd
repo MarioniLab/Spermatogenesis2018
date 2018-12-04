@@ -174,28 +174,23 @@ plotTracks(c(gax, c(collected.K9[1:4]),
 dev.off()
 ```
 
-# Whole X chromosome view of K9 signal
+# Whole chromosome view of K9 signal
 
 ```{r}
-# Filter X chromosome bins
-# Count reads in 5kb windows on X chr
-bins.K9.X <- windowCounts(bam.files.K9, bin = TRUE, width = 1000,
-    param=readParam(dedup=TRUE, minq=10, 
-                    discard=black, pe="both", max.frag=1000, 
-                    restrict = "X"))
+# Select chromosomal bins
+bins.K9 <- windowCounts(bam.files.K9, bin = TRUE, width = 20000,
+    param=param)
+bins.K9 <- bins.K9[as.character(seqnames(bins.K9@rowRanges)) %in%
+                             c(as.character(1:19), "X", "Y")]
 
-cur_cov <- bins.K9.X@rowRanges
-cur_cov$score <- log(assays(bins.K9.X)$counts[,1]/lib.sizes[1] + 1)
+cur_df <- data.frame(score = assays(bins.K9)$counts[,1]/(colSums(assays(bins.K9)$counts)[1]/1000000),
+                     chr = factor(as.character(seqnames(bins.K9@rowRanges)),
+                                  levels = c(as.character(1:19), "X", "Y")),
+                     cat = rep(1, nrow(bins.K9)))
 
-cur_track <- DataTrack(cur_cov, type="histogram", lwd=0, #ylim=c(0,5),
-         name=bam.files.K9[1],  col.axis="black", col.title="black",
-         fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
-
-pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Whole_X_chromosome.pdf", width = 200, height = 7)
-plotTracks(c(gax, cur_track),
-             chromosome="X",
-     from=min(start(cur_cov)), to=max(end(cur_cov)))
-dev.off()
+p.K9 <- ggplot(cur_df) + geom_bar(stat = "identity", aes(chr, cat, fill = log(score + 1))) +
+  scale_fill_gradientn(colours = colorRampPalette(c(c("white", "dark blue", "black")))(100))
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/K9_signal.pdf", p.K9)
 ```
 
 # Analyse heterogeneity of K9 on X chromosome
