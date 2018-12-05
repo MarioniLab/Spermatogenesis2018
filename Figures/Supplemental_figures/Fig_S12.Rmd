@@ -41,7 +41,7 @@ library(Gviz)
 source("../../Functions/auxiliary.R")
 
 # Read in gene annotations
-genenames <- read.table("../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+genenames <- read.table("../../Data/Mouse_genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 rownames(genenames) <- genenames$Gene.stable.ID
 
 # Generate feature annotation
@@ -92,7 +92,7 @@ seqnames(black) <- sub("chr", "", seqnames(black))
 # Parameters for reading bam files
 param <- readParam(dedup=TRUE, minq=10, discard=black, pe="both", max.frag=1000)
 
-spermatid.specific <- read.xlsx("../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S8_bulkDetection.xlsx")
+spermatid.specific <- read.xlsx("../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S11_bulkDetection.xlsx")
 rownames(spermatid.specific) <- genenames[match(spermatid.specific$Genename, genenames[,2]),1]
 
 # Create objects for visualziation
@@ -148,7 +148,7 @@ df <- data.frame(Spermatocytes.K9.P24 = rowMeans(cur_rpm.K9.P24[,c(1,3)]),
                  Spermatids.K9.P28 = rowMeans(cur_rpm.K9.P28[,c(2,4)]),
                  Spermatocytes.K4.P28 = rowMeans(cur_rpm.K4.P28[,c(1,3)]),
                  Spermatids.K4.P28 = rowMeans(cur_rpm.K4.P28[,c(2,4)]),
-                 Spermatocytes.K27.P26 = cur_rpm.K27.P26[,1],
+                 Spermatocytes.K27.P26 = rowMeans(cur_rpm.K27.P26[,c(1,3)]),
                  Spermatids.K27.P26 = rowMeans(cur_rpm.K27.P26[,c(2,3)]),
                  Spermatocytes.K27.P28 = rowMeans(cur_rpm.K27.P28[,c(1,3)]),
                  Spermatids.K27.P28 = rowMeans(cur_rpm.K27.P28[,c(2,4)]))
@@ -658,7 +658,7 @@ Enrichment for epigenetic marks are visualized comparing spermatid-specific and 
 
 ```{r}
 # Read in the spermatid-specific genes 
-spermatid.spec <- read.xlsx("../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Figures/Supplemental Tables/Table_S8.xlsx")
+spermatid.spec <- read.xlsx("../../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S11.xlsx")
 spermatid.spec$ID <- genenames[match(spermatid.spec$Symbol, genenames$Gene.name),1]
 spermatid.spec <- spermatid.spec[!is.na(spermatid.spec$ID),]
 ```
@@ -684,6 +684,12 @@ cur_spermatids <- ggplot(cur_df[cur_df$cell_type == "ST",]) +
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S12/Hammoud_Input_spermatocytes.pdf", cur_spermatocytes, width = 7, height = 5)
 
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S12/Hammoud_Input_spermatids.pdf", cur_spermatids, width = 7, height = 5)
+
+# Statistical testing
+wilcox.test(log2(cur_df[cur_df$cell_type == "SC" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "SC" & !cur_df$spermatid_spec,"value"]) + 1)
+wilcox.test(log2(cur_df[cur_df$cell_type == "ST" & cur_df$spermatid_spec,"value"]) + 1,
+            log2(cur_df[cur_df$cell_type == "ST" & !cur_df$spermatid_spec,"value"]) + 1)
 
 ## Visualize H3K4me3
 
@@ -733,7 +739,6 @@ cur_spermatids <- ggplot(cur_df[cur_df$cell_type == "ST",]) +
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S12/Hammoud_H3K27me3_spermatocytes.pdf", cur_spermatocytes, width = 7, height = 5)
 
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S12/Hammoud_H3K27me3_spermatids.pdf", cur_spermatids, width = 7, height = 5)
-
 
 # Statistical testing
 wilcox.test(log2(cur_df[cur_df$cell_type == "SC" & cur_df$spermatid_spec,"value"]) + 1,

@@ -57,7 +57,7 @@ bam.files.K4 <- list.files("../../../Dropbox (Cambridge University)/SST_spermato
                         pattern = paste(".+JP26.+bam$", sep = ""))
 
 # K27 files
-bam.files.K4 <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K27ac/", full.names = TRUE,
+bam.files.K27 <- list.files("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/CnR/bam/H3K27ac/", full.names = TRUE,
                         pattern = paste(".+JP26.+bam$", sep = ""))
 
 # Blacklisted regions
@@ -185,7 +185,10 @@ df <- data.frame(Spermatocytes.K9 = rowMeans(cur_rpm.K9[,c(1,3)]),
                  avg.K9 = rowMeans(cur_rpm.K9),
                  Spermatocytes.K4 = rowMeans(cur_rpm.K4[,c(1,3)]),
                  Spermatids.K4 = rowMeans(cur_rpm.K4[,c(2,4)]),
-                 avg.K4 = rowMeans(cur_rpm.K4))
+                 avg.K4 = rowMeans(cur_rpm.K4),
+                 Spermatocytes.K27 = rowMeans(cur_rpm.K27[,c(1,3)]),
+                 Spermatids.K27 = rowMeans(cur_rpm.K27[,c(2,4)]),
+                 avg.K27 = rowMeans(cur_rpm.K4))
 df$Symbol <- genenames[rownames(df),2]
 
 # Order based on K9 signal in spermatocytes
@@ -226,6 +229,21 @@ spermatid.spec.K4.spermatids <- ggplot(for.plot) + geom_boxplot(aes(spermatid_sp
 ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/K4_spermatids_X_promoters.pdf", 
        spermatid.spec.K4.spermatids, width = 4, height = 4)
 
+spermatid.spec.K27.spermatocytes <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatocytes.K27 + 1),
+                            fill = spermatid_specific)) + 
+  scale_fill_jama() + ylim(c(0,5))
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/K27_spermatocytes_X_promoters.pdf", 
+       spermatid.spec.K27.spermatocytes, width = 4, height = 4)
+
+spermatid.spec.K27.spermatids <- ggplot(for.plot) + geom_boxplot(aes(spermatid_specific,
+                            log2(Spermatids.K27 + 1),
+                            fill = spermatid_specific)) + 
+  scale_fill_jama()+ ylim(c(0,5))
+ggsave(filename = "../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/K27_spermatids_X_promoters.pdf", 
+       spermatid.spec.K27.spermatids, width = 4, height = 4)
+
+
 # Wilcoxon test
 wilcox.test(for.plot$Spermatocytes.K9[for.plot$spermatid_specific == TRUE],
             for.plot$Spermatocytes.K9[for.plot$spermatid_specific == FALSE])
@@ -239,74 +257,17 @@ wilcox.test(for.plot$Spermatocytes.K4[for.plot$spermatid_specific == TRUE],
 wilcox.test(for.plot$Spermatids.K4[for.plot$spermatid_specific == TRUE],
             for.plot$Spermatids.K4[for.plot$spermatid_specific == FALSE])
 
+wilcox.test(for.plot$Spermatocytes.K27[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatocytes.K27[for.plot$spermatid_specific == FALSE])
+
+wilcox.test(for.plot$Spermatids.K27[for.plot$spermatid_specific == TRUE],
+            for.plot$Spermatids.K27[for.plot$spermatid_specific == FALSE])
+
 # Write table
 df.out <- df
 df.out <- df.out[order(df.out$spermatid_specific, decreasing = TRUE),]
 
 write.xlsx(df.out, "../../../Dropbox (Personal)/Tc1_meiotic_silencing/Revisions/Figures/Supplemental Tables/Table_S11.xlsx")
-```
-
-# Visualize genes with high K9
-
-```{r, echo = FALSE}
-# Select genes of interest
-genes <- rownames(df)[df$spermatid_specific == TRUE & 
-                        log2(df$Spermatocytes.K9 + 1) > 2.5]
-
-# Find promoter regions +- 1000bp
-cur_prom <- promoters(genes(EnsDb.Mmusculus.v79), 
-                  upstream = 10000, downstream = 5000)
-
-# Loop over the genelist and save annotation tracks
-for(i in 1:length(genes)){
-  cur_gene <- genes[i]
-  cur_name <- elementMetadata(cur_prom)$gene_name[
-    elementMetadata(cur_prom)$gene_id == cur_gene]
-
-  cur_region <- cur_prom[elementMetadata(cur_prom)$gene_id == cur_gene]
-
-  collected.K9 <- list()
-  lib.sizes <- colSums(assays(bins.K9)$counts)/1e6
-  for (i in 1:length(bam.files.K9)) {
-      reads <- extractReads(bam.file=bam.files.K9[i], cur_region, param=param)
-      cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
-      collected.K9[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,10),
-           name=bam.files.K9[i],  col.axis="black", col.title="black",
-           fill="dark red", col.histogram=NA, options(ucscChromosomeNames=FALSE))
-  }
-  collected.K9 <- collected.K9[c(1,3,2,4)]
-
-  collected.K4 <- list()
-  lib.sizes <- colSums(assays(bins.K4)$counts)/1e6
-  for (i in 1:length(bam.files.K4)) {
-      reads <- extractReads(bam.file=bam.files.K4[i], cur_region, param=param)
-      cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
-      collected.K4[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,10),
-           name=bam.files.K4[i],  col.axis="black", col.title="black",
-           fill="dark blue", col.histogram=NA, options(ucscChromosomeNames=FALSE))
-  }
-  collected.K4 <- collected.K4[c(1,3,2,4)]
-
-  pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/", cur_name, "_spermatocytes.pdf", 
-            sep = ""),
-      width = 12, height = 7)
-  plotTracks(c(gax, c(collected.K9[1:2], collected.K4[1:2]),
-                                    GeneRegionTrack(gr)),
-             chromosome=as.character(seqnames(cur_region)),
-     from=start(cur_region), to=end(cur_region), showId=TRUE)
-  dev.off()
-  
-  pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/Figures/Fig_7/", cur_name, "_spermatids.pdf", 
-            sep = ""),
-      width = 12, height = 7)
-  plotTracks(c(gax, c(collected.K9[3:4], collected.K4[3:4]),
-                                 GeneRegionTrack(gr)),
-             chromosome=as.character(seqnames(cur_region)),
-     from=start(cur_region), to=end(cur_region), showId=TRUE)
-  dev.off()
-
-}
-
 ```
 
 # Gene Tracks specifically for Akap4 and Cypt1
@@ -345,15 +306,26 @@ for (i in 1:length(bam.files.K4)) {
 }
 collected.K4 <- collected.K4[c(1,3,2,4)]
 
+collected.K27 <- list()
+lib.sizes <- colSums(assays(bins.K27)$counts)/1e6
+for (i in 1:length(bam.files.K27)) {
+    reads <- extractReads(bam.file=bam.files.K27[i], cur_region, param=param)
+    cov <- as(coverage(reads)/lib.sizes[i], "GRanges")
+    collected.K27[[i]] <- DataTrack(cov, type="histogram", lwd=0, ylim=c(0,5),
+         name=bam.files.K27[i],  col.axis="black", col.title="black",
+         fill="dark blue", col.histogram=NA, options(ucscChromosomeNames=FALSE))
+}
+collected.K27 <- collected.K27[c(1,3,2,4)]
 
-  pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/Akap4_forFigure_spermatocytes.pdf", 
+
+pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/Akap4_forFigure_spermatocytes.pdf", 
             sep = ""),
       width = 12, height = 7)
   plotTracks(c(gax, c(collected.K9[1:2], collected.K4[1:2]),
                                     GeneRegionTrack(gr)),
              chromosome=as.character(seqnames(cur_region)),
      from=start(cur_region), to=end(cur_region), showId=TRUE)
-  dev.off()
+dev.off()
   
 pdf(paste("../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Fig_8/Akap4_forFigure_spermatids.pdf", 
             sep = ""),
