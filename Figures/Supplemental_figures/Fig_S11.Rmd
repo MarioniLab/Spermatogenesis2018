@@ -92,8 +92,8 @@ cur_high.merge.spermatocytes
 # The second hit is right next to Akap4. Number 8 is close to Tsga8 and on Dmd.
 
 # Save as bedgraph
-export(cur_high.merge.spermatocytes, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Spermatocytes_1_highK9regions.bed")
-cur_high.merge.spermatocytes <- import("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Spermatocytes_1_highK9regions.bed")
+export(cur_high.merge.spermatocytes, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/Spermatocytes_1_highK9regions.bed")
+cur_high.merge.spermatocytes <- import("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/Spermatocytes_1_highK9regions.bed")
 
 # Spermatids
 cur_high <- rowRanges(bins.K9.X)[order(assays(bins.K9.X)$counts[,2], decreasing = TRUE)]
@@ -109,8 +109,8 @@ cur_high.merge.spermatids <- cur_high.merge$region[order(cur_high.merge$region@r
 cur_high.merge.spermatids
 
 # Save as bedgraph
-export(cur_high.merge.spermatids, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Spermatids_1_highK9regions.bed")
-cur_high.merge.spermatids <- import("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Spermatids_1_highK9regions.bed")
+export(cur_high.merge.spermatids, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/Spermatids_1_highK9regions.bed")
+cur_high.merge.spermatids <- import("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/Spermatids_1_highK9regions.bed")
 ```
 
 # Search for enriched repeats in regions
@@ -134,7 +134,8 @@ for(i in 1:nrow(mat)){
   print(round((i/nrow(mat))*100))
 }
 
-saveRDS(mat, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/Repeat_fraction_in_bin.rds")
+saveRDS(mat, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/Repeat_fraction_in_bin.rds")
+mat <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/Repeat_fraction_in_bin.rds")
 cur_mat <- mat[rowSums(mat) > 0,]
 cur_mat <- cur_mat[order(cur_mat[,1]/rowSums(cur_mat), decreasing = TRUE), ]
 cur_mat <- as.data.frame(cur_mat)
@@ -171,5 +172,5 @@ cur_mat.sig.melt$names <- factor(rep(rownames(cur_mat.sig)[1:20], 2),
 repeat.p <- ggplot(cur_mat.sig.melt) + 
   geom_bar(aes(names, value, fill = variable), stat="identity") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) + ylab("Repeat fraction") + xlab("")
-ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S10/repeat_enrichment.pdf", plot = repeat.p, width = 10, height = 5)
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S11/repeat_enrichment.pdf", plot = repeat.p, width = 10, height = 5)
 ```
