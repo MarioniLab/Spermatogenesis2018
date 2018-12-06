@@ -45,6 +45,22 @@ quant.plot <- ggplot(Prss50.quant) +
   ylab("Dots per um2") + xlab("Tubule stage") + scale_fill_brewer(palette = "Paired")
 
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S6/Prss50.pdf", quant.plot, width = 5, height = 3)
+
+# Visualize Prss50 signal in different epithelial stages
+
+Prss50.quant_adult <- read.xlsx("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/RNAScope/RNAscope_quantification.xlsx", 
+                         sheet = 3)
+
+Prss50.quant_adult <- Prss50.quant_adult[!is.na(Prss50.quant_adult$X1),]
+Prss50.quant_adult$X1 <- factor(Prss50.quant_adult$X1, levels = Prss50.quant_adult$X1)
+
+# Save figure
+quant.plot <- ggplot(Prss50.quant_adult) + 
+  geom_col(aes(X1, Signal.Count.Per.um2), fill = "steelblue", col = "black", width = 0.75) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+  ylab("Dots per um2") + xlab("Tubule stage")
+
+ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S6/Prss50_Adult.pdf", quant.plot, width = 5, height = 3)
 ```
 
 # Visualize emptyDrops
