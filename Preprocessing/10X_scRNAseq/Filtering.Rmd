@@ -556,39 +556,39 @@ ggplot(data.frame(tsne1 = cur_tsne$Y[,1],
 # Rename clusters
 new.vector.germ <- clusters
 new.vector.germ[new.vector.germ == 1] <- "S11"
-new.vector.germ[new.vector.germ == 2] <- "Spermatocytes_4"
+new.vector.germ[new.vector.germ == 2] <- "lP1"
 new.vector.germ[new.vector.germ == 3] <- "S7"
-new.vector.germ[new.vector.germ == 4] <- "Spermatocytes_5"
+new.vector.germ[new.vector.germ == 4] <- "lP2"
 new.vector.germ[new.vector.germ == 5] <- "S6"
 new.vector.germ[new.vector.germ == 6] <- "Outliers"
 new.vector.germ[new.vector.germ == 7] <- "S1"
-new.vector.germ[new.vector.germ == 8] <- "Spermatocytes_2"
+new.vector.germ[new.vector.germ == 8] <- "eP2"
 new.vector.germ[new.vector.germ == 9] <- "S9"
 new.vector.germ[new.vector.germ == 10] <- "S2"
-new.vector.germ[new.vector.germ == 11] <- "Spermatocytes_8"
+new.vector.germ[new.vector.germ == 11] <- "MII"
 new.vector.germ[new.vector.germ == 12] <- "S8"
-new.vector.germ[new.vector.germ == 13] <- "Spermatocytes_6"
+new.vector.germ[new.vector.germ == 13] <- "MI"
 new.vector.germ[new.vector.germ == 14] <- "S10"
 new.vector.germ[new.vector.germ == 15] <- "S4"
-new.vector.germ[new.vector.germ == 16] <- "Spermatocytes_7"
+new.vector.germ[new.vector.germ == 16] <- "D"
 new.vector.germ[new.vector.germ == 17] <- "S3"
-new.vector.germ[new.vector.germ == 18] <- "Spermatocytes_1"
+new.vector.germ[new.vector.germ == 18] <- "eP1"
 new.vector.germ[new.vector.germ == 19] <- "S5"
-new.vector.germ[new.vector.germ == 20] <- "Spermatocytes_3"
+new.vector.germ[new.vector.germ == 20] <- "mP"
 new.vector.germ[new.vector.germ == 21] <- "Outliers"
 new.vector.germ[new.vector.germ == 22] <- "Spermatogonia"
 new.vector.germ[new.vector.germ == 23] <- "Outliers"
 
 # Visualize clusters
 colour_vector <- c("Spermatogonia" = "#046735",
-                   "Spermatocytes_1" = "#FBDCEA", 
-                   "Spermatocytes_2" = "#F2B2D1",
-                   "Spermatocytes_3" = "#E86FAA", 
-                   "Spermatocytes_4" = "#D31281",
-                   "Spermatocytes_5" = "#9A1C59",
-                   "Spermatocytes_6" = "#7E2678",
-                   "Spermatocytes_7" = "#502269",
-                   "Spermatocytes_8" = "#240f2f",
+                   "eP1" = "#FBDCEA", 
+                   "eP2" = "#F2B2D1",
+                   "mP" = "#E86FAA", 
+                   "lP1" = "#D31281",
+                   "lP2" = "#9A1C59",
+                   "D" = "#7E2678",
+                   "MI" = "#502269",
+                   "MII" = "#240f2f",
                    "S1" = "#B3A9D3",
                    "S2" = "#D8DAEC",
                    "S3" = "#9595C9",
@@ -617,23 +617,23 @@ AnnotatedClusters[AnnotatedClusters == "Germ"] <- as.character(new.vector.germ[n
 ```{r}
 sce.all <- readRDS("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_all.rds")
 colData(sce.all)$AnnotatedClusters <- factor(AnnotatedClusters,
-      levels = c("Spermatogonia", "Spermatocytes_1",
-                 "Spermatocytes_2","Spermatocytes_3","Spermatocytes_4",
-                 "Spermatocytes_5","Spermatocytes_6","Spermatocytes_7", "Spermatocytes_8", 
+      levels = c("Spermatogonia", "eP1",
+                 "eP2","mP","lP1",
+                 "lP2","D","MI", "MII", 
                  "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9",
                  "S10", "S11", "Sertoli", "Leydig_1", "Leydig_2", 
                  "Fetal_Leydig_1", "Fetal_Leydig_2", "PTM", "Endothelial_cells", 
                  "Interstitial_tMg", "Outliers"))
 
 colour_vector <- c("Spermatogonia" = "#046735",
-                   "Spermatocytes_1" = "#FBDCEA", 
-                   "Spermatocytes_2" = "#F2B2D1",
-                   "Spermatocytes_3" = "#E86FAA", 
-                   "Spermatocytes_4" = "#D31281",
-                   "Spermatocytes_5" = "#9A1C59",
-                   "Spermatocytes_6" = "#7E2678",
-                   "Spermatocytes_7" = "#502269",
-                   "Spermatocytes_8" = "#240f2f",
+                   "eP1" = "#FBDCEA", 
+                   "eP2" = "#F2B2D1",
+                   "mP" = "#E86FAA", 
+                   "lP1" = "#D31281",
+                   "lP2" = "#9A1C59",
+                   "D" = "#7E2678",
+                   "MI" = "#502269",
+                   "MII" = "#240f2f",
                    "S1" = "#B3A9D3",
                    "S2" = "#D8DAEC",
                    "S3" = "#9595C9",
