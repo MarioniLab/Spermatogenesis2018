@@ -93,7 +93,7 @@ rownames(sce) <- genes
 sce_RA <- sce_RA[genes,]
 
 # Select only the germ cells
-sce <- sce[,grepl("Spermatogonia|Spermatocytes|S1|S2|S3|S4|S5|S6|S7|S8|S9", colData(sce)$AnnotatedClusters)]
+sce <- sce[,grepl("Spermatogonia|eP|mP|lP|D|MI|S1|S2|S3|S4|S5|S6|S7|S8|S9", colData(sce)$AnnotatedClusters)]
 sce <- normalize(sce)
 
 # Select cells from RA blocked cells that are represented in adult trajectory

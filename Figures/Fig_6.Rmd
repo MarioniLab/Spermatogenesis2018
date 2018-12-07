@@ -45,7 +45,7 @@ sce <- normalize(sce)
 ```{r ordering}
 # Select Spermatids
 sce.spermatids <- sce[, colData(sce)$AnnotatedClusters %in% 
-                           paste("S", 1:14, sep = "")]
+                           paste("S", 1:11, sep = "")]
 sce.spermatids <- normalize(sce.spermatids)
 
 # Compute HVG

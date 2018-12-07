@@ -44,7 +44,7 @@ sce.all <- sce.all[,!(colData(sce.all)$Sample %in% c("Tc1", "Tc0")) &
 ```{r}
 sce.somatic <- sce.all[,grepl("P5|P10", colData(sce.all)$Sample) &
                                        colData(sce.all)$AnnotatedClusters != "Spermatogonia" &
-                                        colData(sce.all)$AnnotatedClusters != "Spermatocytes_1"]
+                                        colData(sce.all)$AnnotatedClusters != "eP1"]
 sce.somatic <- normalize(sce.somatic)
 
 # Compute PCA

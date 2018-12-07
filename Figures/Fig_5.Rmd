@@ -159,7 +159,7 @@ sce.for.testing <- sce[match(rowData(sce.spermatocytes)$ID,
 sce.for.testing <- normalize(sce.for.testing)
 DE <- findMarkers(sce.for.testing, 
     clusters = ifelse(colData(sce.for.testing)$AnnotatedClusters %in% 
-                            levels(colData(sce)$AnnotatedClusters)[2:8], "Spermatocytes", "Spermatids"))
+                            levels(colData(sce)$AnnotatedClusters)[2:9], "Spermatocytes", "Spermatids"))
 
 cors$FDR.DE <- DE$Spermatocytes$FDR[match(cors$gene2, 
                                           rownames(DE$Spermatocytes))]

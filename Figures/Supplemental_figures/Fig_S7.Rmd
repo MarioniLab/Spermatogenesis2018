@@ -66,10 +66,8 @@ Here, we will only visualize the outcome.
 ```{r}
 results.DE <- list()
 p.list <- list()
-cur_groups <- c("Spermatocytes_1", "Spermatocytes_2", 
-                "Spermatocytes_3", "Spermatocytes_4", 
-                "Spermatocytes_5", "Spermatocytes_6", "Spermatocytes_7",
-                "Spermatocytes_8", "S1", "S2", "S3", "S4", "S5", "S6", "S7",
+cur_groups <- c("eP1", "eP2", "mP", "lP1", "lP2", "D", "MI",
+                "MII", "S1", "S2", "S3", "S4", "S5", "S6", "S7",
                 "S8", "S9", "S10", "S11")
 
 for(i in cur_groups){
