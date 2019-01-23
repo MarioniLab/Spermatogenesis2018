@@ -121,6 +121,86 @@ all <- plot_grid(X.chr + theme(legend.position = "none"),
 ggsave("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S9/Sex_chromosome_dynamics.pdf",all, width = 20, height = 5)
 ```
 
+# Visualize whole X and Y chromosome
+
+```{r}
+# Here we order the genes based on their peak expression per stage.
+
+# Collect X genes first
+X.genes <- rownames(genenames)[genenames$Chromosome.scaffold.name == "X"]
+for.heatmap <- logcounts(sce)[X.genes[X.genes %in% rownames(sce)],]
+for.heatmap <- for.heatmap[Matrix::rowMeans(for.heatmap) > 0.1,]
+
+# Build mean expression matrix
+df <- as.data.frame(t(as.matrix(for.heatmap)))
+df$groups <- colData(sce)$AnnotatedClusters
+df.melt <- melt(df, id.vars = "groups")
+
+# Collect mean expression for each gene in each group
+mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
+mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
+rownames(mat.for.heatmap) <- mat.for.heatmap$variable
+mat.for.heatmap <- mat.for.heatmap[,-1]
+
+# Order by peak expression
+mat.for.heatmap <- mat.for.heatmap[order(apply(mat.for.heatmap, 1, which.max),
+                                         decreasing = FALSE),]
+
+# Rename heatmap
+rownames(mat.for.heatmap) <- genenames[rownames(mat.for.heatmap),2]
+
+# Remove pseudogenes
+#mat.for.heatmap <- mat.for.heatmap[!grepl("Rik|-ps|Gm", rownames(mat.for.heatmap)),]
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S9/Whole_X.pdf",   
+    width = 4, height = 20)
+pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE, show_rownames = FALSE,
+         cluster_rows = FALSE, 
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
+                  cell_type = colnames(mat.for.heatmap)),
+         annotation_colors = list(cell_type = metadata(sce)$color_vector), 
+         scale = "row", border_color = NA, cellheight = 4, fontsize = 3, cellwidth = 4)
+dev.off()
+
+# Collect Y genes
+Y.genes <- rownames(genenames)[genenames$Chromosome.scaffold.name == "Y"]
+for.heatmap <- logcounts(sce)[Y.genes[Y.genes %in% rownames(sce)],]
+for.heatmap <- for.heatmap[Matrix::rowMeans(for.heatmap) > 0.1,]
+
+# Build mean expression matrix
+df <- as.data.frame(t(as.matrix(for.heatmap)))
+df$groups <- colData(sce)$AnnotatedClusters
+df.melt <- melt(df, id.vars = "groups")
+
+# Collect mean expression for each gene in each group
+mat <- ddply(df.melt, .(groups, variable), summarize, mean=mean(value))
+mat.for.heatmap <- dcast(data = mat,formula = variable~groups,fun.aggregate = sum,value.var = "mean")
+rownames(mat.for.heatmap) <- mat.for.heatmap$variable
+mat.for.heatmap <- mat.for.heatmap[,-1]
+
+# Order by peak expression
+mat.for.heatmap <- mat.for.heatmap[order(apply(mat.for.heatmap, 1, which.max),
+                                         decreasing = FALSE),]
+
+# Rename heatmap
+rownames(mat.for.heatmap) <- genenames[rownames(mat.for.heatmap),2]
+
+# Remove pseudogenes
+#mat.for.heatmap <- mat.for.heatmap[!grepl("Rik|-ps|Gm", rownames(mat.for.heatmap)),]
+
+pdf("../../../../Dropbox (Cambridge University)/SST_spermatocytes/Revisions/Results/New_figures/Supplemental_figures/Fig_S9/Whole_Y.pdf",   
+    width = 7, height = 15)
+pheatmap(mat.for.heatmap, show_colnames = FALSE, cluster_cols = FALSE, show_rownames = FALSE,
+         cluster_rows = FALSE, 
+         color = colorRampPalette(c("#053061", "#4393c3", "#f7f7f7", "#d6604d", "#67001f"))(100),
+         annotation_col = data.frame(row.names = colnames(mat.for.heatmap),
+                  cell_type = colnames(mat.for.heatmap)),
+         annotation_colors = list(cell_type = metadata(sce)$color_vector), 
+         scale = "row", border_color = NA, cellheight = 4, fontsize = 3, cellwidth = 4)
+dev.off()
+```
+
 # Multicopy gene analysis
 
 # Read in the BLAST hits for the different multicopy genes
