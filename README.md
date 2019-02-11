@@ -4,20 +4,55 @@ This repository contains scripts for data processing, analysis and figure genera
 
 ## Obtaining the data
 
-The analysis scripts load in a `SingleCellExperiment` object that contains either the cell ranger filtered cells or the EmptyDrops filtered cells (see Methods of the manuscript).
+The analyses scripts load in a `SingleCellExperiment` object that contains either the cell ranger filtered cells or the EmptyDrops filtered cells (see Methods section of the publication).
 These single-cell RNA sequencing data have been deposited on ArrayExpress under the accession number [E-MTAB-6946](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-6946/).
 The following code chunk downloads the data and stores them in a `SingleCellExperiment` object that can be used to reproduce the analysis performed for this project.
+
+In the first step, clone this repository to your local Github folder:
+
+```{bash}
+cd ~/Github
+git clone https://github.com/MarioniLab/Spermatogenesis2018.git
+```
 
 To obtain the cell ranger filtered data use:
 
 ```{r}
+setwd("~/GitHub/Spermatogenesis2018/")
 
+# Raw cellranger filtered transcriptomes
+download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6946/E-MTAB-6946.processed.1.zip", 
+                destfile = "cellranger_raw.zip")
+unzip("cellranger_raw.zip")
+
+# Cellranger filtered metadata
+download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6946/E-MTAB-6946.processed.2.zip", 
+                destfile = "cellranger_metadata.zip")
+unzip("cellranger_metadata.zip")  
+                
+# Create SingleCellExperiment object
+library(SingleCellExperiment)
+library(Matrix)
+
+cellranger_raw <- readMM("raw_counts.mtx")
+cellranger_metadata <- read.table("cell_metadata.txt", sep = " ")
+sce_cellranger <- SingleCellExperiment()  
 ```
 
 To obtain the EmptyDrops filtered data use:
 
 ```{r}
+# Raw empty drops filtered transcriptomes
+download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6946/E-MTAB-6946.processed.3.zip", 
+                destfile = "EmptyDrops_raw.zip")
+unzip("EmptyDrops_raw.zip")
+               
+# EmptyDrops filtered metadata
+download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6946/E-MTAB-6946.processed.4.zip", 
+                destfile = "EmptyDrops_metadata.zip")
+unzip("EmptyDrops_metadata.zip")                
 
+sce_emptyDrops <- 
 ```
 
 ## Analysis scripts
