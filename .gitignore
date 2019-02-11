@@ -2,3 +2,6 @@
 ./**/.DS_Store
 .Rhistory
 ./**/.Rhistory
+*.txt
+*.zip
+*.mtx
