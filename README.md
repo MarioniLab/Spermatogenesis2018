@@ -2,11 +2,13 @@
 
 This repository contains scripts for data processing, analysis and figure generation using scRNA-Seq, bulk RNAseq and CUT&RUN data.
 
-## Obtaining the data
+## How to work with the data
 
 The analyses scripts load in a `SingleCellExperiment` object that contains either the cell ranger filtered cells or the EmptyDrops filtered cells (see Methods section of the publication).
 These single-cell RNA sequencing data have been deposited on ArrayExpress under the accession number [E-MTAB-6946](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-6946/).
 The following code chunk downloads the data and stores them in a `SingleCellExperiment` object that can be used to reproduce the analysis performed for this project.
+
+### 1. Obtaining the data
 
 In the first step, clone this repository to your local Github folder:
 
@@ -29,14 +31,6 @@ unzip("cellranger_raw.zip")
 download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6946/E-MTAB-6946.processed.2.zip", 
                 destfile = "cellranger_metadata.zip")
 unzip("cellranger_metadata.zip")  
-                
-# Create SingleCellExperiment object
-library(SingleCellExperiment)
-library(Matrix)
-
-cellranger_raw <- readMM("raw_counts.mtx")
-cellranger_metadata <- read.table("cell_metadata.txt", sep = " ")
-sce_cellranger <- SingleCellExperiment()  
 ```
 
 To obtain the EmptyDrops filtered data use:
@@ -51,9 +45,31 @@ unzip("EmptyDrops_raw.zip")
 download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6946/E-MTAB-6946.processed.4.zip", 
                 destfile = "EmptyDrops_metadata.zip")
 unzip("EmptyDrops_metadata.zip")                
-
-sce_emptyDrops <- 
 ```
+
+### 2. Creating the SingleCellExperiment object
+
+In the next step, we create a `SingleCellExperiment` object by combining the raw counts with matched metadata.
+
+```{r}
+# Create SingleCellExperiment object
+library(SingleCellExperiment)
+library(Matrix)
+
+# Cellranger filtered data
+cellranger_raw <- readMM("raw_counts.mtx")
+cellranger_metadata <- read.table("cell_metadata.txt", sep = " ")
+sce_cellranger <- SingleCellExperiment(assays = list(counts = cellranger_raw), 
+                                       colData = cellranger_metadata) 
+
+# EmptyDrops filtered data
+EmptyDrops_raw <- readMM("raw_counts.mtx")
+EmptyDrops_metadata <- read.table("cell_metadata.txt", sep = " ")
+sce_EmptyDrops_raw <- SingleCellExperiment(assays = list(counts = EmptyDrops_raw), 
+                                           colData = EmptyDrops_metadata) 
+```
+
+### 3. Normalizing the data
 
 ## Analysis scripts
 
