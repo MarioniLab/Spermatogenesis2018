@@ -683,6 +683,8 @@ write.table(stats.df, "../../../../Dropbox (Cambridge University)/SST_spermatocy
 ```{r}
 writeMM(counts(sce.all), "../../../../Desktop/raw_counts.mtx")
 write.table(colData(sce.all), "../../../../Desktop/cell_metadata.txt")
+write.table(rowData(sce.all)[,1:2], "../../../../Desktop/genes.tsv", 
+            sep = "\t", row.names = FALSE)
 ```
 
 ```{r}
