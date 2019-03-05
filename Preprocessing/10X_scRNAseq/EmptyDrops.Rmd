@@ -462,7 +462,7 @@ saveRDS(sce.all, "../../../../Dropbox (Cambridge University)/SST_spermatocytes/A
 writeMM(counts(sce.all), "../../../../Desktop/raw_counts_emptyDropts.mtx")
 write.table(colData(sce.all), "../../../../Desktop/cell_metadata_emptyDrops.txt")
 write.table(rowData(sce.all)[,1:2], 
-            "../../../../Desktop/genes_emptyDrops.txt", 
+            "../../../../Desktop/genes_emptyDrops.tsv", 
             sep = "\t", row.names = FALSE)
 ```
 
