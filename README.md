@@ -40,7 +40,6 @@ download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6946/E-MTAB-6946.
 unzip("cellranger_genes.zip") 
 file.remove("cellranger_genes.zip")
 ```
-
 To obtain the EmptyDrops filtered data use:
 
 ```{r}
@@ -51,13 +50,13 @@ unzip("EmptyDrops_raw.zip")
 file.remove("EmptyDrops_raw.zip")
                
 # EmptyDrops filtered metadata
-download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6946/E-MTAB-6946.processed.5.zip", 
+download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6946/E-MTAB-6946.processed.6.zip", 
                 destfile = "EmptyDrops_metadata.zip")
 unzip("EmptyDrops_metadata.zip") 
 file.remove("EmptyDrops_metadata.zip")
 
 # EmptyDrops filtered gene names
-download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6946/E-MTAB-6946.processed.6.zip", 
+download.file("https://www.ebi.ac.uk/arrayexpress/files/E-MTAB-6946/E-MTAB-6946.processed.5.zip", 
                 destfile = "EmptyDrops_genes.zip")
 unzip("EmptyDrops_genes.zip") 
 file.remove("EmptyDrops_genes.zip")
@@ -79,13 +78,16 @@ cellranger_genes <- read.table("genes.tsv", sep = "\t", header = TRUE)
 sce_cellranger <- SingleCellExperiment(assays = list(counts = cellranger_raw), 
                                        colData = cellranger_metadata,
                                        rowData = cellranger_genes) 
+saveRDS(sce_cellranger, "SCE_all.rds")
 
 # EmptyDrops filtered data
 EmptyDrops_raw <- readMM("raw_counts_emptyDrops.mtx")
 EmptyDrops_metadata <- read.table("cell_metadata_emptyDrops.txt", sep = " ")
 EmptyDrops_genes <- read.table("genes_emptyDrops.tsv", sep = "\t", header = TRUE)
-sce_EmptyDrops_raw <- SingleCellExperiment(assays = list(counts = EmptyDrops_raw), 
-                                           colData = EmptyDrops_metadata) 
+sce_EmptyDrops <- SingleCellExperiment(assays = list(counts = EmptyDrops_raw), 
+                                       colData = EmptyDrops_metadata,
+                                       rowData = EmptyDrops_genes) 
+saveRDS(sce_EmptyDrops, "SCE_emptyDrops.rds")
 ```
 
 ### 3. Normalizing the data
