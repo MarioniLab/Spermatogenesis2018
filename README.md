@@ -94,9 +94,15 @@ saveRDS(sce_EmptyDrops, "SCE_emptyDrops.rds")
 
 To further process the data (normalization, dimensionality reduction, ...), please follow either the [Filtering](../master/Preprocessing/10X_scRNAseq/Filtering.Rmd) (from line 166) or the [EmptyDrops](../master/Preprocessing/10X_scRNAseq/EmptyDrops.Rmd) (from line 262) scripts.
 
+## Reading in the data
+
+All scripts in this repository load the `SingleCellExperiment` objects from where I saved them. 
+To load in the objects, please change the paths to `setwd("~/GitHub/Spermatogenesis2018/")` or the path where you saved the objects.
+They can be read in using `sce <- readRDS("SCE_all.rds")`.
+
 ## Analysis scripts
 
-The following folders contain scripts for data processing and analysis. 
+The following folders contain scripts for data processing and analysis.
 A short description can be found below:
 
 * [Preprocessing](../master/Preprocessing/) contains quality control and normalization scripts for scRNA-Seq and bulk RNA-Seq data, as well as a scropt to process the data from Chen et al., Cell Research, 2018.
