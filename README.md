@@ -90,7 +90,9 @@ sce_EmptyDrops <- SingleCellExperiment(assays = list(counts = EmptyDrops_raw),
 saveRDS(sce_EmptyDrops, "SCE_emptyDrops.rds")
 ```
 
-### 3. Normalizing the data
+### 3. Further processing
+
+To further process the data (normalization, dimensionality reduction, ...), please follow either the [Filtering](../master/Preprocessing/10X_scRNAseq/Filtering.Rmd) (from line 166) or the [EmptyDrops](../master/Preprocessing/10X_scRNAseq/EmptyDrops.Rmd) (from line 262) scripts.
 
 ## Analysis scripts
 
