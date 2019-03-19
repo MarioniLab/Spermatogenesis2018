@@ -111,8 +111,8 @@ A short description can be found below:
 
 * [Shiny](../master/Shiny) conatins scripts to prepare data for the shiny app visualization and the server.R and ui.R files.
 
-* [Shiny_ED](../master/Shiny_ED): Same as Shiny but for emptyDrops data .
+* [Shiny_ED](../master/Shiny_ED): Same as Shiny but for emptyDrops data.
 
-The preprint can be found at:
+The paper can be found at:
 
-[Staged developmental mapping and X chromosome transcriptional dynamics during mouse spermatogenesis](https://www.biorxiv.org/content/early/2018/06/20/350868)
+[Staged developmental mapping and X chromosome transcriptional dynamics during mouse spermatogenesis](https://www.nature.com/articles/s41467-019-09182-1)
