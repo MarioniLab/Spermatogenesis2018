@@ -25,8 +25,8 @@ mouse.genes$Chromosome.scaffold.name <- paste("Chr",
 color_vector = metadata(sce)$color_vector
 
 # Downsample sce object
-#set.seed(12345)
-#sce <- sce[,sample(1:ncol(sce), 20000)]
+set.seed(12345)
+sce <- sce[,sample(1:ncol(sce), 30000)]
 
 # Save output
 save.image("Dropbox (Cambridge University)/SST_spermatocytes/Shiny/data/sce_ED.RData")
