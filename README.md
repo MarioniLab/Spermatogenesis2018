@@ -75,18 +75,22 @@ library(Matrix)
 cellranger_raw <- readMM("raw_counts.mtx")
 cellranger_metadata <- read.table("cell_metadata.txt", sep = " ")
 cellranger_genes <- read.table("genes.tsv", sep = "\t", header = TRUE)
-sce_cellranger <- SingleCellExperiment(assays = list(counts = cellranger_raw), 
+sce_cellranger <- SingleCellExperiment(assays = list(counts = as(cellranger_raw,
+                                                                  "dgCMatrix")), 
                                        colData = cellranger_metadata,
                                        rowData = cellranger_genes) 
+rownames(sce_cellranger) <- rowData(sce_cellranger)$ID                                      
 saveRDS(sce_cellranger, "SCE_all.rds")
 
 # EmptyDrops filtered data
 EmptyDrops_raw <- readMM("raw_counts_emptyDrops.mtx")
 EmptyDrops_metadata <- read.table("cell_metadata_emptyDrops.txt", sep = " ")
 EmptyDrops_genes <- read.table("genes_emptyDrops.tsv", sep = "\t", header = TRUE)
-sce_EmptyDrops <- SingleCellExperiment(assays = list(counts = EmptyDrops_raw), 
+sce_EmptyDrops <- SingleCellExperiment(assays = list(counts = as(EmptyDrops_raw,
+                                                                  "dgCMatrix")), 
                                        colData = EmptyDrops_metadata,
                                        rowData = EmptyDrops_genes) 
+rownames(sce_EmptyDrops) <- rowData(sce_EmptyDrops)$ID 
 saveRDS(sce_EmptyDrops, "SCE_emptyDrops.rds")
 ```
 
