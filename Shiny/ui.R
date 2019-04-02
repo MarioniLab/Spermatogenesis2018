@@ -11,6 +11,11 @@ shinyUI(fluidPage(
   
   sidebarLayout(
     sidebarPanel(
+      helpText("This Shiny App visualizes cellranger filtered cells.",
+               "To visualize gene expression in cells that are lost during cellranger's quality control,",
+               "we provide a Shiny App, which plots the EmptyDrops filtered cells."),
+      tagList("The EmptyDrops Shiny App can be accessed at: ", a("SpermatoShinyEmptyDrops", href="https://marionilab.cruk.cam.ac.uk/SpermatoShinyEmptyDrops/")),
+      helpText(""),
       selectizeInput("gene", label = "Select gene", choices = NULL, options =
                        list(placeholder = 'Select a gene name', maxItems = 1,
                             maxOptions = 10)),

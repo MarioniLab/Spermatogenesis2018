@@ -12,7 +12,7 @@ library(RColorBrewer)
 sce <- readRDS("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/10X_data/SCE_emptyDrops.rds")
 
 # Read in genanames
-mouse.genes <- read.table("Dropbox (Cambridge University)/SST_spermatocytes/Analysis/data/Mouse_genes.txt",
+mouse.genes <- read.table("GitHub/Spermatogenesis2018/Data/Mouse_genes.txt",
                           sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 mouse.genes <- mouse.genes[!grepl("CHR", mouse.genes$Chromosome.scaffold.name) &
                              !grepl("GL", mouse.genes$Chromosome.scaffold.name) &
@@ -26,7 +26,7 @@ color_vector = metadata(sce)$color_vector
 
 # Downsample sce object
 set.seed(12345)
-sce <- sce[,sample(1:ncol(sce), 20000)]
+sce <- sce[,sample(1:ncol(sce), 30000)]
 
 # Save output
 save.image("Dropbox (Cambridge University)/SST_spermatocytes/Shiny/data/sce_ED.RData")
