@@ -119,7 +119,7 @@ A short description can be found below:
 
 * [Analysis](../master/Analysis) contains .Rmd files with additional analysis performed on the data. These analyses have not been used to present data in the main manuscript.
 
-* [Shiny](../master/Shiny) conatins scripts to prepare data for the shiny app visualization and the server.R and ui.R files.
+* [Shiny](../master/Shiny) contains scripts to prepare data for the shiny app visualization and the server.R and ui.R files.
 
 * [Shiny_ED](../master/Shiny_ED): Same as Shiny but for emptyDrops data.
 
