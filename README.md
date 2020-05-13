@@ -96,6 +96,14 @@ saveRDS(sce_EmptyDrops, "SCE_emptyDrops.rds")
 
 ### 3. Further processing
 
+Of note: the analysis performed here was done using packages of Bioconductor version 3.8 and R version 3.5. Some of the packages have changed since then and some of the functions are not longer supported or moved to other packages.
+
+You can install packages of Bioconductor 3.8 running:
+
+```
+BiocManager::install(version = "3.8")
+```
+
 To further process the data (normalization, dimensionality reduction, ...), please follow either the [Filtering](../master/Preprocessing/10X_scRNAseq/Filtering.Rmd) (from line 166) or the [EmptyDrops](../master/Preprocessing/10X_scRNAseq/EmptyDrops.Rmd) (from line 262) scripts.
 
 ## Reading in the data
