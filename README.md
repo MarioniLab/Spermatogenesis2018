@@ -117,7 +117,7 @@ They can be read in using `sce <- readRDS("SCE_all.rds")`.
 The following folders contain scripts for data processing and analysis.
 A short description can be found below:
 
-* [Preprocessing](../master/Preprocessing/) contains quality control and normalization scripts for scRNA-Seq and bulk RNA-Seq data, as well as a scropt to process the data from Chen et al., Cell Research, 2018.
+* [Preprocessing](../master/Preprocessing/) contains quality control and normalization scripts for scRNA-Seq and bulk RNA-Seq data, as well as a script to process the data from Chen et al., Cell Research, 2018.
  
 * All scripts to reproduce the individual figures (main and supplements) can be found in [Figures](../master/Figures).
 
